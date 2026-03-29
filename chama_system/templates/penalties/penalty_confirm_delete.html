@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Delete Penalty{% endblock %}
+{% block page_title %}Delete Penalty{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card border-danger">
+            <div class="card-header text-danger"><i class="bi bi-trash me-2"></i>Confirm Delete</div>
+            <div class="card-body">
+                <p>Delete penalty of <strong>KES {{ object.amount }}</strong> for <strong>{{ object.member.name }}</strong> on {{ object.date }}?</p>
+                <p class="text-muted small">Reason: {{ object.reason }}</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                        <a href="{% url 'penalties:list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

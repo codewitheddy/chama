@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Contribution Defaulters{% endblock %}
+{% block page_title %}Contribution Defaulters{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label fw-semibold">Month</label>
+                <select name="month" class="form-select form-select-sm">
+                    {% for m in months %}
+                    <option value="{{ m }}" {% if m == month %}selected{% endif %}>
+                        {{ m }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label fw-semibold">Year</label>
+                <select name="year" class="form-select form-select-sm">
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary btn-sm">Check</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>
+            <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+            Members who have NOT contributed for <strong>{{ month_name }} {{ year }}</strong>
+        </span>
+        <span class="badge" style="background:#fff1f2;color:#e11d48;font-size:0.85rem;">
+            {{ defaulters.count }} defaulter{{ defaulters.count|pluralize }}
+        </span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr><th>#</th><th>Name</th><th>Phone</th><th>Date Joined</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+                {% for m in defaulters %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><a href="{% url 'members:detail' m.pk %}" class="fw-semibold text-decoration-none">{{ m.name }}</a></td>
+                    <td>{{ m.phone }}</td>
+                    <td>{{ m.date_joined }}</td>
+                    <td>
+                        <a href="{% url 'contributions:add' %}" class="btn btn-sm btn-success">
+                            <i class="bi bi-plus me-1"></i>Record
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5">
+                        <i class="bi bi-check-circle text-success" style="font-size:2rem;"></i>
+                        <div class="mt-2 fw-semibold text-success">All members have contributed for {{ month_name }} {{ year }}</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

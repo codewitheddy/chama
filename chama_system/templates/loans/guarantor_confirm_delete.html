@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Remove Guarantor{% endblock %}
+{% block page_title %}Remove Guarantor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-5">
+        <div class="card border-danger">
+            <div class="card-header text-danger">Confirm Remove</div>
+            <div class="card-body">
+                <p>Remove <strong>{{ object.guarantor.name }}</strong> as guarantor for
+                   <strong>{{ object.loan.member.name }}</strong>'s loan of
+                   KES {{ object.loan.loan_amount|floatformat:2 }}?</p>
+                <p class="text-muted small">Their guaranteed amount of KES {{ object.amount_guaranteed|floatformat:2 }} will be released.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">Yes, Remove</button>
+                        <a href="{% url 'loans:detail' object.loan.pk %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

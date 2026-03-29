@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Add Guarantor{% endblock %}
+{% block page_title %}Add Guarantor — Loan #{{ loan.pk }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+
+        <!-- Loan context -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-4">
+                        <div class="text-muted small">Borrower</div>
+                        <div class="fw-semibold">{{ loan.member.name }}</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Loan Amount</div>
+                        <div class="fw-semibold">KES {{ loan.loan_amount|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Already Guaranteed</div>
+                        <div class="fw-semibold {% if loan.total_guaranteed >= loan.loan_amount %}text-success{% else %}text-warning{% endif %}">
+                            KES {{ loan.total_guaranteed|floatformat:2 }}
+                        </div>
+                    </div>
+                </div>
+                {% if loan.total_guaranteed < loan.loan_amount %}
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between mb-1" style="font-size:0.78rem;color:#64748b;">
+                        <span>Guarantee Coverage</span>
+                        <span>{{ loan.guarantee_coverage_percent }}%</span>
+                    </div>
+                    <div class="progress" style="height:8px;">
+                        <div class="progress-bar bg-warning" style="width:{{ loan.guarantee_coverage_percent }}%;"></div>
+                    </div>
+                    <div class="text-muted mt-1" style="font-size:0.75rem;">
+                        Still needs KES {{ loan.loan_amount|floatformat:2 }} — KES {{ loan.total_guaranteed|floatformat:2 }} = 
+                        <strong class="text-danger">KES {% widthratio loan.loan_amount 1 1 %}</strong>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-success mt-3 mb-0 py-2 small">
+                    <i class="bi bi-check-circle me-1"></i>Loan is fully guaranteed.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><i class="bi bi-person-check me-2"></i>New Guarantor</div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+                    {% endif %}
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">Add Guarantor</button>
+                        <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

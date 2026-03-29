@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Income Report{% endblock %}
+{% block page_title %}Income Report{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="text-muted small mb-0">Summary of all income streams collected by the chama.</p>
+    <a href="{% url 'reports:export_members' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-download me-1"></i>Export Members CSV
+    </a>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-blue"><i class="bi bi-person-check"></i></div>
+                <div>
+                    <div class="stat-label">Registration Fees</div>
+                    <div class="stat-value">KES {{ total_reg_fees|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-green"><i class="bi bi-cash-stack"></i></div>
+                <div>
+                    <div class="stat-label">Contributions</div>
+                    <div class="stat-value">KES {{ total_contributions|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-violet"><i class="bi bi-percent"></i></div>
+                <div>
+                    <div class="stat-label">Interest Earned</div>
+                    <div class="stat-value">KES {{ total_interest|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-teal"><i class="bi bi-wallet2"></i></div>
+                <div>
+                    <div class="stat-label">Total Income</div>
+                    <div class="stat-value">KES {{ total_income|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Breakdown Card -->
+<div class="card">
+    <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Income Breakdown</div>
+    <div class="card-body p-0">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Income Stream</th>
+                    <th>Amount (KES)</th>
+                    <th>% of Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><i class="bi bi-person-check me-2 text-primary"></i>Registration Fees</td>
+                    <td>KES {{ total_reg_fees|floatformat:2 }}</td>
+                    <td>
+                        {% if total_income %}
+                        {% widthratio total_reg_fees total_income 100 %}%
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-cash-stack me-2 text-success"></i>Member Contributions</td>
+                    <td>KES {{ total_contributions|floatformat:2 }}</td>
+                    <td>
+                        {% if total_income %}
+                        {% widthratio total_contributions total_income 100 %}%
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-percent me-2 text-violet"></i>Loan Interest</td>
+                    <td>KES {{ total_interest|floatformat:2 }}</td>
+                    <td>
+                        {% if total_income %}
+                        {% widthratio total_interest total_income 100 %}%
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot class="table-light">
+                <tr>
+                    <td class="fw-bold">Total Income</td>
+                    <td class="fw-bold" style="color:#0d9488;">KES {{ total_income|floatformat:2 }}</td>
+                    <td class="fw-bold">100%</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

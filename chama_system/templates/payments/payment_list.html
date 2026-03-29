@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Payments{% endblock %}
+{% block page_title %}Loan Payments{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <form class="d-flex gap-2" method="get" data-ajax-filter>
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+               placeholder="Search member..." style="width:220px;">
+        <a href="{% url 'payments:list' %}" class="btn btn-sm btn-outline-danger ajax-clear"
+           {% if not q %}style="display:none"{% endif %}>Clear</a>
+    </form>
+    <a href="{% url 'payments:add' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle me-1"></i>Record Payment
+    </a>
+</div>
+
+<div id="results-container">
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-receipt me-2"></i>All Payments</span>
+        <a href="{% url 'reports:export_payments' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-download me-1"></i>Export CSV
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr><th>#</th><th>Member</th><th>Loan Amount</th><th>Payment</th><th>Date</th><th>Notes</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td class="fw-semibold">{{ p.member.name }}</td>
+                    <td>KES {{ p.loan.loan_amount|floatformat:2 }}</td>
+                    <td style="color:#2563eb;">KES {{ p.amount|floatformat:2 }}</td>
+                    <td>{{ p.date }}</td>
+                    <td>{{ p.notes|default:"—" }}</td>
+                    <td>
+                        <a href="{% url 'payments:delete' p.pk %}" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                        No payments recorded.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white border-top">
+        {% include 'includes/pagination.html' %}
+    </div>
+</div>
+</div>
+{% endblock %}

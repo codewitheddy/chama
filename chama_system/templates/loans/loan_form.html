@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Edit Loan{% else %}Issue Loan{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit Loan{% else %}Issue New Loan{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+    <!-- Left: Loan Form -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">Loan Details</div>
+            <div class="card-body">
+                <form method="post" id="loanForm">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Member</label>
+                        {{ form.member }}
+                        {% if form.member.errors %}<div class="text-danger small mt-1">{{ form.member.errors }}</div>{% endif %}
+                    </div>
+
+                    <!-- Member contribution info (shown after member selected) -->
+                    <div id="memberInfo" style="display:none;" class="mb-3 p-3 rounded" style="background:#f8fafc;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Total Contributions</span>
+                            <span class="fw-semibold" id="memberContrib" style="color:#16a34a;">—</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Loan Amount (KES)</label>
+                        {{ form.loan_amount }}
+                        {% if form.loan_amount.errors %}<div class="text-danger small mt-1">{{ form.loan_amount.errors }}</div>{% endif %}
+                    </div>
+
+                    <!-- Guarantor required warning + picker -->
+                    <div id="guarantorSection" style="display:none;" class="mb-3">
+                        <div class="alert alert-warning py-2 mb-3" style="font-size:0.875rem;">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Loan exceeds member's contributions by
+                            <strong id="shortfallAmt">—</strong>.
+                            Guarantors are required.
+                        </div>
+
+                        <div class="card" style="border:1px solid #fde68a;">
+                            <div class="card-header d-flex justify-content-between align-items-center"
+                                 style="background:#fffbeb;font-size:0.875rem;">
+                                <span><i class="bi bi-people me-2"></i>Add Guarantors</span>
+                                <span class="text-muted small">
+                                    Shortfall covered: <strong id="coveredAmt" style="color:#16a34a;">KES 0</strong>
+                                    / <strong id="targetAmt">—</strong>
+                                </span>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="progress mb-2" style="height:6px;">
+                                    <div id="coverageBar" class="progress-bar bg-warning" style="width:0%;"></div>
+                                </div>
+                                <div id="guarantorRows"></div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addGuarantorBtn">
+                                    <i class="bi bi-plus me-1"></i>Add Guarantor
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Repayment Period</label>
+                        {{ form.duration_months }}
+                        {% if form.duration_months.errors %}<div class="text-danger small mt-1">{{ form.duration_months.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Date Taken</label>
+                        {{ form.date_taken }}
+                        {% if form.date_taken.errors %}<div class="text-danger small mt-1">{{ form.date_taken.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">Notes <span class="text-muted fw-normal">(optional)</span></label>
+                        {{ form.notes }}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Save Loan
+                        </button>
+                        <a href="{% url 'loans:list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Interest Preview -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-calculator me-2"></i>Interest Preview</div>
+            <div class="card-body">
+                <div class="row g-3 mb-3" id="calcSummary" style="display:none!important;">
+                    <div class="col-4">
+                        <div class="p-3 rounded" style="background:#f8fafc;">
+                            <div class="text-muted" style="font-size:0.75rem;">Principal</div>
+                            <div class="fw-bold fs-5" style="color:#334155;" id="calcPrincipal">—</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 rounded" style="background:#f0fdf4;">
+                            <div class="text-muted" style="font-size:0.75rem;">Interest (10%)</div>
+                            <div class="fw-bold fs-5" style="color:#16a34a;" id="calcInterest">—</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 rounded" style="background:#eff6ff;">
+                            <div class="text-muted" style="font-size:0.75rem;">Total Payable</div>
+                            <div class="fw-bold fs-5" style="color:#2563eb;" id="calcTotal">—</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="calcPlaceholder" class="text-muted text-center py-3" style="font-size:0.875rem;">
+                    <i class="bi bi-info-circle me-1"></i>Enter loan amount to preview interest.
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body" style="font-size:0.82rem;color:#64748b;">
+                <strong style="color:#334155;">Interest Rules:</strong>
+                <ul class="mb-0 mt-1 ps-3">
+                    <li>Flat <strong>10%</strong> one-off interest on principal</li>
+                    <li>e.g. Borrow KES 2,000 → repay KES 2,200</li>
+                    <li>A member cannot borrow while a previous loan is active.</li>
+                    <li>Guarantors required if loan exceeds member's contributions.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const memberSelect  = document.getElementById('id_member');
+const amountInput   = document.getElementById('id_loan_amount');
+const durationInput = document.getElementById('id_duration_months');
+
+let memberContribTotal = 0;
+let eligibleGuarantors = [];
+let currentShortfall = 0;
+
+function fmt(n) {
+    return 'KES ' + parseFloat(n).toLocaleString('en-KE', {minimumFractionDigits: 2});
+}
+
+// ── Interest calculator ──────────────────────────────────────────
+function fetchCalc() {
+    const amount = amountInput.value;
+    const months = durationInput.value;
+    if (!amount || parseFloat(amount) <= 0) return;
+    fetch(`{% url 'loans:calculator' %}?amount=${amount}&months=${months}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) return;
+            document.getElementById('calcPrincipal').textContent = fmt(amount);
+            document.getElementById('calcInterest').textContent  = fmt(data.total_interest);
+            document.getElementById('calcTotal').textContent     = fmt(data.total_payable);
+            document.getElementById('calcSummary').style.display = 'flex';
+            document.getElementById('calcPlaceholder').style.display = 'none';
+        });
+}
+
+// ── Member contribution check ────────────────────────────────────
+function checkGuarantorNeeded() {
+    const memberId = memberSelect.value;
+    const amount   = parseFloat(amountInput.value) || 0;
+    if (!memberId) return;
+
+    fetch(`{% url 'loans:member_check' %}?member_id=${memberId}&amount=${amount}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) return;
+            memberContribTotal = data.total_contributions;
+            eligibleGuarantors = data.guarantors;
+            currentShortfall   = data.shortfall;
+
+            document.getElementById('memberInfo').style.display = 'block';
+            document.getElementById('memberContrib').textContent = fmt(memberContribTotal);
+
+            const section = document.getElementById('guarantorSection');
+            if (data.needs_guarantor) {
+                document.getElementById('shortfallAmt').textContent = fmt(data.shortfall);
+                // coverage target = shortfall, not full loan
+                document.getElementById('targetAmt').textContent = fmt(data.shortfall);
+                section.style.display = 'block';
+                rebuildGuarantorSelects();
+                updateCoverage();
+            } else {
+                section.style.display = 'none';
+            }
+        });
+}
+
+// ── Guarantor rows ───────────────────────────────────────────────
+function rebuildGuarantorSelects() {
+    document.querySelectorAll('.guarantor-row').forEach(row => {
+        const sel = row.querySelector('select');
+        const currentVal = sel.value;
+        const usedIds = getUsedGuarantorIds();
+        sel.innerHTML = '<option value="">— Select Guarantor —</option>';
+        eligibleGuarantors.forEach(g => {
+            if (!usedIds.includes(String(g.id)) || String(g.id) === currentVal) {
+                sel.innerHTML += `<option value="${g.id}"
+                    data-max="${g.max_guarantee}"
+                    ${String(g.id) === currentVal ? 'selected' : ''}>
+                    ${g.name} (max KES ${g.max_guarantee.toLocaleString()})
+                </option>`;
+            }
+        });
+        // re-apply max on the amount input for the currently selected guarantor
+        applyMaxToRow(row);
+    });
+}
+
+function applyMaxToRow(row) {
+    const sel = row.querySelector('select');
+    const inp = row.querySelector('input[type=number]');
+    const warn = row.querySelector('.guarantor-warn');
+    const selectedOpt = sel.options[sel.selectedIndex];
+    if (selectedOpt && selectedOpt.dataset.max !== undefined) {
+        const max = parseFloat(selectedOpt.dataset.max);
+        inp.max = max;
+        inp.placeholder = `Max KES ${max.toLocaleString()}`;
+        // clamp existing value
+        if (parseFloat(inp.value) > max) {
+            inp.value = max;
+            updateCoverage();
+        }
+        if (warn) warn.style.display = 'none';
+    } else {
+        inp.removeAttribute('max');
+        inp.placeholder = 'Amount';
+    }
+}
+
+function validateGuarantorAmount(inp) {
+    const row = inp.closest('.guarantor-row');
+    const warn = row.querySelector('.guarantor-warn');
+    const max = parseFloat(inp.max);
+    if (!isNaN(max) && parseFloat(inp.value) > max) {
+        inp.value = max;
+        if (warn) { warn.textContent = `Capped at KES ${max.toLocaleString()} (their contributions)`; warn.style.display = 'block'; }
+    } else {
+        if (warn) warn.style.display = 'none';
+    }
+    updateCoverage();
+}
+
+function getUsedGuarantorIds() {
+    return [...document.querySelectorAll('.guarantor-row select')].map(s => s.value).filter(v => v);
+}
+
+function addGuarantorRow() {
+    const container = document.getElementById('guarantorRows');
+    const div = document.createElement('div');
+    div.className = 'guarantor-row mb-2';
+    div.innerHTML = `
+        <div class="d-flex gap-2 align-items-center">
+            <select name="guarantor_ids[]" class="form-select form-select-sm" style="flex:2;">
+                <option value="">— Select Guarantor —</option>
+                ${eligibleGuarantors.map(g =>
+                    `<option value="${g.id}" data-max="${g.max_guarantee}">
+                        ${g.name} (max KES ${g.max_guarantee.toLocaleString()})
+                    </option>`
+                ).join('')}
+            </select>
+            <input type="number" name="guarantor_amounts[]" class="form-control form-control-sm" style="flex:1;"
+                   placeholder="Amount" min="0" step="100">
+            <button type="button" class="btn btn-sm btn-outline-danger"
+                    onclick="this.closest('.guarantor-row').remove(); rebuildGuarantorSelects(); updateCoverage();">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="guarantor-warn text-danger small mt-1" style="display:none;"></div>`;
+
+    const sel = div.querySelector('select');
+    const inp = div.querySelector('input[type=number]');
+    sel.addEventListener('change', () => { applyMaxToRow(div); rebuildGuarantorSelects(); updateCoverage(); });
+    inp.addEventListener('input', () => validateGuarantorAmount(inp));
+
+    container.appendChild(div);
+    rebuildGuarantorSelects();
+}
+
+function updateCoverage() {
+    // coverage is measured against the shortfall, not the full loan
+    const target = currentShortfall || 0;
+    let covered = 0;
+    document.querySelectorAll('.guarantor-row input[type=number]').forEach(inp => {
+        covered += parseFloat(inp.value) || 0;
+    });
+    const pct = target > 0 ? Math.min((covered / target) * 100, 100) : 0;
+    document.getElementById('coveredAmt').textContent = fmt(covered);
+    const bar = document.getElementById('coverageBar');
+    bar.style.width = pct + '%';
+    bar.className = 'progress-bar ' + (pct >= 100 ? 'bg-success' : pct >= 50 ? 'bg-warning' : 'bg-danger');
+
+    // block form submit if shortfall not covered
+    const submitBtn = document.querySelector('#loanForm button[type=submit]');
+    const section = document.getElementById('guarantorSection');
+    if (section.style.display !== 'none' && covered < target) {
+        submitBtn.disabled = true;
+        submitBtn.title = `Guarantors must cover the full shortfall of ${fmt(target)}`;
+    } else {
+        submitBtn.disabled = false;
+        submitBtn.title = '';
+    }
+}
+
+document.getElementById('addGuarantorBtn').addEventListener('click', addGuarantorRow);
+memberSelect.addEventListener('change', checkGuarantorNeeded);
+amountInput.addEventListener('input', () => { fetchCalc(); checkGuarantorNeeded(); });
+durationInput.addEventListener('change', fetchCalc);
+</script>
+{% endblock %}

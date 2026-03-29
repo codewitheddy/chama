@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}Member Statement{% endblock %}
+{% block page_title %}Member Statement{% endblock %}
+
+{% block content %}
+
+<!-- Member Selector -->
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-person-lines-fill me-2"></i>Select Member</div>
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Member</label>
+                <select name="member" class="form-select">
+                    <option value="">— Choose Member —</option>
+                    {% for m in members %}
+                    <option value="{{ m.pk }}" {% if selected_member.pk == m.pk %}selected{% endif %}>{{ m.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">View</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if selected_member %}
+
+<!-- Member Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-green"><i class="bi bi-cash-stack"></i></div>
+                <div>
+                    <div class="stat-label">Total Contributions</div>
+                    <div class="stat-value">KES {{ selected_member.total_contributions|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-amber"><i class="bi bi-credit-card"></i></div>
+                <div>
+                    <div class="stat-label">Total Loans</div>
+                    <div class="stat-value">KES {{ selected_member.total_loans|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-rose"><i class="bi bi-exclamation-circle"></i></div>
+                <div>
+                    <div class="stat-label">Loan Balance</div>
+                    <div class="stat-value">KES {{ selected_member.total_loan_balance|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h6 class="mb-3 text-muted">Statement for: <strong style="color:#1e293b;">{{ selected_member.name }}</strong></h6>
+
+<!-- Contributions -->
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-cash-stack me-2"></i>Contributions</div>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Month</th><th>Year</th><th>Amount</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                {% for c in contributions %}
+                <tr>
+                    <td>{{ c.get_month_display }}</td>
+                    <td>{{ c.year }}</td>
+                    <td style="color:#16a34a;">KES {{ c.amount|floatformat:2 }}</td>
+                    <td>{{ c.date }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-muted text-center py-3">No contributions.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Loans -->
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-credit-card me-2"></i>Loans</div>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Amount</th><th>Interest</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for l in loans %}
+                <tr>
+                    <td>KES {{ l.loan_amount|floatformat:2 }}</td>
+                    <td style="color:#16a34a;">KES {{ l.interest_amount|floatformat:2 }}</td>
+                    <td>KES {{ l.total_payable|floatformat:2 }}</td>
+                    <td style="color:#2563eb;">KES {{ l.amount_paid|floatformat:2 }}</td>
+                    <td class="fw-semibold {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
+                        KES {{ l.balance|floatformat:2 }}
+                    </td>
+                    <td>
+                        {% if l.status == 'cleared' %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
+                        {% elif l.status == 'late' %}
+                            <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
+                        {% else %}
+                            <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-muted text-center py-3">No loans.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Payments -->
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-receipt me-2"></i>Loan Payments</div>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Loan Amount</th><th>Payment</th><th>Date</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td>KES {{ p.loan.loan_amount|floatformat:2 }}</td>
+                    <td style="color:#2563eb;">KES {{ p.amount|floatformat:2 }}</td>
+                    <td>{{ p.date }}</td>
+                    <td>{{ p.notes|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-muted text-center py-3">No payments.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Guarantees Given -->
+<div class="card">
+    <div class="card-header"><i class="bi bi-shield-check me-2"></i>Loans Guaranteed</div>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Borrower</th><th>Loan Amount</th><th>Guaranteed</th><th>Loan Balance</th><th>Loan Status</th></tr>
+            </thead>
+            <tbody>
+                {% for g in guarantees %}
+                <tr>
+                    <td>
+                        <a href="{% url 'loans:detail' g.loan.pk %}" class="fw-semibold text-decoration-none">
+                            {{ g.loan.member.name }}
+                        </a>
+                    </td>
+                    <td>KES {{ g.loan.loan_amount|floatformat:2 }}</td>
+                    <td style="color:#2563eb;">KES {{ g.amount_guaranteed|floatformat:2 }}</td>
+                    <td class="{% if g.loan.balance == 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                        KES {{ g.loan.balance|floatformat:2 }}
+                    </td>
+                    <td>
+                        {% if g.loan.status == 'cleared' %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
+                        {% elif g.loan.status == 'late' %}
+                            <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
+                        {% else %}
+                            <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-muted text-center py-3">Not guaranteeing any loans.</td></tr>
+                {% endfor %}
+            </tbody>
+            {% if guarantees %}
+            <tfoot class="table-light">
+                <tr>
+                    <td colspan="2" class="text-end fw-semibold">Total Guaranteed</td>
+                    <td class="fw-bold" style="color:#2563eb;">
+                        KES {% for g in guarantees %}{{ g.amount_guaranteed|floatformat:2 }}{% if not forloop.last %} + {% endif %}{% endfor %}
+                    </td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

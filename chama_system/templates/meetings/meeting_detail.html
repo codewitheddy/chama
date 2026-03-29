@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+{% block title %}Meeting — {{ meeting.date }}{% endblock %}
+{% block page_title %}Meeting — {{ meeting.date }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<style>
+    /* Read-only minutes preview on detail page */
+    .ql-snow.ql-container { border: none; }
+    .ql-editor { padding: 0; font-size: 0.875rem; }
+    .ql-snow.ql-toolbar { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if meeting.status == 'held' %}
+<div class="alert alert-success py-2 mb-3" style="font-size:0.875rem;">
+    <i class="bi bi-lock-fill me-2"></i>This meeting is <strong>held</strong> — status and penalties are locked.
+</div>
+{% endif %}
+<div class="row g-3">
+
+    <!-- Left: summary + minutes -->
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header">Meeting Info</div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-muted ps-3">Date</td><td class="fw-semibold pe-3">{{ meeting.date }}</td></tr>
+                    <tr><td class="text-muted ps-3">Venue</td><td class="pe-3">{{ meeting.venue|default:"—" }}</td></tr>
+                    <tr><td class="text-muted ps-3">Status</td><td class="pe-3">
+                        {% if meeting.status == 'held' %}<span class="badge" style="background:#f0fdf4;color:#16a34a;">Held</span>
+                        {% elif meeting.status == 'scheduled' %}<span class="badge" style="background:#eff6ff;color:#2563eb;">Scheduled</span>
+                        {% else %}<span class="badge" style="background:#fff1f2;color:#e11d48;">Cancelled</span>{% endif %}
+                    </td></tr>
+                    <tr><td class="text-muted ps-3">Attendance</td><td class="pe-3">{{ attendance.count }} recorded</td></tr>
+                    <tr><td class="text-muted ps-3">Penalties</td><td class="pe-3 text-danger fw-semibold">KES {{ meeting.total_penalties|floatformat:2 }}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        {% if meeting.agenda %}
+        <div class="card mb-3">
+            <div class="card-header">Agenda</div>
+            <div class="card-body" style="font-size:0.875rem;white-space:pre-wrap;">{{ meeting.agenda }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Minutes card -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-text me-2"></i>Minutes</span>
+                <a href="{% url 'meetings:minutes' meeting.pk %}" class="btn btn-sm btn-outline-warning">
+                    <i class="bi bi-pencil me-1"></i>View / Edit
+                </a>
+            </div>
+            {% if meeting.minutes %}
+            <div class="card-body p-3" style="font-size:0.875rem;">
+                <div id="minutesPreview" style="max-height:80px;overflow:hidden;position:relative;">
+                    <div class="ql-snow"><div class="ql-editor" style="padding:0;">{{ meeting.minutes|safe }}</div></div>
+                    <div style="position:absolute;bottom:0;left:0;right:0;height:30px;background:linear-gradient(transparent,white);"></div>
+                </div>
+                <a href="{% url 'meetings:minutes' meeting.pk %}" class="small text-primary mt-1 d-inline-block">Read full minutes →</a>
+            </div>
+            {% else %}
+            <div class="card-body">
+                <p class="text-muted small mb-0">No minutes yet. <a href="{% url 'meetings:minutes' meeting.pk %}">Click here to add.</a></p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            {% if meeting.status != 'held' %}
+            <a href="{% url 'meetings:edit' meeting.pk %}" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-pencil me-1"></i>Edit Meeting
+            </a>
+            {% endif %}
+            <a href="{% url 'meetings:list' %}" class="btn btn-outline-secondary btn-sm">Back</a>
+        </div>
+    </div>
+
+    <!-- Right: attendance + penalties -->
+    <div class="col-md-8">
+
+        <!-- Attendance -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-person-check me-2"></i>Attendance</span>
+                {% if meeting.status != 'held' %}
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#attendanceModal">
+                    <i class="bi bi-plus me-1"></i>Record Attendance
+                </button>
+                {% endif %}
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Member</th><th>Status</th><th></th></tr></thead>
+                    <tbody id="attendanceBody">
+                        {% for a in attendance %}
+                        <tr>
+                            <td class="fw-semibold">{{ a.member.name }}</td>
+                            <td>
+                                {% if a.status == 'present' %}
+                                    <span class="badge" style="background:#f0fdf4;color:#16a34a;">Present</span>
+                                {% elif a.status == 'late' %}
+                                    <span class="badge" style="background:#fffbeb;color:#d97706;">Late</span>
+                                {% elif a.status == 'absent_apology' %}
+                                    <span class="badge" style="background:#eff6ff;color:#2563eb;">Absent w/ Apology</span>
+                                {% else %}
+                                    <span class="badge" style="background:#fff1f2;color:#e11d48;">Absent No Apology</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if meeting.status != 'held' %}
+                                <button class="btn btn-xs btn-outline-secondary btn-sm py-0 px-1"
+                                        onclick="quickEdit({{ a.member.id }}, '{{ a.member.name }}', '{{ a.status }}')">
+                                    <i class="bi bi-pencil" style="font-size:.7rem;"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">No attendance recorded yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Penalties -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-exclamation-triangle me-2"></i>Meeting Penalties</span>
+                {% if meeting.status != 'held' %}
+                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#penaltyModal">
+                    <i class="bi bi-plus me-1"></i>Add Penalty
+                </button>
+                {% endif %}
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Member</th><th>Reason</th><th>Amount</th><th></th></tr></thead>
+                    <tbody>
+                        {% for p in penalties %}
+                        <tr>
+                            <td class="fw-semibold">{{ p.member.name }}</td>
+                            <td>{{ p.reason }}</td>
+                            <td style="color:#e11d48;">KES {{ p.amount|floatformat:2 }}</td>
+                            <td>
+                                {% if meeting.status != 'held' %}
+                                <form method="post" action="{% url 'meetings:delete_penalty' p.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1"
+                                            onclick="return confirm('Remove this penalty?')">
+                                        <i class="bi bi-trash" style="font-size:.75rem;"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted py-3">No penalties for this meeting.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if penalties %}
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="2" class="text-end fw-semibold">Total</td>
+                            <td class="fw-bold text-danger">KES {{ meeting.total_penalties|floatformat:2 }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Attendance Modal -->
+<div class="modal fade" id="attendanceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Attendance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm">
+                    <thead><tr><th>Member</th><th>Status</th></tr></thead>
+                    <tbody id="attendanceFormBody">
+                        {% for m in all_members %}
+                        {% with current=attendance|dictsort:"member_id" %}
+                        <tr>
+                            <td>{{ m.name }}</td>
+                            <td>
+                                <select class="form-select form-select-sm att-select"
+                                        data-member="{{ m.id }}">
+                                    <option value="present"          {% for a in attendance %}{% if a.member_id == m.id and a.status == 'present' %}selected{% endif %}{% endfor %}>Present</option>
+                                    <option value="late"             {% for a in attendance %}{% if a.member_id == m.id and a.status == 'late' %}selected{% endif %}{% endfor %}>Late</option>
+                                    <option value="absent_apology"   {% for a in attendance %}{% if a.member_id == m.id and a.status == 'absent_apology' %}selected{% endif %}{% endfor %}>Absent with Apology</option>
+                                    <option value="absent_no_apology"{% for a in attendance %}{% if a.member_id == m.id and a.status == 'absent_no_apology' %}selected{% endif %}{% endfor %}>Absent without Apology</option>
+                                </select>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="saveAttendanceBtn">Save Attendance</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Penalty Modal -->
+<div class="modal fade" id="penaltyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Add Penalty</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'meetings:add_penalty' meeting.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Member</label>
+                        {{ penalty_form.member }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Penalty Type</label>
+                        {{ penalty_form.rule }}
+                        <div class="text-muted small mt-1">Select a preset or leave blank for custom.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Amount (KES)</label>
+                        {{ penalty_form.amount }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Reason</label>
+                        {{ penalty_form.reason }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger">Record Penalty</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script>
+const RULES = {{ rules|safe }};
+const SAVE_URL = "{% url 'meetings:save_attendance' meeting.pk %}";
+const CSRF = "{{ csrf_token }}";
+
+// ── Penalty rule auto-fill ────────────────────────────────────────
+document.getElementById('id_rule').addEventListener('change', function () {
+    const rule = RULES.find(r => r.id == this.value);
+    if (rule) {
+        document.getElementById('id_amount').value = rule.default_amount;
+        document.getElementById('id_reason').value = rule.name;
+    }
+});
+
+// ── Save attendance via AJAX ──────────────────────────────────────
+const saveBtn = document.getElementById('saveAttendanceBtn');
+if (saveBtn) {
+    saveBtn.addEventListener('click', function () {
+        const rows = document.querySelectorAll('.att-select');
+        const data = [...rows].map(s => ({
+            member_id: parseInt(s.dataset.member),
+            status: s.value,
+        }));
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        fetch(SAVE_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(data),
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('Server error: ' + r.status);
+            return r.json();
+        })
+        .then(json => {
+            if (json.ok) {
+                location.reload();
+            } else {
+                alert('Error: ' + (json.error || 'Unknown error'));
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Attendance';
+            }
+        })
+        .catch(err => {
+            alert('Failed to save attendance: ' + err.message);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Attendance';
+        });
+    });
+}
+
+// ── Quick-edit a single attendance row ────────────────────────────
+function quickEdit(memberId, memberName, currentStatus) {
+    const statuses = [
+        ['present', 'Present'],
+        ['late', 'Late'],
+        ['absent_apology', 'Absent with Apology'],
+        ['absent_no_apology', 'Absent without Apology'],
+    ];
+    const confirmed = confirm(`Change attendance for ${memberName}?\n(Click OK then pick status in the prompt)`);
+    if (!confirmed) return;
+    const newStatus = prompt(
+        `Status for ${memberName}:\n1=Present  2=Late  3=Absent w/Apology  4=Absent No Apology`,
+        statuses.findIndex(([v]) => v === currentStatus) + 1
+    );
+    const map = { '1': 'present', '2': 'late', '3': 'absent_apology', '4': 'absent_no_apology' };
+    const status = map[newStatus];
+    if (!status) return;
+    fetch(SAVE_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify([{ member_id: memberId, status }]),
+    })
+    .then(r => r.json())
+    .then(() => location.reload())
+    .catch(err => alert('Failed: ' + err.message));
+}
+</script>
+{% endblock %}

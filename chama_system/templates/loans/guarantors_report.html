@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Guarantors Report{% endblock %}
+{% block page_title %}Guarantors Report{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="text-muted small mb-0">Full view of who is guaranteeing which loans.</p>
+    <a href="{% url 'loans:list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Loans
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people me-2"></i>All Guarantees</span>
+        <span class="text-muted fw-normal" style="font-size:0.78rem;">{{ guarantors|length }} record{{ guarantors|length|pluralize }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Guarantor</th>
+                    <th>Borrower</th>
+                    <th>Loan Amount</th>
+                    <th>Amount Guaranteed</th>
+                    <th>Loan Status</th>
+                    <th>Loan Balance</th>
+                    <th>Notes</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in guarantors %}
+                <tr>
+                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td>
+                        <div class="fw-semibold">{{ g.guarantor.name }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">{{ g.guarantor.phone }}</div>
+                    </td>
+                    <td>
+                        <a href="{% url 'loans:detail' g.loan.pk %}" class="text-decoration-none fw-semibold">
+                            {{ g.loan.member.name }}
+                        </a>
+                    </td>
+                    <td>KES {{ g.loan.loan_amount|floatformat:2 }}</td>
+                    <td style="color:#2563eb;">KES {{ g.amount_guaranteed|floatformat:2 }}</td>
+                    <td>
+                        {% if g.loan.status == 'cleared' %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
+                        {% elif g.loan.status == 'late' %}
+                            <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
+                        {% else %}
+                            <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
+                        {% endif %}
+                    </td>
+                    <td class="{% if g.loan.balance == 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                        KES {{ g.loan.balance|floatformat:2 }}
+                    </td>
+                    <td class="text-muted small">{{ g.notes|default:"—" }}</td>
+                    <td>
+                        <a href="{% url 'loans:guarantor_delete' g.pk %}" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                        No guarantors recorded yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

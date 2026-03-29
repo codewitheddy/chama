@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Rollover Loan #{{ loan.pk }}{% endblock %}
+{% block page_title %}Rollover Loan #{{ loan.pk }} — {{ loan.member.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Rollover Summary</div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted ps-3">Member</td>
+                        <td class="fw-semibold pe-3">{{ loan.member.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3">Outstanding Balance</td>
+                        <td class="fw-semibold pe-3 text-danger">KES {{ outstanding|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3">New Interest (10%)</td>
+                        <td class="pe-3" style="color:#16a34a;">KES {{ new_interest|floatformat:2 }}</td>
+                    </tr>
+                    <tr class="table-light">
+                        <td class="ps-3 fw-semibold">New Total Payable</td>
+                        <td class="pe-3 fw-bold" style="color:#2563eb;">KES {{ new_total|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3">Previous Rollovers</td>
+                        <td class="pe-3">{{ loan.rollover_count }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card border-warning">
+            <div class="card-body">
+                <p class="mb-3 text-muted" style="font-size:0.875rem;">
+                    The outstanding balance of <strong>KES {{ outstanding|floatformat:2 }}</strong> becomes the new principal.
+                    A fresh 10% interest of <strong>KES {{ new_interest|floatformat:2 }}</strong> is charged.
+                    All previous payments are reset and the due date is extended.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">New Repayment Duration</label>
+                        <select name="duration_months" class="form-select">
+                            {% for i in duration_choices %}
+                            <option value="{{ i }}" {% if i == loan.duration_months %}selected{% endif %}>
+                                {{ i }} month{{ i|pluralize }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-arrow-repeat me-1"></i>Confirm Rollover
+                        </button>
+                        <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}Penalties{% endblock %}
+{% block page_title %}Penalties{% endblock %}
+
+{% block content %}
+<!-- Summary cards -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Total Issued</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#e11d48;">KES {{ total_filtered|floatformat:0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Paid</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#16a34a;">KES {{ total_paid|floatformat:0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Outstanding</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#d97706;">KES {{ total_unpaid|floatformat:0 }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <form class="d-flex gap-2 flex-wrap" method="get" data-ajax-filter>
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+               placeholder="Search member..." style="width:180px;">
+        <select name="month" class="form-select form-select-sm" style="width:130px;">
+            <option value="">All Months</option>
+            {% for num, name in months %}
+            <option value="{{ num }}" {% if selected_month == num|stringformat:"s" %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+        <select name="year" class="form-select form-select-sm" style="width:95px;">
+            <option value="">All Years</option>
+            {% for y in years %}
+            <option value="{{ y }}" {% if selected_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <select name="paid" class="form-select form-select-sm" style="width:120px;">
+            <option value="">All</option>
+            <option value="0" {% if selected_paid == '0' %}selected{% endif %}>Unpaid</option>
+            <option value="1" {% if selected_paid == '1' %}selected{% endif %}>Paid</option>
+        </select>
+        <a href="{% url 'penalties:list' %}" class="btn btn-sm btn-outline-danger ajax-clear"
+           {% if not q and not selected_month and not selected_year and not selected_paid %}style="display:none"{% endif %}>Clear</a>
+    </form>
+    <a href="{% url 'penalties:add' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle me-1"></i>Record Penalty
+    </a>
+</div>
+
+<div id="results-container">
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-exclamation-triangle me-2"></i>Penalties</span>
+        <span class="fw-semibold" style="font-size:0.85rem;">
+            Showing: KES {{ total_filtered|floatformat:2 }}
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr><th>#</th><th>Member</th><th>Amount</th><th>Date</th><th>Reason</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for p in penalties %}
+                <tr>
+                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td class="fw-semibold">{{ p.member.name }}</td>
+                    <td style="color:#e11d48;">KES {{ p.amount|floatformat:2 }}</td>
+                    <td>{{ p.date }}</td>
+                    <td>{{ p.reason }}</td>
+                    <td>
+                        {% if p.paid %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">
+                                <i class="bi bi-check-circle me-1"></i>Paid {{ p.paid_date }}
+                            </span>
+                        {% else %}
+                            <span class="badge" style="background:#fff7ed;color:#d97706;">
+                                <i class="bi bi-clock me-1"></i>Unpaid
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            {% if not p.paid %}
+                            <form method="post" action="{% url 'penalties:mark_paid' p.pk %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn btn-sm btn-success" title="Mark as Paid">
+                                    <i class="bi bi-cash-coin"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <a href="{% url 'penalties:edit' p.pk %}" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'penalties:delete' p.pk %}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                        No penalties recorded.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white border-top">
+        {% include 'includes/pagination.html' %}
+    </div>
+</div>
+</div>
+{% endblock %}

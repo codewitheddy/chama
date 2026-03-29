@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% block title %}Minutes — {{ meeting.date }}{% endblock %}
+{% block page_title %}Meeting Minutes — {{ meeting.date }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<style>
+    /* Read view */
+    #minutesReadView .ql-editor { padding: 0; font-size: 0.95rem; line-height: 1.7; }
+    #minutesReadView .ql-snow.ql-toolbar { display: none; }
+    #minutesReadView .ql-snow.ql-container { border: none; }
+    /* Edit view */
+    #quill-editor { min-height: 400px; font-size: 0.95rem; }
+    .ql-toolbar { border-radius: 6px 6px 0 0; border-color: #dee2e6 !important; }
+    .ql-container { border-radius: 0 0 6px 6px; border-color: #dee2e6 !important; }
+    /* Print / PDF */
+    @media print {
+        /* Hide everything except the minutes content */
+        .no-print,
+        nav, header, footer,
+        .sidebar, #sidebar,
+        [class*="sidebar"],
+        .navbar, .topbar,
+        .btn, a.btn,
+        .card-header,
+        .alert,
+        body > *:not(#print-area) { display: none !important; }
+
+        /* Reset layout */
+        body { margin: 0; padding: 0; font-family: Georgia, serif; font-size: 12pt; color: #000; background: #fff; }
+        #print-area { display: block !important; width: 100%; margin: 0; padding: 0; }
+
+        /* Minutes document styling */
+        #print-title { font-size: 18pt; font-weight: bold; text-align: center; margin-bottom: 6pt; }
+        #print-meta { font-size: 10pt; color: #444; text-align: center; margin-bottom: 20pt; border-bottom: 1px solid #ccc; padding-bottom: 8pt; }
+        .ql-editor { padding: 0 !important; font-size: 12pt; line-height: 1.8; }
+        .ql-snow.ql-container { border: none !important; }
+        h1, h2, h3 { page-break-after: avoid; }
+        p { orphans: 3; widows: 3; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+
+        <!-- Toolbar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 no-print">
+            <div class="d-flex gap-2">
+                <a href="{% url 'meetings:detail' meeting.pk %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Meeting
+                </a>
+            </div>
+            <div class="d-flex gap-2" id="viewActions">
+                <button class="btn btn-sm btn-outline-warning" onclick="switchToEdit()">
+                    <i class="bi bi-pencil me-1"></i>Edit Minutes
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="printMinutes()">
+                    <i class="bi bi-printer me-1"></i>Print / PDF
+                </button>
+                <a href="{% url 'meetings:minutes_docx' meeting.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-file-earmark-word me-1"></i>Download DOCX
+                </a>
+            </div>
+            <div class="d-flex gap-2" id="editActions" style="display:none !important;">
+                <button class="btn btn-sm btn-outline-secondary" onclick="switchToView()">
+                    <i class="bi bi-eye me-1"></i>View
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="submitMinutes()">
+                    <i class="bi bi-save me-1"></i>Save
+                </button>
+            </div>
+        </div>
+
+        <!-- Meeting meta -->
+        <div class="card mb-3 no-print">
+            <div class="card-body py-2 px-3">
+                <div class="d-flex gap-4 flex-wrap" style="font-size:0.875rem;">
+                    <span><i class="bi bi-calendar me-1 text-muted"></i>{{ meeting.date }}</span>
+                    <span><i class="bi bi-geo-alt me-1 text-muted"></i>{{ meeting.venue|default:"—" }}</span>
+                    <span><i class="bi bi-people me-1 text-muted"></i>{{ meeting.attendance.count }} members</span>
+                    <span>
+                        {% if meeting.status == 'held' %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Held</span>
+                        {% elif meeting.status == 'scheduled' %}
+                            <span class="badge" style="background:#eff6ff;color:#2563eb;">Scheduled</span>
+                        {% else %}
+                            <span class="badge" style="background:#fff1f2;color:#e11d48;">Cancelled</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Minutes content -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-text me-2"></i>Minutes</span>
+            </div>
+
+            <!-- Read view -->
+            <div class="card-body ql-snow" id="minutesReadView">
+                {% if meeting.minutes %}
+                <div class="ql-editor" style="padding:0;">{{ meeting.minutes|safe }}</div>
+                {% else %}
+                <p class="text-muted text-center py-4">
+                    <i class="bi bi-journal-x" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+                    No minutes recorded yet. Click "Edit Minutes" to add.
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Edit view -->
+            <div id="minutesEditView" style="display:none;">
+                <form method="post" action="{% url 'meetings:edit_minutes' meeting.pk %}" id="minutesForm">
+                    {% csrf_token %}
+                    <textarea name="minutes" id="id_minutes" style="display:none;">{{ meeting.minutes|default:'' }}</textarea>
+                    <div class="card-body p-2">
+                        <div id="quill-editor">{{ meeting.minutes|default:''|safe }}</div>
+                    </div>
+                    <div class="card-footer bg-white d-flex gap-2 no-print">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-save me-1"></i>Save Minutes
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="switchToView()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Hidden print-only area — clean document layout -->
+<div id="print-area" style="display:none;">
+    <div id="print-title">Meeting Minutes</div>
+    <div id="print-meta">
+        Date: {{ meeting.date }} &nbsp;|&nbsp;
+        Venue: {{ meeting.venue|default:"—" }} &nbsp;|&nbsp;
+        Attendance: {{ meeting.attendance.count }} members
+    </div>
+    <div class="ql-snow">
+        <div class="ql-editor">{{ meeting.minutes|default:"No minutes recorded."|safe }}</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script>
+let quill = null;
+
+function switchToEdit() {
+    document.getElementById('minutesReadView').style.display = 'none';
+    document.getElementById('minutesEditView').style.display = '';
+    document.getElementById('viewActions').style.display = 'none';
+    document.getElementById('editActions').style.removeProperty('display');
+
+    if (!quill) {
+        quill = new Quill('#quill-editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ indent: '-1' }, { indent: '+1' }],
+                    ['blockquote'],
+                    [{ color: [] }],
+                    ['clean'],
+                ]
+            },
+            placeholder: 'Write meeting minutes here...',
+        });
+    }
+}
+
+function switchToView() {
+    document.getElementById('minutesReadView').style.display = '';
+    document.getElementById('minutesEditView').style.display = 'none';
+    document.getElementById('viewActions').style.display = '';
+    document.getElementById('editActions').style.display = 'none';
+}
+
+function submitMinutes() {
+    if (quill) {
+        document.getElementById('id_minutes').value = quill.getSemanticHTML();
+    }
+    document.getElementById('minutesForm').submit();
+}
+
+// Also sync on form submit
+document.getElementById('minutesForm').addEventListener('submit', function () {
+    if (quill) {
+        document.getElementById('id_minutes').value = quill.getSemanticHTML();
+    }
+});
+
+function printMinutes() {
+    const printArea = document.getElementById('print-area').innerHTML;
+    const w = window.open('', '_blank', 'width=800,height=900');
+    w.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Minutes — {{ meeting.date }}</title>
+            <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+            <style>
+                body { font-family: Georgia, serif; font-size: 12pt; color: #000; margin: 40px 60px; }
+                #print-title { font-size: 20pt; font-weight: bold; text-align: center; margin-bottom: 6pt; }
+                #print-meta { font-size: 10pt; color: #555; text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 10pt; margin-bottom: 20pt; }
+                .ql-snow.ql-container { border: none !important; }
+                .ql-editor { padding: 0 !important; font-size: 12pt; line-height: 1.8; }
+                .ql-snow.ql-toolbar { display: none; }
+                h1, h2, h3 { page-break-after: avoid; }
+                p { orphans: 3; widows: 3; margin: 0 0 8pt; }
+            </style>
+        </head>
+        <body>${printArea}</body>
+        </html>
+    `);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); w.close(); }, 500);
+}
+</script>
+{% endblock %}

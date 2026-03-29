@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Chama System{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-bg: #1e2a3a;
+            --sidebar-hover: #2c3e52;
+            --sidebar-active: #2563eb;
+            --sidebar-text: #94a3b8;
+            --sidebar-text-active: #f1f5f9;
+            --sidebar-section: #475569;
+            --topbar-bg: #ffffff;
+            --body-bg: #f4f6f9;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        body {
+            background-color: var(--body-bg);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #1e293b;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            min-height: 100vh;
+            background: var(--sidebar-bg);
+            width: 248px;
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 100;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar .brand {
+            padding: 1.25rem 1.25rem 1rem;
+            border-bottom: 1px solid #2c3e52;
+        }
+        .sidebar .brand h5 {
+            color: #f1f5f9;
+            margin: 0;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 0.3px;
+        }
+        .sidebar .brand small {
+            color: var(--sidebar-text);
+            font-size: 0.72rem;
+        }
+        .sidebar .nav-link {
+            color: var(--sidebar-text);
+            padding: 0.55rem 1rem;
+            border-radius: 6px;
+            margin: 1px 10px;
+            font-size: 0.875rem;
+            transition: background 0.15s, color 0.15s;
+            display: flex;
+            align-items: center;
+        }
+        .sidebar .nav-link:hover {
+            background: var(--sidebar-hover);
+            color: var(--sidebar-text-active);
+        }
+        .sidebar .nav-link.active {
+            background: var(--sidebar-active);
+            color: #fff;
+        }
+        .sidebar .nav-section {
+            color: var(--sidebar-section);
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            padding: 1.1rem 1.25rem 0.35rem;
+            font-weight: 600;
+        }
+        .sidebar-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid #2c3e52;
+            margin-top: auto;
+        }
+        .sidebar-footer .username {
+            color: #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .sidebar-footer .role {
+            color: var(--sidebar-text);
+            font-size: 0.75rem;
+        }
+
+        /* Main */
+        .main-content {
+            margin-left: 248px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .topbar {
+            background: var(--topbar-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 0.7rem 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 99;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .topbar .page-heading {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #334155;
+            margin: 0;
+        }
+        .page-content { padding: 1.5rem; }
+
+        /* Cards */
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .card-header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #334155;
+            padding: 0.85rem 1.25rem;
+        }
+
+        /* Stat cards */
+        .stat-card {
+            border-radius: 10px;
+            transition: box-shadow 0.15s;
+        }
+        .stat-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .stat-card .icon-box {
+            width: 46px; height: 46px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+        .stat-card .stat-label {
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .stat-card .stat-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.2;
+        }
+
+        /* Accent colors — flat, no gradients */
+        .accent-blue   { background: #eff6ff; color: #2563eb; }
+        .accent-green  { background: #f0fdf4; color: #16a34a; }
+        .accent-amber  { background: #fffbeb; color: #d97706; }
+        .accent-violet { background: #f5f3ff; color: #7c3aed; }
+        .accent-rose   { background: #fff1f2; color: #e11d48; }
+        .accent-teal   { background: #f0fdfa; color: #0d9488; }
+        .accent-slate  { background: #1e2a3a; color: #f1f5f9; }
+
+        /* Tables */
+        .table { font-size: 0.875rem; }
+        .table thead th {
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
+        }
+        .table-hover tbody tr:hover { background: #f8fafc; }
+
+        /* Badges */
+        .badge { font-weight: 500; font-size: 0.75rem; }
+
+        /* Buttons */
+        .btn { font-size: 0.875rem; font-weight: 500; }
+        .btn-primary { background: #2563eb; border-color: #2563eb; }
+        .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+
+        /* Progress */
+        .progress { background: #e2e8f0; border-radius: 99px; }
+
+        /* Alerts */
+        .alert { font-size: 0.875rem; border-radius: 8px; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; min-height: auto; position: relative; }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+{% if user.is_authenticated %}
+<div class="d-flex">
+    <nav class="sidebar">
+        <div class="brand">
+            <h5><i class="bi bi-bank2 me-2"></i>Chama System</h5>
+            <small>Table Banking Manager</small>
+        </div>
+        <ul class="nav flex-column mt-1 flex-grow-1">
+            <li class="nav-section">Main</li>
+            <li class="nav-item">
+                <a href="{% url 'dashboard:dashboard' %}" class="nav-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                </a>
+            </li>
+            <li class="nav-section">Management</li>
+            <li class="nav-item">
+                <a href="{% url 'members:list' %}" class="nav-link {% if request.resolver_match.app_name == 'members' %}active{% endif %}">
+                    <i class="bi bi-people me-2"></i>Members
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'contributions:list' %}" class="nav-link {% if request.resolver_match.app_name == 'contributions' %}active{% endif %}">
+                    <i class="bi bi-cash-stack me-2"></i>Contributions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'contributions:defaulters' %}" class="nav-link">
+                    <i class="bi bi-person-x me-2"></i>Defaulters
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'loans:list' %}" class="nav-link {% if request.resolver_match.app_name == 'loans' %}active{% endif %}">
+                    <i class="bi bi-credit-card me-2"></i>Loans
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'loans:guarantors_report' %}" class="nav-link">
+                    <i class="bi bi-people me-2"></i>Guarantors
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'payments:list' %}" class="nav-link {% if request.resolver_match.app_name == 'payments' %}active{% endif %}">
+                    <i class="bi bi-receipt me-2"></i>Payments
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'penalties:list' %}" class="nav-link {% if request.resolver_match.app_name == 'penalties' %}active{% endif %}">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Penalties
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'meetings:list' %}" class="nav-link {% if request.resolver_match.app_name == 'meetings' %}active{% endif %}">
+                    <i class="bi bi-calendar-event me-2"></i>Meetings
+                </a>
+            </li>
+            <li class="nav-section">Reports</li>
+            <li class="nav-item">
+                <a href="{% url 'reports:income' %}" class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}">
+                    <i class="bi bi-bar-chart me-2"></i>Income Report
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'reports:contributions' %}" class="nav-link">
+                    <i class="bi bi-table me-2"></i>Contribution Report
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'reports:loans' %}" class="nav-link">
+                    <i class="bi bi-file-earmark-text me-2"></i>Loan Report
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'reports:member_statement' %}" class="nav-link">
+                    <i class="bi bi-person-lines-fill me-2"></i>Member Statement
+                </a>
+            </li>
+            <li class="nav-section">System</li>
+            {% if user.profile.is_admin %}
+            <li class="nav-item">
+                <a href="{% url 'accounts:users' %}" class="nav-link {% if request.resolver_match.app_name == 'accounts' and 'users' in request.path %}active{% endif %}">
+                    <i class="bi bi-people-fill me-2"></i>User Management
+                </a>
+            </li>
+            {% endif %}
+            <!-- <li class="nav-item">
+                <a href="/admin/" class="nav-link">
+                    <i class="bi bi-gear me-2"></i>Admin Panel
+                </a>
+            </li> -->
+        </ul>
+        <div class="sidebar-footer">
+            <div class="d-flex align-items-center gap-2">
+                <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white"
+                     style="width:32px;height:32px;font-size:0.8rem;font-weight:700;flex-shrink:0;">
+                    {{ user.username|first|upper }}
+                </div>
+                <div>
+                    <div class="username">{{ user.username }}</div>
+                    <div class="role">{{ user.profile.get_role_display|default:"User" }}</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-content flex-grow-1">
+        <div class="topbar">
+            <span class="page-heading">{% block page_title %}{% endblock %}</span>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted small d-none d-md-inline">
+                    <i class="bi bi-calendar3 me-1"></i>
+                    {% now "D, d M Y" %}
+                </span>
+                <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-box-arrow-right me-1"></i>Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="page-content">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% else %}
+{% block auth_content %}{% endblock %}
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function () {
+  function initAjaxFilter(form) {
+    const target = document.getElementById('results-container');
+    if (!target) return;
+
+    let debounceTimer;
+
+    function fetchResults(url) {
+      target.style.opacity = '0.5';
+      target.style.pointerEvents = 'none';
+      fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const newContent = doc.getElementById('results-container');
+          if (newContent) {
+            target.innerHTML = newContent.innerHTML;
+            // re-bind pagination links inside the new content
+            bindPaginationLinks();
+          }
+          // update browser URL without reload
+          history.replaceState(null, '', url);
+          target.style.opacity = '1';
+          target.style.pointerEvents = '';
+          // show/hide clear button
+          updateClearBtn(form);
+        })
+        .catch(() => {
+          target.style.opacity = '1';
+          target.style.pointerEvents = '';
+        });
+    }
+
+    function buildUrl() {
+      const params = new URLSearchParams(new FormData(form));
+      // remove empty params for clean URLs
+      for (const [k, v] of [...params.entries()]) {
+        if (!v) params.delete(k);
+      }
+      const base = window.location.pathname;
+      return base + (params.toString() ? '?' + params.toString() : '');
+    }
+
+    function updateClearBtn(f) {
+      const clearBtn = f.querySelector('.ajax-clear');
+      if (!clearBtn) return;
+      const params = new URLSearchParams(new FormData(f));
+      const hasValue = [...params.values()].some(v => v.trim() !== '');
+      clearBtn.style.display = hasValue ? '' : 'none';
+    }
+
+    // text inputs — debounced
+    form.querySelectorAll('input[type=text], input[type=search]').forEach(input => {
+      input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => fetchResults(buildUrl()), 350);
+      });
+    });
+
+    // selects & status buttons — instant
+    form.querySelectorAll('select').forEach(sel => {
+      sel.addEventListener('change', () => fetchResults(buildUrl()));
+    });
+
+    // suppress normal form submit
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      fetchResults(buildUrl());
+    });
+
+    // clear button
+    const clearBtn = form.querySelector('.ajax-clear');
+    if (clearBtn) {
+      updateClearBtn(form);
+      clearBtn.addEventListener('click', e => {
+        e.preventDefault();
+        form.querySelectorAll('input[type=text], input[type=search]').forEach(i => i.value = '');
+        form.querySelectorAll('select').forEach(s => s.value = '');
+        fetchResults(form.action);
+      });
+    }
+  }
+
+  function bindPaginationLinks() {
+    const container = document.getElementById('results-container');
+    if (!container) return;
+    container.querySelectorAll('a.page-link').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const target = document.getElementById('results-container');
+        target.style.opacity = '0.5';
+        target.style.pointerEvents = 'none';
+        fetch(link.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(r => r.text())
+          .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newContent = doc.getElementById('results-container');
+            if (newContent) target.innerHTML = newContent.innerHTML;
+            history.replaceState(null, '', link.href);
+            target.style.opacity = '1';
+            target.style.pointerEvents = '';
+            bindPaginationLinks();
+          })
+          .catch(() => { target.style.opacity = '1'; target.style.pointerEvents = ''; });
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('form[data-ajax-filter]').forEach(initAjaxFilter);
+    bindPaginationLinks();
+  });
+})();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

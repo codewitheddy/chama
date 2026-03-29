@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block title %}Loan Report{% endblock %}
+{% block page_title %}Loan Report{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted small mb-0">Overview of all loans issued, repayments and outstanding balances.</p>
+    </div>
+    <a href="{% url 'reports:export_loans' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-download me-1"></i>Export CSV
+    </a>
+</div>
+
+<!-- Summary Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-amber"><i class="bi bi-cash-coin"></i></div>
+                <div>
+                    <div class="stat-label">Total Issued</div>
+                    <div class="stat-value">KES {{ total_issued|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-green"><i class="bi bi-check-circle"></i></div>
+                <div>
+                    <div class="stat-label">Total Paid</div>
+                    <div class="stat-value">KES {{ total_paid|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon-box accent-rose"><i class="bi bi-exclamation-circle"></i></div>
+                <div>
+                    <div class="stat-label">Outstanding Balance</div>
+                    <div class="stat-value">KES {{ total_balance|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loan Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-credit-card me-2"></i>All Loans</span>
+        <span class="text-muted fw-normal" style="font-size:0.78rem;">{{ loans|length }} record{{ loans|length|pluralize }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Member</th>
+                    <th>Loan Amount</th>
+                    <th>Interest</th>
+                    <th>Total Payable</th>
+                    <th>Paid</th>
+                    <th>Balance</th>
+                    <th>Date Taken</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in loans %}
+                <tr>
+                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td>
+                        <a href="{% url 'loans:detail' l.pk %}" class="text-decoration-none fw-semibold">
+                            {{ l.member.name }}
+                        </a>
+                    </td>
+                    <td>KES {{ l.loan_amount|floatformat:2 }}</td>
+                    <td style="color:#16a34a;">KES {{ l.interest_amount|floatformat:2 }}</td>
+                    <td class="fw-semibold">KES {{ l.total_payable|floatformat:2 }}</td>
+                    <td style="color:#2563eb;">KES {{ l.amount_paid|floatformat:2 }}</td>
+                    <td class="fw-semibold {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
+                        KES {{ l.balance|floatformat:2 }}
+                    </td>
+                    <td>{{ l.date_taken }}</td>
+                    <td>{{ l.due_date|default:"—" }}</td>
+                    <td>
+                        {% if l.status == 'cleared' %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
+                        {% elif l.status == 'late' %}
+                            <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
+                        {% else %}
+                            <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                        No loans found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if loans %}
+            <tfoot class="table-light">
+                <tr>
+                    <td colspan="2" class="text-end fw-semibold">Totals</td>
+                    <td class="fw-bold">KES {{ total_issued|floatformat:2 }}</td>
+                    <td></td>
+                    <td></td>
+                    <td class="fw-bold" style="color:#2563eb;">KES {{ total_paid|floatformat:2 }}</td>
+                    <td class="fw-bold text-danger">KES {{ total_balance|floatformat:2 }}</td>
+                    <td colspan="3"></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+{% endblock %}
