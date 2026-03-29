@@ -1,0 +1,9 @@
+venv/
+.vscode/
+chama_system/.env
+chama_system/db.sqlite3
+chama_system/staticfiles/
+chama_system/media/
+**/__pycache__/
+**/*.pyc
+.git/
