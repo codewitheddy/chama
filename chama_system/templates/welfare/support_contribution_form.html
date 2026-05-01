@@ -2,6 +2,10 @@
 {% block title %}{% if form.instance.pk %}Edit{% else %}Add{% endif %} Support Contribution{% endblock %}
 {% block page_title %}{% if form.instance.pk %}Edit{% else %}Add{% endif %} Support Contribution{% endblock %}
 
+{% block extra_css %}
+{% include 'includes/payment_type_css.html' %}
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-6">
@@ -17,22 +21,29 @@
                     <strong>{{ event.beneficiary.name }}</strong>.
                     The beneficiary cannot contribute to their own event.
                 </p>
-                <form method="post">
+                <form method="post" id="supportForm">
                     {% csrf_token %}
-                    {% for field in form %}
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}
-                        <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
-                        {% endif %}
+                        <label class="form-label fw-semibold">{{ form.contributor.label }}</label>
+                        {{ form.contributor }}
+                        {% if form.contributor.errors %}<div class="text-danger small mt-1">{{ form.contributor.errors.0 }}</div>{% endif %}
                     </div>
-                    {% endfor %}
+                    {% include 'includes/payment_type_fields.html' %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">{{ form.amount.label }}</label>
+                        {{ form.amount }}
+                        {% if form.amount.errors %}<div class="text-danger small mt-1">{{ form.amount.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">{{ form.date.label }}</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors.0 }}</div>{% endif %}
+                    </div>
                     {% if form.non_field_errors %}
                     <div class="alert alert-danger">{{ form.non_field_errors }}</div>
                     {% endif %}
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
                             <i class="bi bi-check-circle me-1"></i>Save
                         </button>
                         <a href="{% url 'welfare:event_detail' event.pk %}" class="btn btn-outline-secondary">Cancel</a>
@@ -42,4 +53,13 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'includes/payment_type_js.html' %}
+<script>
+document.getElementById('supportForm').addEventListener('submit', function () {
+    document.getElementById('submitBtn').disabled = true;
+});
+</script>
 {% endblock %}

@@ -248,18 +248,32 @@
             <div class="table-responsive">
                 <table class="statement-table table mb-0">
                     <thead>
-                        <tr><th>Loan</th><th>Amount</th><th>Date</th><th>Notes</th></tr>
+                        <tr><th>Loan</th><th>Amount</th><th>Method</th><th>Date</th><th>Notes</th></tr>
                     </thead>
                     <tbody>
                         {% for p in payments %}
                         <tr>
                             <td>KES {{ p.loan.loan_amount|floatformat:2 }}</td>
                             <td style="color:#2563eb;font-weight:600;">KES {{ p.amount|floatformat:2 }}</td>
+                            <td>
+                                {% if p.payment_type == 'mpesa' %}
+                                    <span class="badge" style="background:#f0fdf4;color:#16a34a;">
+                                        <i class="bi bi-phone me-1"></i>M-Pesa
+                                    </span>
+                                    {% if p.mpesa_code %}
+                                    <div class="text-muted" style="font-size:0.72rem;font-family:monospace;">{{ p.mpesa_code }}</div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge" style="background:#eff6ff;color:#2563eb;">
+                                        <i class="bi bi-cash-coin me-1"></i>Cash
+                                    </span>
+                                {% endif %}
+                            </td>
                             <td class="text-muted">{{ p.date }}</td>
                             <td class="text-muted">{{ p.notes|default:"—" }}</td>
                         </tr>
                         {% empty %}
-                        <tr class="empty-row"><td colspan="4">No payments.</td></tr>
+                        <tr class="empty-row"><td colspan="5">No payments.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

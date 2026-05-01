@@ -4,6 +4,7 @@ from .models import (
     WelfareContributionRate, WelfareContribution,
     WelfareEvent, WelfareDisbursement, WelfareSupportContribution,
 )
+from utils.payment_type_mixin import PaymentTypeFormMixin
 
 
 class WelfareContributionRateForm(forms.ModelForm):
@@ -22,15 +23,19 @@ class WelfareContributionRateForm(forms.ModelForm):
         return amount
 
 
-class WelfareContributionForm(forms.ModelForm):
+class WelfareContributionForm(PaymentTypeFormMixin, forms.ModelForm):
     class Meta:
         model = WelfareContribution
-        fields = ['member', 'amount', 'date']
+        fields = ['member', 'amount', 'date', 'payment_type', 'mpesa_code']
         widgets = {
             'member': forms.Select(attrs={'class': 'form-select'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._add_payment_type_widgets()
 
     def clean_amount(self):
         amount = self.cleaned_data.get('amount')
@@ -50,6 +55,7 @@ class WelfareContributionForm(forms.ModelForm):
                     f'KES {rate.amount:,.2f} (the current monthly rate). '
                     f'You entered KES {amount:,.2f}.'
                 )
+        cleaned = self.clean_payment_type_fields()
         return cleaned
 
     def save(self, commit=True):
@@ -72,10 +78,10 @@ class WelfareEventForm(forms.ModelForm):
         }
 
 
-class WelfareDisbursementForm(forms.ModelForm):
+class WelfareDisbursementForm(PaymentTypeFormMixin, forms.ModelForm):
     class Meta:
         model = WelfareDisbursement
-        fields = ['amount', 'date', 'notes']
+        fields = ['amount', 'date', 'payment_type', 'mpesa_code', 'notes']
         widgets = {
             'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
@@ -85,6 +91,7 @@ class WelfareDisbursementForm(forms.ModelForm):
     def __init__(self, *args, welfare_balance=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._welfare_balance = welfare_balance
+        self._add_payment_type_widgets()
 
     def clean_amount(self):
         amount = self.cleaned_data.get('amount')
@@ -102,11 +109,15 @@ class WelfareDisbursementForm(forms.ModelForm):
                 )
         return amount
 
+    def clean(self):
+        cleaned = super().clean()
+        return self.clean_payment_type_fields()
 
-class WelfareSupportContributionForm(forms.ModelForm):
+
+class WelfareSupportContributionForm(PaymentTypeFormMixin, forms.ModelForm):
     class Meta:
         model = WelfareSupportContribution
-        fields = ['contributor', 'amount', 'date']
+        fields = ['contributor', 'amount', 'date', 'payment_type', 'mpesa_code']
         widgets = {
             'contributor': forms.Select(attrs={'class': 'form-select'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
@@ -116,6 +127,7 @@ class WelfareSupportContributionForm(forms.ModelForm):
     def __init__(self, *args, event=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._event = event
+        self._add_payment_type_widgets()
         if event:
             # Exclude the beneficiary from the contributor dropdown
             self.fields['contributor'].queryset = (
@@ -135,4 +147,4 @@ class WelfareSupportContributionForm(forms.ModelForm):
             raise ValidationError(
                 'A beneficiary cannot contribute to their own welfare event.'
             )
-        return cleaned
+        return self.clean_payment_type_fields()

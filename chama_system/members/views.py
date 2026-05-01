@@ -10,7 +10,7 @@ import csv
 import io
 from .models import Member
 from .forms import MemberForm
-from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin
+from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin, AdminPasswordDeleteMixin
 from utils.exports import export_csv, export_pdf
 
 
@@ -49,7 +49,7 @@ class MemberUpdateView(TreasurerRequiredMixin, SuccessMessageMixin, UpdateView):
     success_message = "Member updated successfully."
 
 
-class MemberDeleteView(AdminRequiredMixin, SuccessMessageMixin, DeleteView):
+class MemberDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, SuccessMessageMixin, DeleteView):
     model = Member
     template_name = 'members/member_confirm_delete.html'
     success_url = reverse_lazy('members:list')

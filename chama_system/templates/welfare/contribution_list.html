@@ -99,7 +99,7 @@
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
-                <tr><th>#</th><th>Member</th><th>Amount</th><th>Month</th><th>Year</th><th>Date</th><th>Actions</th></tr>
+                <tr><th>#</th><th>Member</th><th>Amount</th><th>Method</th><th>Month</th><th>Year</th><th>Date</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {% for c in contributions %}
@@ -107,6 +107,7 @@
                     <td class="text-muted">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                     <td class="fw-semibold">{{ c.member.name }}</td>
                     <td style="color:#16a34a;">KES {{ c.amount|floatformat:2 }}</td>
+                    <td>{% include 'includes/payment_type_badge.html' with obj=c %}</td>
                     <td>{{ c.get_month_display }}</td>
                     <td>{{ c.year }}</td>
                     <td>{{ c.date }}</td>
@@ -127,7 +128,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-5">
+                    <td colspan="8" class="text-center text-muted py-5">
                         <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
                         No welfare contributions recorded.
                     </td>

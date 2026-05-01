@@ -2,9 +2,10 @@ from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 from members.models import Member
+from utils.payment_type_mixin import PaymentTypeMixin
 
 
-class Penalty(models.Model):
+class Penalty(PaymentTypeMixin, models.Model):
     member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='penalties')
     amount = models.DecimalField(
         max_digits=10,

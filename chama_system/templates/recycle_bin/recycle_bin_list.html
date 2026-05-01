@@ -1,0 +1,325 @@
+{% extends 'base.html' %}
+{% block title %}Recycle Bin{% endblock %}
+{% block page_title %}Recycle Bin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rb-table thead th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #475569;
+        background: #f8fafc;
+        padding: 10px 14px;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .rb-table tbody td {
+        padding: 11px 14px;
+        font-size: 0.875rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1e293b;
+    }
+    .rb-table tbody tr:last-child td { border-bottom: none; }
+    .rb-table tbody tr:hover td { background: #fef9f9; }
+    .model-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        background: #eff6ff;
+        color: #2563eb;
+        text-transform: capitalize;
+    }
+    .days-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 0.72rem;
+        font-weight: 600;
+    }
+    .days-ok   { background: #f0fdf4; color: #16a34a; }
+    .days-warn { background: #fffbeb; color: #d97706; }
+    .days-crit { background: #fff1f2; color: #e11d48; }
+    /* Modal password input */
+    .action-modal .modal-header { border-bottom: 1px solid #e2e8f0; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header row -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <span class="text-muted small">
+            <i class="bi bi-info-circle me-1"></i>
+            Records are permanently deleted after <strong>30 days</strong>.
+            Restore them before they expire.
+        </span>
+    </div>
+    {% if records %}
+    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#emptyModal">
+        <i class="bi bi-trash3 me-1"></i>Empty Recycle Bin
+    </button>
+    {% endif %}
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+                       placeholder="Search by name, reason, or deleted by…">
+            </div>
+            <div class="col-md-3">
+                <select name="model" class="form-select form-select-sm">
+                    <option value="">All record types</option>
+                    {% for m in model_choices %}
+                    <option value="{{ m }}" {% if selected_model == m %}selected{% endif %}>
+                        {{ m|capfirst }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100">Filter</button>
+            </div>
+            {% if q or selected_model %}
+            <div class="col-md-2">
+                <a href="{% url 'recycle_bin:list' %}" class="btn btn-sm btn-outline-secondary w-100">Clear</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-recycle me-2"></i>Deleted Records</span>
+        <span class="badge bg-secondary">{{ total_count }} total</span>
+    </div>
+    <div class="table-responsive">
+        <table class="rb-table table mb-0">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Record</th>
+                    <th>Reason</th>
+                    <th>Deleted By</th>
+                    <th>Deleted At</th>
+                    <th>Expires In</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td><span class="model-badge">{{ r.model_name }}</span></td>
+                    <td class="fw-semibold">{{ r.object_repr }}</td>
+                    <td class="text-muted" style="max-width:220px;white-space:normal;">{{ r.delete_reason }}</td>
+                    <td class="text-muted">{{ r.deleted_by.username|default:"—" }}</td>
+                    <td class="text-muted" style="white-space:nowrap;">{{ r.deleted_at|date:"d M Y H:i" }}</td>
+                    <td>
+                        {% if r.days_remaining > 7 %}
+                            <span class="days-badge days-ok">{{ r.days_remaining }}d</span>
+                        {% elif r.days_remaining > 2 %}
+                            <span class="days-badge days-warn">{{ r.days_remaining }}d</span>
+                        {% else %}
+                            <span class="days-badge days-crit">{{ r.days_remaining }}d</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-success"
+                                    title="Restore"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#restoreModal"
+                                    data-pk="{{ r.pk }}"
+                                    data-repr="{{ r.object_repr|escapejs }}">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    title="Permanently Delete"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#permDeleteModal"
+                                    data-pk="{{ r.pk }}"
+                                    data-repr="{{ r.object_repr|escapejs }}">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="bi bi-check-circle" style="font-size:2rem;color:#16a34a;"></i>
+                        <p class="mt-2 mb-0">Recycle bin is empty.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="card-footer d-flex justify-content-center py-2">
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&model={{ selected_model }}">‹</a>
+                </li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&model={{ selected_model }}">›</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ── Restore Modal ─────────────────────────────────────────── -->
+<div class="modal fade action-modal" id="restoreModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-arrow-counterclockwise me-2 text-success"></i>Restore Record</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="restoreForm" action="">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="mb-3">Restore <strong id="restoreRepr"></strong> back to its original table?</p>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold small">
+                            Admin password <span class="text-danger">*</span>
+                        </label>
+                        <input type="password" name="admin_password" class="form-control"
+                               placeholder="Enter your password to confirm" required autocomplete="current-password">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Permanent Delete Modal ────────────────────────────────── -->
+<div class="modal fade action-modal" id="permDeleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-trash3 me-2 text-danger"></i>Permanently Delete</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="permDeleteForm" action="">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-danger py-2 small mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        This cannot be undone. <strong id="permDeleteRepr"></strong> will be gone forever.
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold small">
+                            Admin password <span class="text-danger">*</span>
+                        </label>
+                        <input type="password" name="admin_password" class="form-control"
+                               placeholder="Enter your password to confirm" required autocomplete="current-password">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash3 me-1"></i>Delete Forever
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Empty Recycle Bin Modal ───────────────────────────────── -->
+<div class="modal fade action-modal" id="emptyModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-trash3 me-2 text-danger"></i>Empty Recycle Bin</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'recycle_bin:empty' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-danger py-2 small mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        This will permanently delete <strong>all {{ total_count }} record(s)</strong>
+                        in the recycle bin. This cannot be undone.
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold small">
+                            Admin password <span class="text-danger">*</span>
+                        </label>
+                        <input type="password" name="admin_password" class="form-control"
+                               placeholder="Enter your password to confirm" required autocomplete="current-password">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash3 me-1"></i>Empty All
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Restore modal — set form action + label
+    document.getElementById('restoreModal').addEventListener('show.bs.modal', function (e) {
+        const btn = e.relatedTarget;
+        const pk = btn.dataset.pk;
+        const repr = btn.dataset.repr;
+        document.getElementById('restoreRepr').textContent = repr;
+        document.getElementById('restoreForm').action = `/recycle-bin/${pk}/restore/`;
+        // Clear password field on open
+        this.querySelector('input[type=password]').value = '';
+    });
+
+    // Permanent delete modal — set form action + label
+    document.getElementById('permDeleteModal').addEventListener('show.bs.modal', function (e) {
+        const btn = e.relatedTarget;
+        const pk = btn.dataset.pk;
+        const repr = btn.dataset.repr;
+        document.getElementById('permDeleteRepr').textContent = repr;
+        document.getElementById('permDeleteForm').action = `/recycle-bin/${pk}/delete/`;
+        this.querySelector('input[type=password]').value = '';
+    });
+
+    // Empty modal — clear password on open
+    document.getElementById('emptyModal').addEventListener('show.bs.modal', function () {
+        this.querySelector('input[type=password]').value = '';
+    });
+});
+</script>
+{% endblock %}

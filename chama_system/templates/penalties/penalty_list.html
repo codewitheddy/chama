@@ -2,6 +2,10 @@
 {% block title %}Penalties{% endblock %}
 {% block page_title %}Penalties{% endblock %}
 
+{% block extra_css %}
+{% include 'includes/payment_type_css.html' %}
+{% endblock %}
+
 {% block content %}
 <!-- Summary cards -->
 <div class="row g-3 mb-3">
@@ -74,7 +78,7 @@
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
-                <tr><th>#</th><th>Member</th><th>Amount</th><th>Date</th><th>Reason</th><th>Status</th><th>Actions</th></tr>
+                <tr><th>#</th><th>Member</th><th>Amount</th><th>Date</th><th>Reason</th><th>Status</th><th>Method</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {% for p in penalties %}
@@ -96,15 +100,26 @@
                         {% endif %}
                     </td>
                     <td>
+                        {% if p.paid %}
+                            {% include 'includes/payment_type_badge.html' with obj=p %}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
                         <div class="d-flex gap-1">
                             {% if not p.paid %}
-                            <form method="post" action="{% url 'penalties:mark_paid' p.pk %}">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="btn btn-sm btn-success" title="Mark as Paid">
-                                    <i class="bi bi-cash-coin"></i>
-                                </button>
-                            </form>
+                            <button type="button"
+                                    class="btn btn-sm btn-success"
+                                    title="Mark as Paid"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#markPaidModal"
+                                    data-pk="{{ p.pk }}"
+                                    data-member="{{ p.member.name|escapejs }}"
+                                    data-amount="{{ p.amount }}"
+                                    data-next="{{ request.get_full_path|escapejs }}">
+                                <i class="bi bi-cash-coin"></i>
+                            </button>
                             {% endif %}
                             <a href="{% url 'penalties:edit' p.pk %}" class="btn btn-sm btn-outline-warning">
                                 <i class="bi bi-pencil"></i>
@@ -117,7 +132,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-5">
+                    <td colspan="8" class="text-center text-muted py-5">
                         <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
                         No penalties recorded.
                     </td>
@@ -131,4 +146,74 @@
     </div>
 </div>
 </div>
+
+<!-- Mark as Paid Modal -->
+<div class="modal fade" id="markPaidModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-cash-coin me-2 text-success"></i>Mark Penalty as Paid</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="markPaidForm" action="">
+                {% csrf_token %}
+                <input type="hidden" name="next" id="markPaidNext" value="">
+                <div class="modal-body">
+                    <p class="mb-3 text-muted small">
+                        Marking penalty of <strong id="markPaidAmount"></strong>
+                        for <strong id="markPaidMember"></strong> as paid.
+                    </p>
+                    <!-- Payment type toggle (inline, no include needed) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Payment Method</label>
+                        <div class="payment-type-group">
+                            <label>
+                                <input type="radio" name="payment_type" value="cash" class="payment-type-radio" checked>
+                                <div class="payment-type-btn"><i class="bi bi-cash-coin"></i> Cash</div>
+                            </label>
+                            <label>
+                                <input type="radio" name="payment_type" value="mpesa" class="payment-type-radio">
+                                <div class="payment-type-btn"><i class="bi bi-phone"></i> M-Pesa</div>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="mpesa-code-row" class="mb-0" style="max-height:0;opacity:0;overflow:hidden;transition:max-height 0.25s ease,opacity 0.2s ease;">
+                        <label class="form-label fw-semibold small">
+                            M-Pesa Confirmation Code <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" name="mpesa_code" class="form-control text-uppercase"
+                               placeholder="e.g. QHX4Y2Z1AB" maxlength="20" autocomplete="off">
+                        <div class="form-text">Enter the code from the M-Pesa confirmation SMS.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-check-circle me-1"></i>Confirm Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'includes/payment_type_js.html' %}
+<script>
+document.getElementById('markPaidModal').addEventListener('show.bs.modal', function (e) {
+    const btn = e.relatedTarget;
+    document.getElementById('markPaidForm').action = `/penalties/${btn.dataset.pk}/mark-paid/`;
+    document.getElementById('markPaidNext').value = btn.dataset.next || '';
+    document.getElementById('markPaidMember').textContent = btn.dataset.member;
+    document.getElementById('markPaidAmount').textContent = 'KES ' + parseFloat(btn.dataset.amount).toLocaleString('en-KE', {minimumFractionDigits: 2});
+    // Reset to cash on each open
+    this.querySelectorAll('input[name=payment_type]').forEach(r => r.checked = r.value === 'cash');
+    this.querySelector('input[name=mpesa_code]').value = '';
+    const row = document.getElementById('mpesa-code-row');
+    row.style.maxHeight = '0';
+    row.style.opacity = '0';
+    row.style.overflow = 'hidden';
+});
+</script>
 {% endblock %}

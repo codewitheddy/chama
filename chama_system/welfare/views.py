@@ -10,7 +10,7 @@ from django.db import IntegrityError
 from django.db.models import Sum
 from datetime import date
 
-from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin
+from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin, AdminPasswordDeleteMixin
 from members.models import Member
 from utils.exports import export_csv, export_pdf
 from django.utils import timezone
@@ -143,7 +143,7 @@ class WelfareContributionUpdateView(TreasurerRequiredMixin, SuccessMessageMixin,
         return ctx
 
 
-class WelfareContributionDeleteView(AdminRequiredMixin, DeleteView):
+class WelfareContributionDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = WelfareContribution
     template_name = 'welfare/contribution_confirm_delete.html'
     success_url = reverse_lazy('welfare:contribution_list')
@@ -168,6 +168,8 @@ class WelfareContributionExportView(TreasurerRequiredMixin, View):
             (lambda obj: obj.get_month_display(), 'Month'),
             ('year', 'Year'),
             ('amount', 'Amount (KES)'),
+            (lambda obj: obj.get_payment_type_display(), 'Method'),
+            ('mpesa_code', 'M-Pesa Code'),
             ('date', 'Date'),
         ]
         if fmt == 'pdf':
@@ -266,7 +268,7 @@ class WelfareEventUpdateView(TreasurerRequiredMixin, SuccessMessageMixin, Update
         return reverse('welfare:event_detail', kwargs={'pk': self.object.pk})
 
 
-class WelfareEventDeleteView(AdminRequiredMixin, DeleteView):
+class WelfareEventDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = WelfareEvent
     template_name = 'welfare/event_confirm_delete.html'
     success_url = reverse_lazy('welfare:event_list')
@@ -361,7 +363,7 @@ class WelfareDisbursementUpdateView(TreasurerRequiredMixin, SuccessMessageMixin,
         return reverse('welfare:event_detail', kwargs={'pk': self.object.event_id})
 
 
-class WelfareDisbursementDeleteView(AdminRequiredMixin, DeleteView):
+class WelfareDisbursementDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = WelfareDisbursement
     template_name = 'welfare/disbursement_confirm_delete.html'
 
@@ -418,7 +420,7 @@ class WelfareSupportUpdateView(TreasurerRequiredMixin, SuccessMessageMixin, Upda
         return reverse('welfare:event_detail', kwargs={'pk': self.object.event_id})
 
 
-class WelfareSupportDeleteView(AdminRequiredMixin, DeleteView):
+class WelfareSupportDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = WelfareSupportContribution
     template_name = 'welfare/support_contribution_confirm_delete.html'
 

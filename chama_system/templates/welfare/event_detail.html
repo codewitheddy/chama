@@ -71,11 +71,15 @@
                 <div class="text-muted small">Amount</div>
                 <div class="fw-bold fs-5" style="color:#16a34a;">KES {{ disbursement.amount|floatformat:2 }}</div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="text-muted small">Date</div>
                 <div>{{ disbursement.date }}</div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-2">
+                <div class="text-muted small">Method</div>
+                <div>{% include 'includes/payment_type_badge.html' with obj=disbursement %}</div>
+            </div>
+            <div class="col-md-3">
                 <div class="text-muted small">Notes</div>
                 <div>{{ disbursement.notes|default:"—" }}</div>
             </div>
@@ -116,7 +120,7 @@
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
-                <tr><th>#</th><th>Contributor</th><th>Amount</th><th>Date</th><th>Actions</th></tr>
+                <tr><th>#</th><th>Contributor</th><th>Amount</th><th>Method</th><th>Date</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {% for sc in support_contributions %}
@@ -124,6 +128,7 @@
                     <td class="text-muted">{{ forloop.counter }}</td>
                     <td class="fw-semibold">{{ sc.contributor.name }}</td>
                     <td style="color:#16a34a;">KES {{ sc.amount|floatformat:2 }}</td>
+                    <td>{% include 'includes/payment_type_badge.html' with obj=sc %}</td>
                     <td>{{ sc.date }}</td>
                     <td>
                         {% if user.profile.role != 'readonly' %}

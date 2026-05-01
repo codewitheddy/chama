@@ -2,6 +2,10 @@
 {% block title %}{% if form.instance.pk %}Edit{% else %}Add{% endif %} Disbursement{% endblock %}
 {% block page_title %}{% if form.instance.pk %}Edit{% else %}Add{% endif %} Disbursement{% endblock %}
 
+{% block extra_css %}
+{% include 'includes/payment_type_css.html' %}
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-6">
@@ -21,22 +25,28 @@
                 — {{ event.beneficiary.name }}
             </div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" id="disbursementForm">
                     {% csrf_token %}
-                    {% for field in form %}
+                    {% include 'includes/payment_type_fields.html' %}
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}
-                        <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
-                        {% endif %}
+                        <label class="form-label fw-semibold">{{ form.amount.label }}</label>
+                        {{ form.amount }}
+                        {% if form.amount.errors %}<div class="text-danger small mt-1">{{ form.amount.errors.0 }}</div>{% endif %}
                     </div>
-                    {% endfor %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">{{ form.date.label }}</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">{{ form.notes.label }} <span class="text-muted fw-normal">(optional)</span></label>
+                        {{ form.notes }}
+                    </div>
                     {% if form.non_field_errors %}
                     <div class="alert alert-danger">{{ form.non_field_errors }}</div>
                     {% endif %}
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
                             <i class="bi bi-check-circle me-1"></i>Save
                         </button>
                         <a href="{% url 'welfare:event_detail' event.pk %}" class="btn btn-outline-secondary">Cancel</a>
@@ -46,4 +56,13 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'includes/payment_type_js.html' %}
+<script>
+document.getElementById('disbursementForm').addEventListener('submit', function () {
+    document.getElementById('submitBtn').disabled = true;
+});
+</script>
 {% endblock %}

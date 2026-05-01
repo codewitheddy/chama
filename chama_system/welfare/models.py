@@ -3,6 +3,7 @@ from django.core.validators import MinValueValidator
 from django.db.models import Sum
 from decimal import Decimal
 import datetime
+from utils.payment_type_mixin import PaymentTypeMixin
 
 
 MONTH_CHOICES = [
@@ -41,7 +42,7 @@ class WelfareContributionRate(models.Model):
         return cls.objects.filter(effective_date__lte=period_start).first()
 
 
-class WelfareContribution(models.Model):
+class WelfareContribution(PaymentTypeMixin, models.Model):
     """A periodic payment from a member into the welfare fund."""
     member = models.ForeignKey(
         'members.Member', on_delete=models.CASCADE,
@@ -99,7 +100,7 @@ class WelfareEvent(models.Model):
         return self.disbursement_amount + self.support_total
 
 
-class WelfareDisbursement(models.Model):
+class WelfareDisbursement(PaymentTypeMixin, models.Model):
     """A payment from the welfare fund to a beneficiary. At most one per event."""
     event = models.OneToOneField(
         WelfareEvent, on_delete=models.CASCADE,
@@ -119,7 +120,7 @@ class WelfareDisbursement(models.Model):
         return f"Disbursement #{self.pk} — KES {self.amount} for Event #{self.event_id}"
 
 
-class WelfareSupportContribution(models.Model):
+class WelfareSupportContribution(PaymentTypeMixin, models.Model):
     """A voluntary payment from one member directly to a beneficiary for a specific event."""
     event = models.ForeignKey(
         WelfareEvent, on_delete=models.CASCADE,

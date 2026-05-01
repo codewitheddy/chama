@@ -5,7 +5,7 @@ from django.views import View
 from django.urls import reverse_lazy
 from .models import Payment
 from .forms import PaymentForm
-from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin
+from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin, AdminPasswordDeleteMixin
 from utils.exports import export_csv, export_pdf
 
 
@@ -56,7 +56,7 @@ class PaymentCreateView(TreasurerRequiredMixin, SuccessMessageMixin, CreateView)
         return ctx
 
 
-class PaymentDeleteView(AdminRequiredMixin, DeleteView):
+class PaymentDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = Payment
     template_name = 'payments/payment_confirm_delete.html'
     success_url = reverse_lazy('payments:list')
@@ -74,6 +74,8 @@ class PaymentExportView(MemberAccessMixin, View):
             ('member.name', 'Member'),
             ('loan.loan_amount', 'Loan Amount (KES)'),
             ('amount', 'Payment (KES)'),
+            (lambda obj: obj.get_payment_type_display(), 'Method'),
+            ('mpesa_code', 'M-Pesa Code'),
             ('date', 'Date'),
             ('notes', 'Notes'),
         ]

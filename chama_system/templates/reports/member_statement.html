@@ -141,6 +141,24 @@
                             KES {{ selected_member.total_loan_balance|floatformat:2 }}
                         </td>
                     </tr>
+                    <tr>
+                        <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Penalties Issued</td>
+                        <td class="fw-semibold pe-3 py-2 text-end" style="color:#e11d48;font-size:0.82rem;">
+                            KES {{ total_penalties_issued|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Penalties Paid</td>
+                        <td class="fw-semibold pe-3 py-2 text-end" style="color:#16a34a;font-size:0.82rem;">
+                            KES {{ total_penalties_paid|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Penalties Outstanding</td>
+                        <td class="fw-semibold pe-3 py-2 text-end text-danger" style="font-size:0.82rem;">
+                            KES {{ total_penalties_outstanding|floatformat:2 }}
+                        </td>
+                    </tr>
                 </table>
             </div>
         </div>
@@ -172,6 +190,54 @@
                         <tr class="empty-row"><td colspan="4">No contributions recorded.</td></tr>
                         {% endfor %}
                     </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Penalties -->
+        <div class="section-card">
+            <div class="section-header">
+                <span><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Penalties</span>
+                {% if total_penalties_outstanding %}
+                <span class="badge" style="background:#fff1f2;color:#e11d48;">
+                    KES {{ total_penalties_outstanding|floatformat:2 }} outstanding
+                </span>
+                {% endif %}
+            </div>
+            <div class="table-responsive">
+                <table class="statement-table table mb-0">
+                    <thead>
+                        <tr><th>Date</th><th>Reason</th><th>Amount</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in penalties %}
+                        <tr>
+                            <td class="text-muted">{{ p.date }}</td>
+                            <td>{{ p.reason }}</td>
+                            <td style="color:#e11d48;font-weight:600;">KES {{ p.amount|floatformat:2 }}</td>
+                            <td>
+                                {% if p.paid %}
+                                    <span class="badge" style="background:#f0fdf4;color:#16a34a;">
+                                        Paid{% if p.paid_date %} {{ p.paid_date }}{% endif %}
+                                    </span>
+                                {% else %}
+                                    <span class="badge" style="background:#fff1f2;color:#e11d48;">Unpaid</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr class="empty-row"><td colspan="4">No penalties recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if penalties %}
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="text-end fw-semibold text-muted" style="font-size:0.82rem;">Total</td>
+                            <td class="fw-bold" style="color:#e11d48;">KES {{ total_penalties_issued|floatformat:2 }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
                 </table>
             </div>
         </div>
@@ -222,18 +288,32 @@
             <div class="table-responsive">
                 <table class="statement-table table mb-0">
                     <thead>
-                        <tr><th>Loan Amount</th><th>Payment</th><th>Date</th><th>Notes</th></tr>
+                        <tr><th>Loan Amount</th><th>Payment</th><th>Method</th><th>Date</th><th>Notes</th></tr>
                     </thead>
                     <tbody>
                         {% for p in payments %}
                         <tr>
                             <td>KES {{ p.loan.loan_amount|floatformat:2 }}</td>
                             <td style="color:#2563eb;font-weight:600;">KES {{ p.amount|floatformat:2 }}</td>
+                            <td>
+                                {% if p.payment_type == 'mpesa' %}
+                                    <span class="badge" style="background:#f0fdf4;color:#16a34a;">
+                                        <i class="bi bi-phone me-1"></i>M-Pesa
+                                    </span>
+                                    {% if p.mpesa_code %}
+                                    <div class="text-muted" style="font-size:0.72rem;font-family:monospace;">{{ p.mpesa_code }}</div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge" style="background:#eff6ff;color:#2563eb;">
+                                        <i class="bi bi-cash-coin me-1"></i>Cash
+                                    </span>
+                                {% endif %}
+                            </td>
                             <td class="text-muted">{{ p.date }}</td>
                             <td class="text-muted">{{ p.notes|default:"—" }}</td>
                         </tr>
                         {% empty %}
-                        <tr class="empty-row"><td colspan="4">No payments recorded.</td></tr>
+                        <tr class="empty-row"><td colspan="5">No payments recorded.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

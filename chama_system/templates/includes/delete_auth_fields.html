@@ -1,0 +1,25 @@
+{# Reusable admin-password + reason fields for all delete confirmation forms #}
+<div class="mb-3">
+    <label for="delete_reason" class="form-label fw-semibold">
+        Reason for deletion <span class="text-danger">*</span>
+    </label>
+    <textarea id="delete_reason" name="delete_reason" rows="2"
+              class="form-control {% if messages %}{% for m in messages %}{% if 'reason' in m.message %}is-invalid{% endif %}{% endfor %}{% endif %}"
+              placeholder="Briefly explain why this record is being deleted…" required></textarea>
+</div>
+<div class="mb-3">
+    <label for="admin_password" class="form-label fw-semibold">
+        Admin password <span class="text-danger">*</span>
+    </label>
+    <input type="password" id="admin_password" name="admin_password"
+           class="form-control" placeholder="Enter your password to confirm" required autocomplete="current-password">
+</div>
+{% if messages %}
+{% for message in messages %}
+{% if message.tags == 'error' %}
+<div class="alert alert-danger py-2 small mb-3">
+    <i class="bi bi-exclamation-circle me-1"></i>{{ message }}
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}

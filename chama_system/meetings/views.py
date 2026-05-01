@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from .models import Meeting, MeetingAttendance, MeetingPenalty, MeetingPenaltyRule
 from .forms import MeetingForm, MeetingMinutesForm, MeetingPenaltyForm, MeetingPenaltyRuleForm
 from members.models import Member
-from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin
+from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin, AdminPasswordDeleteMixin
 
 
 # ── Meetings ─────────────────────────────────────────────────────
@@ -486,7 +486,7 @@ class MeetingMinutesDocxView(MemberAccessMixin, View):
         return response
 
 
-class MeetingDeleteView(AdminRequiredMixin, DeleteView):
+class MeetingDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = Meeting
     template_name = 'meetings/meeting_confirm_delete.html'
     success_url = reverse_lazy('meetings:list')
@@ -669,7 +669,7 @@ class PenaltyRuleUpdateView(AdminRequiredMixin, SuccessMessageMixin, UpdateView)
     success_message = "Penalty rule updated."
 
 
-class PenaltyRuleDeleteView(AdminRequiredMixin, DeleteView):
+class PenaltyRuleDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = MeetingPenaltyRule
     template_name = 'meetings/penalty_rule_confirm_delete.html'
     success_url = reverse_lazy('meetings:rules')

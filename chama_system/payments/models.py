@@ -6,6 +6,11 @@ from loans.models import Loan
 
 
 class Payment(models.Model):
+    PAYMENT_TYPE_CHOICES = [
+        ('cash',  'Cash'),
+        ('mpesa', 'M-Pesa'),
+    ]
+
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
     loan = models.ForeignKey(Loan, on_delete=models.CASCADE)
     amount = models.DecimalField(
@@ -14,6 +19,16 @@ class Payment(models.Model):
         validators=[MinValueValidator(Decimal('0.01'))],
     )
     date = models.DateField()
+    payment_type = models.CharField(
+        max_length=10,
+        choices=PAYMENT_TYPE_CHOICES,
+        default='cash',
+    )
+    mpesa_code = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text='M-Pesa confirmation code (required for M-Pesa payments).',
+    )
     notes = models.TextField(blank=True)
 
     class Meta:

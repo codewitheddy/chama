@@ -7,7 +7,7 @@ from django.db.models import Q
 from .models import Contribution
 from .forms import ContributionForm
 from members.models import Member
-from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin
+from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin, AdminPasswordDeleteMixin
 from utils.exports import export_csv, export_pdf
 from datetime import date
 from django.utils import timezone
@@ -59,7 +59,7 @@ class ContributionUpdateView(TreasurerRequiredMixin, SuccessMessageMixin, Update
     success_message = "Contribution updated."
 
 
-class ContributionDeleteView(AdminRequiredMixin, DeleteView):
+class ContributionDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = Contribution
     template_name = 'contributions/contribution_confirm_delete.html'
     success_url = reverse_lazy('contributions:list')
@@ -134,6 +134,8 @@ class ContributionExportView(MemberAccessMixin, View):
             (lambda obj: obj.get_month_display(), 'Month'),
             ('year', 'Year'),
             ('amount', 'Amount (KES)'),
+            (lambda obj: obj.get_payment_type_display(), 'Method'),
+            ('mpesa_code', 'M-Pesa Code'),
             ('date', 'Date'),
         ]
         

@@ -325,6 +325,11 @@
                     <i class="bi bi-people-fill me-2"></i>User Management
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{% url 'recycle_bin:list' %}" class="nav-link {% if request.resolver_match.app_name == 'recycle_bin' %}active{% endif %}">
+                    <i class="bi bi-recycle me-2"></i>Recycle Bin
+                </a>
+            </li>
             {% endif %}
             <!-- <li class="nav-item">
                 <a href="/admin/" class="nav-link">

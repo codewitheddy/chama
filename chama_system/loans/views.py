@@ -9,7 +9,7 @@ from django.db.models import Sum
 from decimal import Decimal
 from .models import Loan, Collateral, LoanGuarantor, LoanRollover
 from .forms import LoanForm, LoanAdjustForm, CollateralForm, LoanGuarantorForm
-from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin
+from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin, AdminPasswordDeleteMixin
 from utils.exports import export_csv, export_pdf
 
 
@@ -180,7 +180,7 @@ class LoanUpdateView(TreasurerRequiredMixin, SuccessMessageMixin, UpdateView):
         return reverse_lazy('loans:detail', kwargs={'pk': self.object.pk})
 
 
-class LoanDeleteView(AdminRequiredMixin, DeleteView):
+class LoanDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = Loan
     template_name = 'loans/loan_confirm_delete.html'
     success_url = reverse_lazy('loans:list')
@@ -277,7 +277,7 @@ class CollateralCreateView(TreasurerRequiredMixin, SuccessMessageMixin, CreateVi
         return ctx
 
 
-class CollateralDeleteView(AdminRequiredMixin, DeleteView):
+class CollateralDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = Collateral
     template_name = 'loans/collateral_confirm_delete.html'
 
@@ -309,7 +309,7 @@ class GuarantorAddView(TreasurerRequiredMixin, SuccessMessageMixin, CreateView):
         return ctx
 
 
-class GuarantorDeleteView(TreasurerRequiredMixin, DeleteView):
+class GuarantorDeleteView(AdminPasswordDeleteMixin, TreasurerRequiredMixin, DeleteView):
     model = LoanGuarantor
     template_name = 'loans/guarantor_confirm_delete.html'
 

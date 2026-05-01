@@ -109,6 +109,12 @@ class MemberStatementView(TreasurerRequiredMixin, TemplateView):
                 ctx['guarantees'] = LoanGuarantor.objects.filter(
                     guarantor=member
                 ).select_related('loan__member')
+                from django.db.models import Sum
+                penalties = member.penalties.all()
+                ctx['penalties'] = penalties
+                ctx['total_penalties_issued'] = penalties.aggregate(t=Sum('amount'))['t'] or 0
+                ctx['total_penalties_paid'] = penalties.filter(paid=True).aggregate(t=Sum('amount'))['t'] or 0
+                ctx['total_penalties_outstanding'] = penalties.filter(paid=False).aggregate(t=Sum('amount'))['t'] or 0
             except Member.DoesNotExist:
                 pass
         return ctx
@@ -151,6 +157,8 @@ class ExportPaymentsCSV(TreasurerRequiredMixin, View):
             ('member.name', 'Member'),
             ('loan.loan_amount', 'Loan Amount'),
             ('amount', 'Payment'),
+            (lambda obj: obj.get_payment_type_display(), 'Method'),
+            ('mpesa_code', 'M-Pesa Code'),
             ('date', 'Date'),
             ('notes', 'Notes'),
         ]
@@ -194,10 +202,11 @@ class ExportMemberStatementCSV(TreasurerRequiredMixin, View):
         w.writerow([])
 
         w.writerow(['CONTRIBUTIONS'])
-        w.writerow(['Month', 'Year', 'Amount (KES)', 'Date'])
+        w.writerow(['Month', 'Year', 'Amount (KES)', 'Method', 'M-Pesa Code', 'Date'])
         for c in member.contribution_set.all():
-            w.writerow([c.get_month_display(), c.year, c.amount, c.date])
-        w.writerow(['Total', '', member.total_contributions(), ''])
+            w.writerow([c.get_month_display(), c.year, c.amount,
+                        c.get_payment_type_display(), c.mpesa_code or '', c.date])
+        w.writerow(['Total', '', member.total_contributions(), '', '', ''])
         w.writerow([])
 
         w.writerow(['LOANS'])
@@ -208,15 +217,19 @@ class ExportMemberStatementCSV(TreasurerRequiredMixin, View):
         w.writerow([])
 
         w.writerow(['LOAN PAYMENTS'])
-        w.writerow(['Loan Amount', 'Payment', 'Date', 'Notes'])
+        w.writerow(['Loan Amount', 'Payment', 'Method', 'M-Pesa Code', 'Date', 'Notes'])
         for p in member.payment_set.all():
-            w.writerow([p.loan.loan_amount, p.amount, p.date, p.notes or ''])
+            w.writerow([p.loan.loan_amount, p.amount, p.get_payment_type_display(),
+                        p.mpesa_code or '', p.date, p.notes or ''])
         w.writerow([])
 
         w.writerow(['PENALTIES'])
-        w.writerow(['Date', 'Reason', 'Amount (KES)', 'Paid', 'Paid Date'])
+        w.writerow(['Date', 'Reason', 'Amount (KES)', 'Paid', 'Paid Date', 'Payment Method', 'M-Pesa Code'])
         for p in member.penalties.all():
-            w.writerow([p.date, p.reason, p.amount, 'Yes' if p.paid else 'No', p.paid_date or ''])
+            w.writerow([p.date, p.reason, p.amount, 'Yes' if p.paid else 'No',
+                        p.paid_date or '',
+                        p.get_payment_type_display() if p.paid else '—',
+                        p.mpesa_code if p.paid else '—'])
 
         return response
 
@@ -396,26 +409,40 @@ class ExportMemberStatementPDF(TreasurerRequiredMixin, View):
 
         # ── Contributions ─────────────────────────────────────────
         contrib_data = [[Paragraph('<b>MONTH</b>', hdr_s), Paragraph('<b>YEAR</b>', hdr_s),
-                         Paragraph('<b>AMOUNT</b>', hdr_r), Paragraph('<b>DATE</b>', hdr_s)]]
+                         Paragraph('<b>AMOUNT</b>', hdr_r), Paragraph('<b>METHOD</b>', hdr_s),
+                         Paragraph('<b>DATE</b>', hdr_s)]]
         for c in member.contribution_set.all():
+            method = c.get_payment_type_display()
+            if c.payment_type == 'mpesa' and c.mpesa_code:
+                method_text = f"M-Pesa\n{c.mpesa_code}"
+            else:
+                method_text = method
             contrib_data.append([
                 Paragraph(c.get_month_display(), cell_s),
                 Paragraph(str(c.year), cell_s),
                 kes(c.amount, green_s),
+                Paragraph(method_text, cell_s),
                 Paragraph(str(c.date), cell_s),
             ])
         if len(contrib_data) == 1:
             contrib_data.append([Paragraph('No contributions recorded.', muted_s),
-                                  Paragraph(''), Paragraph(''), Paragraph('')])
+                                  Paragraph(''), Paragraph(''), Paragraph(''), Paragraph('')])
         elements.append(KeepTogether([
             Paragraph('Contributions', section_s),
-            make_table(contrib_data, [0.30, 0.15, 0.25, 0.30]),
+            make_table(contrib_data, [0.22, 0.12, 0.20, 0.18, 0.28]),
         ]))
 
         # ── Penalties ─────────────────────────────────────────────
         pen_data = [[Paragraph('<b>DATE</b>', hdr_s), Paragraph('<b>REASON</b>', hdr_s),
-                     Paragraph('<b>AMOUNT</b>', hdr_r), Paragraph('<b>STATUS</b>', hdr_s)]]
+                     Paragraph('<b>AMOUNT</b>', hdr_r), Paragraph('<b>STATUS</b>', hdr_s),
+                     Paragraph('<b>METHOD</b>', hdr_s)]]
         for p in member.penalties.all():
+            if p.paid:
+                method_text = p.get_payment_type_display()
+                if p.payment_type == 'mpesa' and p.mpesa_code:
+                    method_text = f"M-Pesa\n{p.mpesa_code}"
+            else:
+                method_text = '—'
             pen_data.append([
                 Paragraph(str(p.date), cell_s),
                 Paragraph(p.reason, cell_s),
@@ -423,13 +450,14 @@ class ExportMemberStatementPDF(TreasurerRequiredMixin, View):
                 Paragraph('Paid' if p.paid else 'Unpaid',
                            ps(f'ps{p.pk}', fontSize=8, fontName='Helvetica-Bold',
                               textColor=GREEN if p.paid else RED, leading=11)),
+                Paragraph(method_text, cell_s),
             ])
         if len(pen_data) == 1:
             pen_data.append([Paragraph('No penalties.', muted_s),
-                              Paragraph(''), Paragraph(''), Paragraph('')])
+                              Paragraph(''), Paragraph(''), Paragraph(''), Paragraph('')])
         pen_data.append([Paragraph(''), Paragraph('<b>Total</b>', bold_s),
-                         kes(total_pen_issued, red_s), Paragraph('')])
-        pen_tbl = make_table(pen_data, [0.20, 0.42, 0.20, 0.18],
+                         kes(total_pen_issued, red_s), Paragraph(''), Paragraph('')])
+        pen_tbl = make_table(pen_data, [0.15, 0.35, 0.17, 0.15, 0.18],
                              extra_styles=[('BACKGROUND', (0, -1), (-1, -1), HEADER_BG)])
         elements.append(KeepTogether([Paragraph('Penalties', section_s), pen_tbl]))
 
@@ -468,20 +496,27 @@ class ExportMemberStatementPDF(TreasurerRequiredMixin, View):
 
         # ── Loan Payments ─────────────────────────────────────────
         pay_data = [[Paragraph('<b>LOAN</b>', hdr_r), Paragraph('<b>AMOUNT</b>', hdr_r),
-                     Paragraph('<b>DATE</b>', hdr_s), Paragraph('<b>NOTES</b>', hdr_s)]]
+                     Paragraph('<b>METHOD</b>', hdr_s), Paragraph('<b>DATE</b>', hdr_s),
+                     Paragraph('<b>NOTES</b>', hdr_s)]]
         for p in member.payment_set.select_related('loan').all():
+            method = p.get_payment_type_display()
+            if p.payment_type == 'mpesa' and p.mpesa_code:
+                method_text = f"M-Pesa\n{p.mpesa_code}"
+            else:
+                method_text = method
             pay_data.append([
                 kes(p.loan.loan_amount),
                 kes(p.amount, blue_s),
+                Paragraph(method_text, cell_s),
                 Paragraph(str(p.date), cell_s),
                 Paragraph(p.notes or '—', muted_s),
             ])
         if len(pay_data) == 1:
             pay_data.append([Paragraph('No payments recorded.', muted_s),
-                              Paragraph(''), Paragraph(''), Paragraph('')])
+                              Paragraph(''), Paragraph(''), Paragraph(''), Paragraph('')])
         elements.append(KeepTogether([
             Paragraph('Loan Payments', section_s),
-            make_table(pay_data, [0.25, 0.20, 0.20, 0.35]),
+            make_table(pay_data, [0.20, 0.18, 0.18, 0.16, 0.28]),
         ]))
 
         # ── Loans Guaranteed ──────────────────────────────────────

@@ -3,13 +3,22 @@
 {% block page_title %}Delete Penalty Rule{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-md-5">
-    <div class="card border-danger">
-        <div class="card-header text-danger"><i class="bi bi-trash me-2"></i>Confirm Delete</div>
+    <div class="card border-danger shadow-sm">
+        <div class="card-header text-danger fw-semibold">
+            <i class="bi bi-trash me-2"></i>Confirm Delete Penalty Rule
+        </div>
         <div class="card-body">
-            <p>Delete rule <strong>{{ object.name }}</strong> (KES {{ object.default_amount }})?</p>
-            <form method="post">{% csrf_token %}
+            <div class="alert alert-warning py-2 small mb-3">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Delete rule <strong>{{ object.name }}</strong> (KES {{ object.default_amount|floatformat:2 }})?
+            </div>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% include 'includes/delete_auth_fields.html' %}
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Yes, Delete
+                    </button>
                     <a href="{% url 'meetings:rules' %}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>

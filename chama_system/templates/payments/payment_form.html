@@ -2,6 +2,57 @@
 {% block title %}Record Payment{% endblock %}
 {% block page_title %}Record Payment{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Payment type toggle buttons */
+    .payment-type-group {
+        display: flex;
+        gap: 0.75rem;
+    }
+    .payment-type-group label {
+        flex: 1;
+        cursor: pointer;
+    }
+    .payment-type-group input[type=radio] {
+        display: none;
+    }
+    .payment-type-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.65rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #64748b;
+        background: #f8fafc;
+        transition: all 0.15s;
+        user-select: none;
+    }
+    .payment-type-group input[type=radio]:checked + .payment-type-btn {
+        border-color: #2563eb;
+        background: #eff6ff;
+        color: #2563eb;
+    }
+    .payment-type-group input[type=radio][value=mpesa]:checked + .payment-type-btn {
+        border-color: #16a34a;
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+    .payment-type-btn:hover {
+        border-color: #94a3b8;
+        background: #f1f5f9;
+    }
+    /* M-Pesa code field slide-in */
+    #mpesa-code-row {
+        overflow: hidden;
+        transition: max-height 0.25s ease, opacity 0.2s ease;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
@@ -19,38 +70,94 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-receipt me-2"></i>Payment Details</div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" id="paymentForm">
                     {% csrf_token %}
+
+                    <!-- Loan -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Loan</label>
                         {{ form.loan }}
-                        {% if form.loan.errors %}<div class="text-danger small mt-1">{{ form.loan.errors }}</div>{% endif %}
+                        {% if form.loan.errors %}
+                        <div class="text-danger small mt-1">{{ form.loan.errors }}</div>
+                        {% endif %}
                         <div class="form-text">Only active / late loans are shown.</div>
                     </div>
+
+                    <!-- Payment Type -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Payment Method</label>
+                        <div class="payment-type-group">
+                            <label>
+                                <input type="radio" name="{{ form.payment_type.html_name }}"
+                                       value="cash" class="payment-type-radio"
+                                       id="{{ form.payment_type.id_for_label }}_cash"
+                                       {% if form.payment_type.value == 'cash' or not form.payment_type.value %}checked{% endif %}>
+                                <div class="payment-type-btn">
+                                    <i class="bi bi-cash-coin"></i> Cash
+                                </div>
+                            </label>
+                            <label>
+                                <input type="radio" name="{{ form.payment_type.html_name }}"
+                                       value="mpesa" class="payment-type-radio"
+                                       id="{{ form.payment_type.id_for_label }}_mpesa"
+                                       {% if form.payment_type.value == 'mpesa' %}checked{% endif %}>
+                                <div class="payment-type-btn">
+                                    <i class="bi bi-phone"></i> M-Pesa
+                                </div>
+                            </label>
+                        </div>
+                        {% if form.payment_type.errors %}
+                        <div class="text-danger small mt-1">{{ form.payment_type.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- M-Pesa Code (conditional) -->
+                    <div class="mb-3" id="mpesa-code-row"
+                         {% if form.payment_type.value != 'mpesa' %}style="max-height:0;opacity:0;overflow:hidden;"{% endif %}>
+                        <label class="form-label fw-semibold">
+                            M-Pesa Confirmation Code <span class="text-danger">*</span>
+                        </label>
+                        {{ form.mpesa_code }}
+                        {% if form.mpesa_code.errors %}
+                        <div class="text-danger small mt-1">{{ form.mpesa_code.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">Enter the code from the M-Pesa confirmation SMS.</div>
+                    </div>
+
+                    <!-- Amount -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Amount (KES)</label>
                         {{ form.amount }}
-                        {% if form.amount.errors %}<div class="text-danger small mt-1">{{ form.amount.errors }}</div>{% endif %}
+                        {% if form.amount.errors %}
+                        <div class="text-danger small mt-1">{{ form.amount.errors }}</div>
+                        {% endif %}
                     </div>
+
+                    <!-- Date -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Date</label>
                         {{ form.date }}
-                        {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors }}</div>{% endif %}
+                        {% if form.date.errors %}
+                        <div class="text-danger small mt-1">{{ form.date.errors }}</div>
+                        {% endif %}
                     </div>
+
+                    <!-- Notes -->
                     <div class="mb-4">
                         <label class="form-label fw-semibold">
                             Notes <span class="text-muted fw-normal">(optional)</span>
                         </label>
                         {{ form.notes }}
                     </div>
+
                     {% if form.non_field_errors %}
                     <div class="alert alert-danger py-2" style="font-size:0.875rem;">
                         <i class="bi bi-exclamation-circle me-1"></i>{{ form.non_field_errors }}
                     </div>
                     {% endif %}
+
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-success" id="submitBtn"
-                                onclick="this.disabled=true; this.form.submit();">
+                        <button type="submit" class="btn btn-success" id="submitBtn">
                             <i class="bi bi-check-circle me-1"></i>Save Payment
                         </button>
                         <a href="{% url 'payments:list' %}" class="btn btn-outline-secondary">Cancel</a>
@@ -60,4 +167,38 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const radios = document.querySelectorAll('input.payment-type-radio');
+    const mpesaRow = document.getElementById('mpesa-code-row');
+    const mpesaInput = document.getElementById('{{ form.mpesa_code.id_for_label }}');
+
+    function toggleMpesa() {
+        const selected = document.querySelector('input.payment-type-radio:checked');
+        const isMpesa = selected && selected.value === 'mpesa';
+        if (mpesaRow) {
+            if (isMpesa) {
+                mpesaRow.style.maxHeight = '120px';
+                mpesaRow.style.opacity = '1';
+                mpesaRow.style.overflow = 'visible';
+            } else {
+                mpesaRow.style.maxHeight = '0';
+                mpesaRow.style.opacity = '0';
+                mpesaRow.style.overflow = 'hidden';
+            }
+        }
+        if (mpesaInput) mpesaInput.required = isMpesa;
+    }
+
+    radios.forEach(r => r.addEventListener('change', toggleMpesa));
+    toggleMpesa();
+
+    document.getElementById('paymentForm').addEventListener('submit', function () {
+        document.getElementById('submitBtn').disabled = true;
+    });
+})();
+</script>
 {% endblock %}

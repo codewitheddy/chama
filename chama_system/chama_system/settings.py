@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'meetings',
     'welfare',
     'yearend',
+    'recycle_bin',
 ]
 
 MIDDLEWARE = [

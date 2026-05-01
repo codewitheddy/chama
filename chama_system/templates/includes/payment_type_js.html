@@ -1,0 +1,28 @@
+<script>
+(function () {
+    const radios = document.querySelectorAll('input.payment-type-radio');
+    const mpesaRow = document.getElementById('mpesa-code-row');
+    const mpesaInput = mpesaRow ? mpesaRow.querySelector('input[type=text]') : null;
+
+    function toggleMpesa() {
+        const selected = document.querySelector('input.payment-type-radio:checked');
+        const isMpesa = selected && selected.value === 'mpesa';
+        if (mpesaRow) {
+            if (isMpesa) {
+                mpesaRow.style.maxHeight = '120px';
+                mpesaRow.style.opacity = '1';
+                mpesaRow.style.overflow = 'visible';
+            } else {
+                mpesaRow.style.maxHeight = '0';
+                mpesaRow.style.opacity = '0';
+                mpesaRow.style.overflow = 'hidden';
+            }
+        }
+        if (mpesaInput) mpesaInput.required = isMpesa;
+    }
+
+    radios.forEach(r => r.addEventListener('change', toggleMpesa));
+    // Run immediately to sync state on page load
+    toggleMpesa();
+})();
+</script>

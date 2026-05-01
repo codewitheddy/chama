@@ -1,0 +1,44 @@
+{# Reusable payment method toggle + M-Pesa code field #}
+{# Requires: form.payment_type, form.mpesa_code in the parent form #}
+
+<!-- Payment Type -->
+<div class="mb-3">
+    <label class="form-label fw-semibold">Payment Method</label>
+    <div class="payment-type-group">
+        <label>
+            <input type="radio" name="{{ form.payment_type.html_name }}"
+                   value="cash"
+                   class="payment-type-radio"
+                   id="{{ form.payment_type.id_for_label }}_cash"
+                   {% if form.payment_type.value == 'cash' or not form.payment_type.value %}checked{% endif %}>
+            <div class="payment-type-btn">
+                <i class="bi bi-cash-coin"></i> Cash
+            </div>
+        </label>
+        <label>
+            <input type="radio" name="{{ form.payment_type.html_name }}"
+                   value="mpesa"
+                   class="payment-type-radio"
+                   id="{{ form.payment_type.id_for_label }}_mpesa"
+                   {% if form.payment_type.value == 'mpesa' %}checked{% endif %}>
+            <div class="payment-type-btn">
+                <i class="bi bi-phone"></i> M-Pesa
+            </div>
+        </label>
+    </div>
+    {% if form.payment_type.errors %}
+    <div class="text-danger small mt-1">{{ form.payment_type.errors }}</div>
+    {% endif %}
+</div>
+
+<!-- M-Pesa Code (shown only when M-Pesa selected) -->
+<div class="mb-3" id="mpesa-code-row" {% if form.payment_type.value != 'mpesa' %}style="max-height:0;opacity:0;overflow:hidden;"{% endif %}>
+    <label class="form-label fw-semibold">
+        M-Pesa Confirmation Code <span class="text-danger">*</span>
+    </label>
+    {{ form.mpesa_code }}
+    {% if form.mpesa_code.errors %}
+    <div class="text-danger small mt-1">{{ form.mpesa_code.errors }}</div>
+    {% endif %}
+    <div class="form-text">Enter the code from the M-Pesa confirmation SMS.</div>
+</div>

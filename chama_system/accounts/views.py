@@ -7,7 +7,7 @@ from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404, redirect
 from .forms import LoginForm, UserCreateForm, UserEditForm, UserProfileForm
 from .models import UserProfile
-from .mixins import AdminRequiredMixin
+from .mixins import AdminRequiredMixin, AdminPasswordDeleteMixin
 
 
 class UserLoginView(LoginView):
@@ -61,7 +61,7 @@ class UserEditView(AdminRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class UserDeleteView(AdminRequiredMixin, DeleteView):
+class UserDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView):
     model = User
     template_name = 'accounts/user_confirm_delete.html'
     success_url = reverse_lazy('accounts:users')

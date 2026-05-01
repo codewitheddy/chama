@@ -2,6 +2,10 @@
 {% block title %}{% if form.instance.pk %}Edit{% else %}Record{% endif %} Welfare Contribution{% endblock %}
 {% block page_title %}{% if form.instance.pk %}Edit{% else %}Record{% endif %} Welfare Contribution{% endblock %}
 
+{% block extra_css %}
+{% include 'includes/payment_type_css.html' %}
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-6">
@@ -41,6 +45,8 @@
                         <div class="text-danger small mt-1">{{ form.member.errors.0 }}</div>
                         {% endif %}
                     </div>
+
+                    {% include 'includes/payment_type_fields.html' %}
 
                     <!-- Amount — auto-filled from rate, read-only when rate is set -->
                     <div class="mb-3">
@@ -87,6 +93,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{% include 'includes/payment_type_js.html' %}
 <script>
 (function () {
     const memberSelect = document.getElementById('{{ form.member.id_for_label }}');
