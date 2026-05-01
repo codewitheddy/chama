@@ -1,4 +1,5 @@
-import datetime
+﻿from datetime import date
+from django.utils import timezone
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
@@ -9,10 +10,11 @@ from django.contrib import messages
 from django.db.models import Sum
 from .models import Penalty
 from .forms import PenaltyForm
-from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin
+from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin
+from utils.exports import export_csv, export_pdf
 
 
-class PenaltyListView(LoginRequiredMixin, ListView):
+class PenaltyListView(MemberAccessMixin, ListView):
     model = Penalty
     template_name = 'penalties/penalty_list.html'
     context_object_name = 'penalties'
@@ -38,12 +40,12 @@ class PenaltyListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        today = datetime.date.today()
+        today = timezone.localdate()
         ctx['q'] = self.request.GET.get('q', '')
         ctx['selected_month'] = self.request.GET.get('month', '')
         ctx['selected_year'] = self.request.GET.get('year', '')
         ctx['selected_paid'] = self.request.GET.get('paid', '')
-        ctx['months'] = [(i, datetime.date(2000, i, 1).strftime('%B')) for i in range(1, 13)]
+        ctx['months'] = [(i, date(2000, i, 1).strftime('%B')) for i in range(1, 13)]
         ctx['years'] = range(today.year - 3, today.year + 1)
         qs = self.get_queryset()
         ctx['total_filtered'] = qs.aggregate(t=Sum('amount'))['t'] or 0
@@ -78,7 +80,37 @@ class PenaltyMarkPaidView(TreasurerRequiredMixin, View):
     def post(self, request, pk):
         penalty = get_object_or_404(Penalty, pk=pk)
         penalty.paid = True
-        penalty.paid_date = datetime.date.today()
+        penalty.paid_date = timezone.localdate()
         penalty.save()
         messages.success(request, f"Penalty of KES {penalty.amount} for {penalty.member.name} marked as paid.")
-        return redirect(request.POST.get('next', 'penalties:list'))
+        # Only redirect to safe internal URLs — never follow user-supplied next param to external sites
+        next_url = request.POST.get('next', '')
+        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+            return redirect(next_url)
+        return redirect('penalties:list')
+
+
+class PenaltyExportView(MemberAccessMixin, View):
+    def get(self, request):
+        format_type = request.GET.get('format', 'csv')
+        qs = Penalty.objects.select_related('member')
+        q = request.GET.get('q', '').strip()
+        paid = request.GET.get('paid', '').strip()
+        if q:
+            qs = qs.filter(member__name__icontains=q)
+        if paid == '1':
+            qs = qs.filter(paid=True)
+        elif paid == '0':
+            qs = qs.filter(paid=False)
+
+        fields = [
+            ('member.name', 'Member'),
+            ('amount', 'Amount (KES)'),
+            ('date', 'Date'),
+            ('reason', 'Reason'),
+            (lambda obj: 'Yes' if obj.paid else 'No', 'Paid'),
+            ('paid_date', 'Paid Date'),
+        ]
+        if format_type == 'pdf':
+            return export_pdf(qs, 'penalties', 'Penalties Report', fields, orientation='landscape')
+        return export_csv(qs, 'penalties', fields)

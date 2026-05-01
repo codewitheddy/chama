@@ -3,10 +3,19 @@ from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
+# Require explicit secret key in production; keep a dev-only fallback for local setup.
+if DEBUG:
+    SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-only-change-me')
+else:
+    SECRET_KEY = config('SECRET_KEY')
+
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
+    if h.strip()
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -25,6 +34,8 @@ INSTALLED_APPS = [
     'dashboard',
     'penalties',
     'meetings',
+    'welfare',
+    'yearend',
 ]
 
 MIDDLEWARE = [
@@ -107,6 +118,11 @@ LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
+# ── Chama business rules ──────────────────────────────────────────
+# Flat interest rate applied to every new loan (e.g. 0.10 = 10%).
+# Also used as the monthly late-penalty rate.
+LOAN_INTEREST_RATE = config('LOAN_INTEREST_RATE', default=0.10, cast=float)
+
 # Email
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
@@ -114,12 +130,21 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Chama System <noreply@chama.local>')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='DC Welfare Group <noreply@dcwelfare.local>')
 
 # Security (enable in production)
+_trusted = config('CSRF_TRUSTED_ORIGINS', default='')
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _trusted.split(',') if o.strip()]
+
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    _trusted = config('CSRF_TRUSTED_ORIGINS', default='')
-    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _trusted.split(',') if o.strip()]
+
+# Security headers — applied in all environments
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True

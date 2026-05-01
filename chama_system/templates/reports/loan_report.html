@@ -9,9 +9,14 @@
     <div>
         <p class="text-muted small mb-0">Overview of all loans issued, repayments and outstanding balances.</p>
     </div>
-    <a href="{% url 'reports:export_loans' %}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-download me-1"></i>Export CSV
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'reports:export_loans' %}" class="btn btn-sm btn-outline-success">
+            <i class="bi bi-filetype-csv me-1"></i>CSV
+        </a>
+        <a href="{% url 'reports:export_loans_pdf' %}" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-filetype-pdf me-1"></i>PDF
+        </a>
+    </div>
 </div>
 
 <!-- Summary Stats -->
@@ -45,6 +50,11 @@
                 <div>
                     <div class="stat-label">Outstanding Balance</div>
                     <div class="stat-value">KES {{ total_balance|floatformat:2 }}</div>
+                    <div style="font-size:0.72rem;color:#94a3b8;">
+                        Principal: KES {{ outstanding_principal|floatformat:2 }}
+                        &nbsp;|&nbsp;
+                        Interest: KES {{ outstanding_interest|floatformat:2 }}
+                    </div>
                 </div>
             </div>
         </div>

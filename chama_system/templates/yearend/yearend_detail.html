@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block title %}Year-End {{ withdrawal.financial_year }}{% endblock %}
+{% block page_title %}Year-End {{ withdrawal.financial_year }}{% endblock %}
+
+{% block content %}
+<!-- Summary card -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar-check me-2"></i>Year-End {{ withdrawal.financial_year }} Summary</span>
+        <a href="{% url 'yearend:list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="text-muted small">Financial Year</div>
+                <div class="fw-bold fs-5">{{ withdrawal.financial_year }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Date</div>
+                <div>{{ withdrawal.date }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Amount Withdrawn</div>
+                <div class="fw-bold" style="color:#e11d48;">KES {{ withdrawal.amount_withdrawn|floatformat:2 }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Interest Shared</div>
+                <div class="fw-bold" style="color:#16a34a;">KES {{ withdrawal.interest_shared|floatformat:2 }}</div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-muted small">Notes</div>
+                <div>{{ withdrawal.notes|default:"—" }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Recorded By</div>
+                <div>{{ withdrawal.recorded_by.username }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Recorded On</div>
+                <div>{{ withdrawal.created_at|date:"d M Y H:i" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Per-member interest shares -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-people me-2"></i>Per-Member Distribution
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>#</th><th>Member</th><th class="text-end">Profit Share</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for share in interest_shares %}
+                        <tr>
+                            <td class="text-muted">{{ forloop.counter }}</td>
+                            <td class="fw-semibold">{{ share.member.name }}</td>
+                            <td class="text-end" style="color:#16a34a;">KES {{ share.amount|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-3">No interest shares recorded.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if interest_shares %}
+                    <tfoot>
+                        <tr class="table-success fw-semibold">
+                            <td colspan="2" class="text-end">Total Profit Shared</td>
+                            <td class="text-end">KES {{ withdrawal.interest_shared|floatformat:2 }}</td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Member statuses -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-check me-2"></i>Member Status
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>#</th><th>Member</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for ms in member_statuses %}
+                        <tr>
+                            <td class="text-muted">{{ forloop.counter }}</td>
+                            <td class="fw-semibold">{{ ms.member.name }}</td>
+                            <td>
+                                {% if ms.status == 'continuing' %}
+                                <span class="badge bg-success">Continuing</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Exiting</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-3">No member statuses recorded.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

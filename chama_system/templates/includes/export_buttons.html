@@ -1,0 +1,49 @@
+{% comment %}
+Usage: {% include 'includes/export_buttons.html' with export_url=export_url %}
+The export_url should be the base URL; ?format=csv/pdf will be appended.
+{% endcomment %}
+<div class="dropdown export-dropdown" data-export-url="{{ export_url }}">
+    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+        <i class="bi bi-download me-1"></i>Export
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li>
+            <a class="dropdown-item export-csv" href="{{ export_url }}?format=csv&{{ request.GET.urlencode }}">
+                <i class="bi bi-filetype-csv me-2 text-success"></i>Download CSV
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item export-pdf" href="{{ export_url }}?format=pdf&{{ request.GET.urlencode }}">
+                <i class="bi bi-filetype-pdf me-2 text-danger"></i>Download PDF
+            </a>
+        </li>
+    </ul>
+</div>
+
+<script>
+// Keep export links in sync with current filter params
+(function () {
+    function updateExportLinks() {
+        document.querySelectorAll('.export-dropdown').forEach(function (dropdown) {
+            const base = dropdown.dataset.exportUrl;
+            const params = new URLSearchParams(window.location.search);
+            params.delete('format');
+            params.delete('page');
+            const qs = params.toString();
+            dropdown.querySelector('.export-csv').href = base + '?format=csv' + (qs ? '&' + qs : '');
+            dropdown.querySelector('.export-pdf').href = base + '?format=pdf' + (qs ? '&' + qs : '');
+        });
+    }
+    // Intercept both pushState and replaceState (AJAX filter uses replaceState)
+    ['pushState', 'replaceState'].forEach(function (method) {
+        const original = history[method];
+        history[method] = function () {
+            original.apply(history, arguments);
+            updateExportLinks();
+        };
+    });
+    window.addEventListener('popstate', updateExportLinks);
+    // Run on load
+    updateExportLinks();
+})();
+</script>

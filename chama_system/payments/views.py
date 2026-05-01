@@ -1,13 +1,15 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.views.generic import ListView, CreateView, DeleteView
+from django.views import View
 from django.urls import reverse_lazy
 from .models import Payment
 from .forms import PaymentForm
-from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin
+from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin
+from utils.exports import export_csv, export_pdf
 
 
-class PaymentListView(LoginRequiredMixin, ListView):
+class PaymentListView(MemberAccessMixin, ListView):
     model = Payment
     template_name = 'payments/payment_list.html'
     context_object_name = 'payments'
@@ -58,3 +60,23 @@ class PaymentDeleteView(AdminRequiredMixin, DeleteView):
     model = Payment
     template_name = 'payments/payment_confirm_delete.html'
     success_url = reverse_lazy('payments:list')
+
+
+class PaymentExportView(MemberAccessMixin, View):
+    def get(self, request):
+        format_type = request.GET.get('format', 'csv')
+        qs = Payment.objects.select_related('member', 'loan__member')
+        q = request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(member__name__icontains=q)
+
+        fields = [
+            ('member.name', 'Member'),
+            ('loan.loan_amount', 'Loan Amount (KES)'),
+            ('amount', 'Payment (KES)'),
+            ('date', 'Date'),
+            ('notes', 'Notes'),
+        ]
+        if format_type == 'pdf':
+            return export_pdf(qs, 'payments', 'Loan Payments Report', fields, orientation='landscape')
+        return export_csv(qs, 'payments', fields)

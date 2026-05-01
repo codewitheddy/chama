@@ -56,7 +56,11 @@
                 <div>
                     <div class="stat-label">Outstanding Balance</div>
                     <div class="stat-value" style="color:#e11d48;">KES {{ total_loan_balance|floatformat:0 }}</div>
-                    <div style="font-size:0.72rem;color:#94a3b8;">Active &amp; late loans</div>
+                    <div style="font-size:0.72rem;color:#94a3b8;">
+                        Principal: KES {{ principal_outstanding|floatformat:0 }}
+                        &nbsp;|&nbsp;
+                        Interest: KES {{ outstanding_interest|floatformat:0 }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -81,6 +85,32 @@
                 <div>
                     <div class="stat-label">Total Loan Paid</div>
                     <div class="stat-value">KES {{ total_loan_paid|floatformat:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Treasurer Balance — full width, prominent -->
+    <div class="col-12">
+        <div class="card stat-card" style="border:2px solid #16a34a;background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+            <div class="card-body d-flex align-items-center justify-content-between gap-3 py-3 flex-wrap">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="icon-box" style="background:#16a34a;color:#fff;width:52px;height:52px;font-size:1.5rem;">
+                        <i class="bi bi-safe2"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label" style="color:#166534;font-weight:700;font-size:0.85rem;">Treasurer Balance</div>
+                        <div class="stat-value" style="color:#15803d;font-size:1.75rem;">KES {{ treasurer_balance|floatformat:2 }}</div>
+                        <div style="font-size:0.72rem;color:#4ade80;">
+                            Total income KES {{ total_income|floatformat:0 }} &minus;
+                            Principal out KES {{ principal_outstanding|floatformat:0 }}
+                        </div>
+                    </div>
+                </div>
+                <div class="text-end" style="font-size:0.78rem;color:#166534;">
+                    <div>Contributions &amp; Reg Fees: <strong>KES {{ total_contributions|add:total_reg_fees|floatformat:0 }}</strong></div>
+                    <div>Interest Collected: <strong>KES {{ total_interest_collected|floatformat:0 }}</strong></div>
+                    <div>Penalties Paid: <strong>KES {{ total_penalties|floatformat:0 }}</strong></div>
+                    <div>Loan Repayments Received: <strong>KES {{ total_loan_paid|floatformat:0 }}</strong></div>
                 </div>
             </div>
         </div>

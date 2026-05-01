@@ -3,10 +3,46 @@
 {% block page_title %}Meetings{% endblock %}
 
 {% block content %}
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Total Meetings</div>
+                <div class="stat-value" style="font-size:1.1rem;">{{ total_meetings }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Held</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#16a34a;">{{ held_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Upcoming</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#2563eb;">{{ scheduled_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Penalties Collected</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#e11d48;">KES {{ total_penalties_collected|floatformat:0 }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <form class="d-flex gap-2 flex-wrap" method="get" data-ajax-filter>
         <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
-               placeholder="Search venue..." style="width:200px;">
+               placeholder="Search venue or date..." style="width:220px;">
         <select name="status" class="form-select form-select-sm" style="width:150px;">
             <option value="">All Statuses</option>
             <option value="scheduled" {% if selected_status == 'scheduled' %}selected{% endif %}>Scheduled</option>

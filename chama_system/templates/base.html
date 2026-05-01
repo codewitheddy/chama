@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Chama System{% endblock %}</title>
+    <title>{% block title %}DC Welfare Group{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -24,13 +24,14 @@
             background-color: var(--body-bg);
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             color: #1e293b;
+            font-size: 1rem;
         }
 
         /* Sidebar */
         .sidebar {
             min-height: 100vh;
             background: var(--sidebar-bg);
-            width: 248px;
+            width: 260px;
             position: fixed;
             top: 0; left: 0;
             z-index: 100;
@@ -46,19 +47,19 @@
             color: #f1f5f9;
             margin: 0;
             font-weight: 700;
-            font-size: 1rem;
+            font-size: 1.05rem;
             letter-spacing: 0.3px;
         }
         .sidebar .brand small {
             color: var(--sidebar-text);
-            font-size: 0.72rem;
+            font-size: 0.8rem;
         }
         .sidebar .nav-link {
             color: var(--sidebar-text);
-            padding: 0.55rem 1rem;
+            padding: 0.6rem 1rem;
             border-radius: 6px;
             margin: 1px 10px;
-            font-size: 0.875rem;
+            font-size: 0.95rem;
             transition: background 0.15s, color 0.15s;
             display: flex;
             align-items: center;
@@ -73,7 +74,7 @@
         }
         .sidebar .nav-section {
             color: var(--sidebar-section);
-            font-size: 0.68rem;
+            font-size: 0.72rem;
             text-transform: uppercase;
             letter-spacing: 1.2px;
             padding: 1.1rem 1.25rem 0.35rem;
@@ -86,17 +87,17 @@
         }
         .sidebar-footer .username {
             color: #f1f5f9;
-            font-size: 0.875rem;
+            font-size: 0.95rem;
             font-weight: 600;
         }
         .sidebar-footer .role {
             color: var(--sidebar-text);
-            font-size: 0.75rem;
+            font-size: 0.82rem;
         }
 
         /* Main */
         .main-content {
-            margin-left: 248px;
+            margin-left: 260px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -104,7 +105,7 @@
         .topbar {
             background: var(--topbar-bg);
             border-bottom: 1px solid var(--border);
-            padding: 0.7rem 1.5rem;
+            padding: 0.75rem 1.5rem;
             position: sticky;
             top: 0;
             z-index: 99;
@@ -113,7 +114,7 @@
             justify-content: space-between;
         }
         .topbar .page-heading {
-            font-size: 0.95rem;
+            font-size: 1.05rem;
             font-weight: 600;
             color: #334155;
             margin: 0;
@@ -129,10 +130,10 @@
         .card-header {
             background: var(--card-bg);
             border-bottom: 1px solid var(--border);
-            font-size: 0.875rem;
+            font-size: 0.95rem;
             font-weight: 600;
             color: #334155;
-            padding: 0.85rem 1.25rem;
+            padding: 0.9rem 1.25rem;
         }
 
         /* Stat cards */
@@ -144,19 +145,19 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
         .stat-card .icon-box {
-            width: 46px; height: 46px;
+            width: 50px; height: 50px;
             border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             flex-shrink: 0;
         }
         .stat-card .stat-label {
-            font-size: 0.78rem;
+            font-size: 0.85rem;
             color: #64748b;
             font-weight: 500;
         }
         .stat-card .stat-value {
-            font-size: 1.35rem;
+            font-size: 1.45rem;
             font-weight: 700;
             color: #1e293b;
             line-height: 1.2;
@@ -172,31 +173,37 @@
         .accent-slate  { background: #1e2a3a; color: #f1f5f9; }
 
         /* Tables */
-        .table { font-size: 0.875rem; }
+        .table { font-size: 0.95rem; }
         .table thead th {
             font-weight: 600;
             color: #475569;
-            font-size: 0.78rem;
+            font-size: 0.85rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
             border-bottom: 1px solid var(--border);
             background: #f8fafc;
         }
         .table-hover tbody tr:hover { background: #f8fafc; }
 
         /* Badges */
-        .badge { font-weight: 500; font-size: 0.75rem; }
+        .badge { font-weight: 500; font-size: 0.82rem; }
 
         /* Buttons */
-        .btn { font-size: 0.875rem; font-weight: 500; }
+        .btn { font-size: 0.95rem; font-weight: 500; }
         .btn-primary { background: #2563eb; border-color: #2563eb; }
         .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+
+        /* Forms */
+        .form-control, .form-select {
+            font-size: 0.95rem;
+        }
+        .form-label { font-size: 0.95rem; }
 
         /* Progress */
         .progress { background: #e2e8f0; border-radius: 99px; }
 
         /* Alerts */
-        .alert { font-size: 0.875rem; border-radius: 8px; }
+        .alert { font-size: 0.95rem; border-radius: 8px; }
 
         @media (max-width: 768px) {
             .sidebar { width: 100%; min-height: auto; position: relative; }
@@ -210,7 +217,7 @@
 <div class="d-flex">
     <nav class="sidebar">
         <div class="brand">
-            <h5><i class="bi bi-bank2 me-2"></i>Chama System</h5>
+            <h5><i class="bi bi-bank2 me-2"></i>DC Welfare Group</h5>
             <small>Table Banking Manager</small>
         </div>
         <ul class="nav flex-column mt-1 flex-grow-1">
@@ -261,6 +268,29 @@
                     <i class="bi bi-calendar-event me-2"></i>Meetings
                 </a>
             </li>
+            <li class="nav-section">Welfare</li>
+            <li class="nav-item">
+                <a href="{% url 'welfare:dashboard' %}" class="nav-link {% if request.resolver_match.app_name == 'welfare' %}active{% endif %}">
+                    <i class="bi bi-heart-pulse me-2"></i>Welfare Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'welfare:contribution_list' %}" class="nav-link">
+                    <i class="bi bi-cash me-2"></i>Welfare Contributions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'welfare:event_list' %}" class="nav-link">
+                    <i class="bi bi-clipboard2-heart me-2"></i>Welfare Events
+                </a>
+            </li>
+            {% if user.profile.role != 'readonly' %}
+            <li class="nav-item">
+                <a href="{% url 'welfare:rate' %}" class="nav-link">
+                    <i class="bi bi-sliders me-2"></i>Contribution Rate
+                </a>
+            </li>
+            {% endif %}
             <li class="nav-section">Reports</li>
             <li class="nav-item">
                 <a href="{% url 'reports:income' %}" class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}">
@@ -280,6 +310,12 @@
             <li class="nav-item">
                 <a href="{% url 'reports:member_statement' %}" class="nav-link">
                     <i class="bi bi-person-lines-fill me-2"></i>Member Statement
+                </a>
+            </li>
+            <li class="nav-section">Year-End</li>
+            <li class="nav-item">
+                <a href="{% url 'yearend:list' %}" class="nav-link {% if request.resolver_match.app_name == 'yearend' %}active{% endif %}">
+                    <i class="bi bi-calendar-check me-2"></i>Year-End Withdrawals
                 </a>
             </li>
             <li class="nav-section">System</li>

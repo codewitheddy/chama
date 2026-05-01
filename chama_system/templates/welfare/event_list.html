@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Welfare Events{% endblock %}
+{% block page_title %}Welfare Events{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <form class="d-flex gap-2 flex-wrap" method="get" data-ajax-filter>
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+               placeholder="Search beneficiary..." style="width:200px;">
+        <select name="status" class="form-select form-select-sm" style="width:130px;">
+            <option value="" {% if not current_status %}selected{% endif %}>All Status</option>
+            <option value="open" {% if current_status == 'open' %}selected{% endif %}>Open</option>
+            <option value="closed" {% if current_status == 'closed' %}selected{% endif %}>Closed</option>
+        </select>
+        <a href="{% url 'welfare:event_list' %}" class="btn btn-sm btn-outline-danger ajax-clear"
+           {% if not q and not current_status %}style="display:none"{% endif %}>Clear</a>
+    </form>
+    {% if user.profile.role != 'readonly' %}
+    <a href="{% url 'welfare:event_add' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle me-1"></i>New Event
+    </a>
+    {% endif %}
+</div>
+
+<div id="results-container">
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-clipboard2-heart me-2"></i>Welfare Events
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr><th>#</th><th>Beneficiary</th><th>Description</th><th>Date Opened</th><th>Status</th><th>Event Total</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td class="text-muted">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                    <td class="fw-semibold">{{ event.beneficiary.name }}</td>
+                    <td class="text-muted">{{ event.description|truncatechars:50 }}</td>
+                    <td>{{ event.date_opened }}</td>
+                    <td>
+                        {% if event.status == 'open' %}
+                        <span class="badge bg-success">Open</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Closed</span>
+                        {% endif %}
+                    </td>
+                    <td style="color:#16a34a;">KES {{ event.event_total|floatformat:2 }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'welfare:event_detail' event.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if user.profile.role != 'readonly' %}
+                            <a href="{% url 'welfare:event_edit' event.pk %}" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% if user.profile.is_admin %}
+                            <a href="{% url 'welfare:event_delete' event.pk %}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                        No welfare events found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white border-top">
+        {% include 'includes/pagination.html' %}
+    </div>
+</div>
+</div>
+{% endblock %}

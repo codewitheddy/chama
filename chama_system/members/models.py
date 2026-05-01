@@ -1,12 +1,20 @@
 from django.db import models
+from django.core.validators import MinValueValidator
 from django.utils import timezone
+from decimal import Decimal
 
 
 class Member(models.Model):
     name = models.CharField(max_length=200)
     phone = models.CharField(max_length=20, unique=True)
-    registration_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    registration_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
     date_joined = models.DateField(default=timezone.localdate)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ['name']
@@ -25,4 +33,13 @@ class Member(models.Model):
         )['total'] or 0
 
     def total_loan_balance(self):
-        return sum(l.balance for l in self.loan_set.all())
+        from django.db.models import Sum, F, ExpressionWrapper, DecimalField
+        result = self.loan_set.exclude(status='cleared').aggregate(
+            balance=Sum(
+                ExpressionWrapper(
+                    F('total_payable') - F('amount_paid'),
+                    output_field=DecimalField()
+                )
+            )
+        )['balance']
+        return max(result or Decimal('0'), Decimal('0'))

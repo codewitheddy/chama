@@ -1,4 +1,6 @@
 from django.db import models
+from django.core.validators import MinValueValidator
+from decimal import Decimal
 from members.models import Member
 
 
@@ -11,7 +13,11 @@ MONTH_CHOICES = [
 
 class Contribution(models.Model):
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
     date = models.DateField()
     month = models.IntegerField(choices=MONTH_CHOICES)
     year = models.IntegerField(default=2024)

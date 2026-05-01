@@ -23,3 +23,9 @@ class AdminRequiredMixin(RoleRequiredMixin):
 
 class TreasurerRequiredMixin(RoleRequiredMixin):
     allowed_roles = ('admin', 'treasurer')
+
+
+class MemberAccessMixin(RoleRequiredMixin):
+    """Read access for all authenticated roles — blocks unauthenticated only.
+    Use on detail/list views that show financial data."""
+    allowed_roles = ('admin', 'treasurer', 'readonly')

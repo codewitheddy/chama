@@ -4,7 +4,7 @@ from .views import (
     LoanDeleteView, LoanDetailView, LoanCalculatorView,
     CollateralCreateView, CollateralDeleteView,
     GuarantorAddView, GuarantorDeleteView, GuarantorsReportView,
-    MemberContributionCheckView, LoanRolloverView,
+    MemberContributionCheckView, LoanRolloverView, LoanExportView,
 )
 
 app_name = 'loans'
@@ -12,6 +12,7 @@ app_name = 'loans'
 urlpatterns = [
     path('', LoanListView.as_view(), name='list'),
     path('add/', LoanCreateView.as_view(), name='add'),
+    path('export/', LoanExportView.as_view(), name='export'),
     path('<int:pk>/', LoanDetailView.as_view(), name='detail'),
     path('<int:pk>/edit/', LoanUpdateView.as_view(), name='edit'),
     path('<int:pk>/delete/', LoanDeleteView.as_view(), name='delete'),

@@ -1,6 +1,16 @@
 from django import forms
+import bleach
 from .models import Meeting, MeetingAttendance, MeetingPenalty, MeetingPenaltyRule
 from members.models import Member
+
+
+ALLOWED_MINUTES_TAGS = [
+    'p', 'br', 'strong', 'em', 'u', 's', 'blockquote',
+    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span',
+]
+ALLOWED_MINUTES_ATTRIBUTES = {
+    'span': ['style'],
+}
 
 
 class MeetingForm(forms.ModelForm):
@@ -9,7 +19,7 @@ class MeetingForm(forms.ModelForm):
         fields = ['date', 'venue', 'agenda', 'status', 'minutes']
         widgets = {
             'date':    forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'venue':   forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Chairman\'s house'}),
+            'venue':   forms.TextInput(attrs={'class': 'form-control', 'placeholder': "e.g. Chairman's house"}),
             'agenda':  forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
             'minutes': forms.Textarea(attrs={'class': 'form-control', 'rows': 6}),
             'status':  forms.Select(attrs={'class': 'form-select'}),
@@ -28,6 +38,15 @@ class MeetingForm(forms.ModelForm):
             return 'held'
         return self.cleaned_data.get('status')
 
+    def clean_minutes(self):
+        minutes = self.cleaned_data.get('minutes', '')
+        return bleach.clean(
+            minutes,
+            tags=ALLOWED_MINUTES_TAGS,
+            attributes=ALLOWED_MINUTES_ATTRIBUTES,
+            strip=True,
+        )
+
 
 class MeetingMinutesForm(forms.ModelForm):
     """Minutes-only form used when a meeting is held."""
@@ -37,6 +56,15 @@ class MeetingMinutesForm(forms.ModelForm):
         widgets = {
             'minutes': forms.Textarea(attrs={'class': 'form-control', 'rows': 6}),
         }
+
+    def clean_minutes(self):
+        minutes = self.cleaned_data.get('minutes', '')
+        return bleach.clean(
+            minutes,
+            tags=ALLOWED_MINUTES_TAGS,
+            attributes=ALLOWED_MINUTES_ATTRIBUTES,
+            strip=True,
+        )
 
 
 class MeetingPenaltyForm(forms.ModelForm):

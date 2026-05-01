@@ -2,6 +2,56 @@
 {% block title %}Member Statement{% endblock %}
 {% block page_title %}Member Statement{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Consistent table spacing across all statement tables */
+    .statement-table thead th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #475569;
+        background: #f8fafc;
+        padding: 10px 14px;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .statement-table tbody td {
+        padding: 11px 14px;
+        font-size: 0.875rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1e293b;
+    }
+    .statement-table tbody tr:last-child td { border-bottom: none; }
+    .statement-table tbody tr:hover td { background: #f8fafc; }
+    .statement-table tfoot td {
+        padding: 10px 14px;
+        font-size: 0.875rem;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+    }
+    .section-card { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 1.25rem; }
+    .section-card .section-header {
+        padding: 12px 16px;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #334155;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .empty-row td {
+        padding: 24px 14px !important;
+        color: #94a3b8;
+        font-size: 0.82rem;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 
 <!-- Member Selector -->
@@ -21,182 +71,227 @@
             <div class="col-md-2">
                 <button type="submit" class="btn btn-primary w-100">View</button>
             </div>
+            {% if selected_member %}
+            <div class="col-md-4 d-flex gap-2 justify-content-end">
+                <a href="{% url 'reports:export_member_statement_csv' %}?member={{ selected_member.pk }}"
+                   class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-filetype-csv me-1"></i>Export CSV
+                </a>
+                <a href="{% url 'reports:export_member_statement_pdf' %}?member={{ selected_member.pk }}"
+                   class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-filetype-pdf me-1"></i>Export PDF
+                </a>
+            </div>
+            {% endif %}
         </form>
     </div>
 </div>
 
 {% if selected_member %}
 
-<!-- Member Summary -->
-<div class="row g-3 mb-4">
-    <div class="col-sm-4">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="icon-box accent-green"><i class="bi bi-cash-stack"></i></div>
-                <div>
-                    <div class="stat-label">Total Contributions</div>
-                    <div class="stat-value">KES {{ selected_member.total_contributions|floatformat:2 }}</div>
+<div class="row g-3">
+
+    <!-- Left: Profile + Financial Summary -->
+    <div class="col-md-3">
+
+        <!-- Profile card -->
+        <div class="card mb-3">
+            <div class="card-body text-center py-4">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                     style="width:68px;height:68px;background:#eff6ff;">
+                    <i class="bi bi-person-fill" style="font-size:2rem;color:#2563eb;"></i>
+                </div>
+                <h5 class="fw-bold mb-1">{{ selected_member.name }}</h5>
+                <p class="text-muted small mb-1"><i class="bi bi-phone me-1"></i>{{ selected_member.phone|default:"—" }}</p>
+                <p class="text-muted small mb-1"><i class="bi bi-calendar me-1"></i>Joined {{ selected_member.date_joined }}</p>
+                <p class="text-muted small mb-3"><i class="bi bi-cash me-1"></i>Reg. Fee: KES {{ selected_member.registration_fee }}</p>
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <a href="{% url 'reports:export_member_statement_pdf' %}?member={{ selected_member.pk }}"
+                       class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-filetype-pdf me-1"></i>PDF
+                    </a>
+                    <a href="{% url 'reports:export_member_statement_csv' %}?member={{ selected_member.pk }}"
+                       class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-filetype-csv me-1"></i>CSV
+                    </a>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="col-sm-4">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="icon-box accent-amber"><i class="bi bi-credit-card"></i></div>
-                <div>
-                    <div class="stat-label">Total Loans</div>
-                    <div class="stat-value">KES {{ selected_member.total_loans|floatformat:2 }}</div>
-                </div>
+
+        <!-- Financial Summary -->
+        <div class="card">
+            <div class="card-header">Financial Summary</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Total Contributions</td>
+                        <td class="fw-semibold pe-3 py-2 text-end" style="color:#16a34a;font-size:0.82rem;">
+                            KES {{ selected_member.total_contributions|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Total Loans</td>
+                        <td class="fw-semibold pe-3 py-2 text-end" style="color:#d97706;font-size:0.82rem;">
+                            KES {{ selected_member.total_loans|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Loan Balance</td>
+                        <td class="fw-semibold pe-3 py-2 text-end text-danger" style="font-size:0.82rem;">
+                            KES {{ selected_member.total_loan_balance|floatformat:2 }}
+                        </td>
+                    </tr>
+                </table>
             </div>
         </div>
+
     </div>
-    <div class="col-sm-4">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="icon-box accent-rose"><i class="bi bi-exclamation-circle"></i></div>
-                <div>
-                    <div class="stat-label">Loan Balance</div>
-                    <div class="stat-value">KES {{ selected_member.total_loan_balance|floatformat:2 }}</div>
-                </div>
+
+    <!-- Right: Statement tables -->
+    <div class="col-md-9">
+
+        <!-- Contributions -->
+        <div class="section-card">
+            <div class="section-header">
+                <span><i class="bi bi-cash-stack me-2 text-success"></i>Contributions</span>
+            </div>
+            <div class="table-responsive">
+                <table class="statement-table table mb-0">
+                    <thead>
+                        <tr><th>Month</th><th>Year</th><th>Amount</th><th>Date</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for c in contributions %}
+                        <tr>
+                            <td>{{ c.get_month_display }}</td>
+                            <td>{{ c.year }}</td>
+                            <td style="color:#16a34a;font-weight:600;">KES {{ c.amount|floatformat:2 }}</td>
+                            <td class="text-muted">{{ c.date }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr class="empty-row"><td colspan="4">No contributions recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
-</div>
 
-<h6 class="mb-3 text-muted">Statement for: <strong style="color:#1e293b;">{{ selected_member.name }}</strong></h6>
+        <!-- Loans -->
+        <div class="section-card">
+            <div class="section-header">
+                <span><i class="bi bi-credit-card me-2 text-warning"></i>Loans</span>
+            </div>
+            <div class="table-responsive">
+                <table class="statement-table table mb-0">
+                    <thead>
+                        <tr><th>Amount</th><th>Interest</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for l in loans %}
+                        <tr>
+                            <td class="fw-semibold">KES {{ l.loan_amount|floatformat:2 }}</td>
+                            <td style="color:#16a34a;">KES {{ l.interest_amount|floatformat:2 }}</td>
+                            <td>KES {{ l.total_payable|floatformat:2 }}</td>
+                            <td style="color:#2563eb;">KES {{ l.amount_paid|floatformat:2 }}</td>
+                            <td class="fw-semibold {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
+                                KES {{ l.balance|floatformat:2 }}
+                            </td>
+                            <td>
+                                {% if l.status == 'cleared' %}
+                                    <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
+                                {% elif l.status == 'late' %}
+                                    <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
+                                {% else %}
+                                    <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr class="empty-row"><td colspan="6">No loans.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-<!-- Contributions -->
-<div class="card mb-3">
-    <div class="card-header"><i class="bi bi-cash-stack me-2"></i>Contributions</div>
-    <div class="table-responsive">
-        <table class="table table-sm mb-0">
-            <thead>
-                <tr><th>Month</th><th>Year</th><th>Amount</th><th>Date</th></tr>
-            </thead>
-            <tbody>
-                {% for c in contributions %}
-                <tr>
-                    <td>{{ c.get_month_display }}</td>
-                    <td>{{ c.year }}</td>
-                    <td style="color:#16a34a;">KES {{ c.amount|floatformat:2 }}</td>
-                    <td>{{ c.date }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4" class="text-muted text-center py-3">No contributions.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+        <!-- Loan Payments -->
+        <div class="section-card">
+            <div class="section-header">
+                <span><i class="bi bi-receipt me-2 text-primary"></i>Loan Payments</span>
+            </div>
+            <div class="table-responsive">
+                <table class="statement-table table mb-0">
+                    <thead>
+                        <tr><th>Loan Amount</th><th>Payment</th><th>Date</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payments %}
+                        <tr>
+                            <td>KES {{ p.loan.loan_amount|floatformat:2 }}</td>
+                            <td style="color:#2563eb;font-weight:600;">KES {{ p.amount|floatformat:2 }}</td>
+                            <td class="text-muted">{{ p.date }}</td>
+                            <td class="text-muted">{{ p.notes|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr class="empty-row"><td colspan="4">No payments recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-<!-- Loans -->
-<div class="card mb-3">
-    <div class="card-header"><i class="bi bi-credit-card me-2"></i>Loans</div>
-    <div class="table-responsive">
-        <table class="table table-sm mb-0">
-            <thead>
-                <tr><th>Amount</th><th>Interest</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-                {% for l in loans %}
-                <tr>
-                    <td>KES {{ l.loan_amount|floatformat:2 }}</td>
-                    <td style="color:#16a34a;">KES {{ l.interest_amount|floatformat:2 }}</td>
-                    <td>KES {{ l.total_payable|floatformat:2 }}</td>
-                    <td style="color:#2563eb;">KES {{ l.amount_paid|floatformat:2 }}</td>
-                    <td class="fw-semibold {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
-                        KES {{ l.balance|floatformat:2 }}
-                    </td>
-                    <td>
-                        {% if l.status == 'cleared' %}
-                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
-                        {% elif l.status == 'late' %}
-                            <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
-                        {% else %}
-                            <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="6" class="text-muted text-center py-3">No loans.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+        <!-- Loans Guaranteed -->
+        <div class="section-card" style="margin-bottom:0;">
+            <div class="section-header">
+                <span><i class="bi bi-shield-check me-2" style="color:#7c3aed;"></i>Loans Guaranteed</span>
+            </div>
+            <div class="table-responsive">
+                <table class="statement-table table mb-0">
+                    <thead>
+                        <tr><th>Borrower</th><th>Loan Amount</th><th>Guaranteed</th><th>Loan Balance</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for g in guarantees %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'loans:detail' g.loan.pk %}" class="fw-semibold text-decoration-none" style="color:#2563eb;">
+                                    {{ g.loan.member.name }}
+                                </a>
+                            </td>
+                            <td>KES {{ g.loan.loan_amount|floatformat:2 }}</td>
+                            <td style="color:#2563eb;font-weight:600;">KES {{ g.amount_guaranteed|floatformat:2 }}</td>
+                            <td class="fw-semibold {% if g.loan.balance == 0 %}text-success{% else %}text-danger{% endif %}">
+                                KES {{ g.loan.balance|floatformat:2 }}
+                            </td>
+                            <td>
+                                {% if g.loan.status == 'cleared' %}
+                                    <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
+                                {% elif g.loan.status == 'late' %}
+                                    <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
+                                {% else %}
+                                    <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr class="empty-row"><td colspan="5">Not guaranteeing any loans.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if guarantees %}
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="text-end fw-semibold text-muted" style="font-size:0.82rem;">Total Guaranteed</td>
+                            <td class="fw-bold" style="color:#2563eb;">
+                                KES {{ guarantees|length }} guarantee{{ guarantees|length|pluralize }}
+                            </td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
 
-<!-- Payments -->
-<div class="card mb-3">
-    <div class="card-header"><i class="bi bi-receipt me-2"></i>Loan Payments</div>
-    <div class="table-responsive">
-        <table class="table table-sm mb-0">
-            <thead>
-                <tr><th>Loan Amount</th><th>Payment</th><th>Date</th><th>Notes</th></tr>
-            </thead>
-            <tbody>
-                {% for p in payments %}
-                <tr>
-                    <td>KES {{ p.loan.loan_amount|floatformat:2 }}</td>
-                    <td style="color:#2563eb;">KES {{ p.amount|floatformat:2 }}</td>
-                    <td>{{ p.date }}</td>
-                    <td>{{ p.notes|default:"—" }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4" class="text-muted text-center py-3">No payments.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Guarantees Given -->
-<div class="card">
-    <div class="card-header"><i class="bi bi-shield-check me-2"></i>Loans Guaranteed</div>
-    <div class="table-responsive">
-        <table class="table table-sm mb-0">
-            <thead>
-                <tr><th>Borrower</th><th>Loan Amount</th><th>Guaranteed</th><th>Loan Balance</th><th>Loan Status</th></tr>
-            </thead>
-            <tbody>
-                {% for g in guarantees %}
-                <tr>
-                    <td>
-                        <a href="{% url 'loans:detail' g.loan.pk %}" class="fw-semibold text-decoration-none">
-                            {{ g.loan.member.name }}
-                        </a>
-                    </td>
-                    <td>KES {{ g.loan.loan_amount|floatformat:2 }}</td>
-                    <td style="color:#2563eb;">KES {{ g.amount_guaranteed|floatformat:2 }}</td>
-                    <td class="{% if g.loan.balance == 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
-                        KES {{ g.loan.balance|floatformat:2 }}
-                    </td>
-                    <td>
-                        {% if g.loan.status == 'cleared' %}
-                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
-                        {% elif g.loan.status == 'late' %}
-                            <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
-                        {% else %}
-                            <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="5" class="text-muted text-center py-3">Not guaranteeing any loans.</td></tr>
-                {% endfor %}
-            </tbody>
-            {% if guarantees %}
-            <tfoot class="table-light">
-                <tr>
-                    <td colspan="2" class="text-end fw-semibold">Total Guaranteed</td>
-                    <td class="fw-bold" style="color:#2563eb;">
-                        KES {% for g in guarantees %}{{ g.amount_guaranteed|floatformat:2 }}{% if not forloop.last %} + {% endif %}{% endfor %}
-                    </td>
-                    <td colspan="2"></td>
-                </tr>
-            </tfoot>
-            {% endif %}
-        </table>
     </div>
 </div>
 

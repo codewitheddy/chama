@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block title %}Record Year-End Withdrawal{% endblock %}
+{% block page_title %}Record Year-End Withdrawal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+
+        <!-- Distribution preview -->
+        <div class="card mb-3" style="border:2px solid #16a34a;background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+            <div class="card-header" style="background:transparent;border-bottom:1px solid #bbf7d0;">
+                <i class="bi bi-calculator me-2"></i>Year-End Distribution Preview
+                <span class="text-muted small ms-2">(auto-calculated from current records)</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <div class="text-muted small">Total Income</div>
+                        <div class="fw-bold">KES {{ total_income|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">Members' Principal Back</div>
+                        <div class="fw-bold" style="color:#2563eb;">KES {{ total_principal_back|floatformat:2 }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">contributions + reg fees</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">Profit Pool (to share proportionately)</div>
+                        <div class="fw-bold" style="color:#d97706;">KES {{ remaining_balance|floatformat:2 }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">interest + penalties collected</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">Basis for Profit Share</div>
+                        <div class="fw-bold" style="color:#16a34a;">Total contributions: KES {{ total_member_contributions|floatformat:2 }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">proportional to each member's contributions</div>
+                    </div>
+                </div>
+                <div class="alert alert-success mb-0 py-2">
+                    <strong>Total Payout: KES {{ total_payout|floatformat:2 }}</strong>
+                    — proportional profit shares based on each member's contributions.
+                </div>
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <!-- Section 1: Basic details -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="bi bi-calendar-check me-2"></i>Withdrawal Details
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">{{ form.financial_year.label }}</label>
+                            {{ form.financial_year }}
+                            {% if form.financial_year.errors %}
+                            <div class="text-danger small mt-1">{{ form.financial_year.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">{{ form.date.label }}</label>
+                            {{ form.date }}
+                            {% if form.date.errors %}
+                            <div class="text-danger small mt-1">{{ form.date.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Notes (optional)</label>
+                            {{ form.notes }}
+                        </div>
+                    </div>
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger mt-2">{{ form.non_field_errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Section 2: Per-member breakdown -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="bi bi-people me-2"></i>Per-Member Distribution Breakdown
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Member</th>
+                                <th class="text-end">Contributions</th>
+                                <th class="text-end">Reg. Fee</th>
+                                <th class="text-end">Principal Back</th>
+                                <th class="text-end">Profit Share</th>
+                                <th class="text-end fw-bold">Total Payout</th>
+                                <th style="width:160px;">Status for New Year</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in member_breakdown %}
+                            <tr>
+                                <td class="fw-semibold align-middle">{{ row.member.name }}</td>
+                                <td class="text-end align-middle">KES {{ row.contributions|floatformat:2 }}</td>
+                                <td class="text-end align-middle">KES {{ row.reg_fee|floatformat:2 }}</td>
+                                <td class="text-end align-middle" style="color:#2563eb;">KES {{ row.principal_back|floatformat:2 }}</td>
+                                <td class="text-end align-middle" style="color:#d97706;">KES {{ row.interest_share|floatformat:2 }}</td>
+                                <td class="text-end align-middle fw-bold" style="color:#16a34a;">KES {{ row.total|floatformat:2 }}</td>
+                                <td class="align-middle">
+                                    <select name="status_{{ row.member.pk }}" class="form-select form-select-sm">
+                                        <option value="continuing" selected>Continuing</option>
+                                        <option value="exiting">Exiting</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-3">No active members.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        {% if member_breakdown %}
+                        <tfoot class="table-success fw-semibold">
+                            <tr>
+                                <td>Total</td>
+                                <td class="text-end">KES {{ total_contributions_back|floatformat:2 }}</td>
+                                <td class="text-end">KES {{ total_reg_fees_back|floatformat:2 }}</td>
+                                <td class="text-end">KES {{ total_principal_back|floatformat:2 }}</td>
+                                <td class="text-end">KES {{ total_interest_shared|floatformat:2 }}</td>
+                                <td class="text-end">KES {{ total_payout|floatformat:2 }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-1"></i>Confirm & Record Year-End Withdrawal
+                </button>
+                <a href="{% url 'yearend:list' %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const dateInput = document.getElementById('{{ form.date.id_for_label }}');
+    if (dateInput && !dateInput.value) {
+        const today = new Date();
+        dateInput.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    }
+    const yearInput = document.getElementById('{{ form.financial_year.id_for_label }}');
+    if (yearInput && !yearInput.value) {
+        yearInput.value = new Date().getFullYear();
+    }
+});
+</script>
+{% endblock %}

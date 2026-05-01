@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block title %}{% if form.instance.pk %}Edit{% else %}Record{% endif %} Welfare Contribution{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Edit{% else %}Record{% endif %} Welfare Contribution{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        {% if current_rate %}
+        <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-info-circle-fill"></i>
+            <div>
+                Current monthly welfare contribution rate:
+                <strong>KES {{ current_rate.amount|floatformat:2 }}</strong>
+                (effective {{ current_rate.effective_date }}).
+                Each member must contribute exactly this amount.
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div>No monthly contribution rate has been set yet. Any amount will be accepted.</div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-cash me-2"></i>
+                {% if form.instance.pk %}Edit Welfare Contribution{% else %}Record Welfare Contribution{% endif %}
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <!-- Member -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.member.id_for_label }}">
+                            {{ form.member.label }}
+                        </label>
+                        {{ form.member }}
+                        {% if form.member.errors %}
+                        <div class="text-danger small mt-1">{{ form.member.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Amount — auto-filled from rate, read-only when rate is set -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.amount.id_for_label }}">
+                            {{ form.amount.label }}
+                        </label>
+                        {{ form.amount }}
+                        {% if current_rate %}
+                        <div class="form-text text-muted">
+                            Fixed at KES {{ current_rate.amount|floatformat:2 }} — set by the monthly rate.
+                        </div>
+                        {% endif %}
+                        {% if form.amount.errors %}
+                        <div class="text-danger small mt-1">{{ form.amount.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Date — defaults to today -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ form.date.id_for_label }}">
+                            {{ form.date.label }}
+                        </label>
+                        {{ form.date }}
+                        {% if form.date.errors %}
+                        <div class="text-danger small mt-1">{{ form.date.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Save
+                        </button>
+                        <a href="{% url 'welfare:contribution_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const memberSelect = document.getElementById('{{ form.member.id_for_label }}');
+    const amountInput  = document.getElementById('{{ form.amount.id_for_label }}');
+    const dateInput    = document.getElementById('{{ form.date.id_for_label }}');
+
+    {% if current_rate %}
+    const fixedRate = '{{ current_rate.amount }}';
+    {% else %}
+    const fixedRate = null;
+    {% endif %}
+
+    // Set today's date as default on page load (only for new records)
+    {% if not form.instance.pk %}
+    if (dateInput && !dateInput.value) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm   = String(today.getMonth() + 1).padStart(2, '0');
+        const dd   = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+    }
+    {% endif %}
+
+    // When a member is selected, auto-fill amount and date
+    if (memberSelect) {
+        memberSelect.addEventListener('change', function () {
+            if (!this.value) return;
+
+            // Auto-fill amount with the fixed rate
+            if (fixedRate && amountInput) {
+                amountInput.value = fixedRate;
+            }
+
+            // Auto-fill date with today if not already set
+            if (dateInput && !dateInput.value) {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm   = String(today.getMonth() + 1).padStart(2, '0');
+                const dd   = String(today.getDate()).padStart(2, '0');
+                dateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+        });
+    }
+
+    // If rate is set, lock the amount field so it can't be changed manually
+    {% if current_rate %}
+    if (amountInput) {
+        amountInput.setAttribute('readonly', 'readonly');
+        amountInput.style.backgroundColor = '#f8fafc';
+        amountInput.style.cursor = 'not-allowed';
+        // Pre-fill on load regardless of member selection
+        if (!amountInput.value) {
+            amountInput.value = fixedRate;
+        }
+    }
+    {% endif %}
+})();
+</script>
+{% endblock %}

@@ -7,6 +7,16 @@
 
     <!-- Left: Loan Form -->
     <div class="col-lg-6">
+        {% if available_fund_balance is not None %}
+        <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-info-circle-fill"></i>
+            <div>
+                Available fund balance:
+                <strong>KES {{ available_fund_balance|floatformat:2 }}</strong>
+                — loan amount cannot exceed this.
+            </div>
+        </div>
+        {% endif %}
         <div class="card">
             <div class="card-header">Loan Details</div>
             <div class="card-body">
@@ -78,6 +88,48 @@
                         {% if form.date_taken.errors %}<div class="text-danger small mt-1">{{ form.date_taken.errors }}</div>{% endif %}
                     </div>
 
+                    {% if object %}
+                    <!-- Edit-only fields: visible when adjusting an existing loan -->
+                    <div class="card mb-3" style="border:1px solid #fde68a;background:#fffbeb;">
+                        <div class="card-header py-2" style="background:#fef3c7;font-size:0.82rem;font-weight:600;">
+                            <i class="bi bi-pencil-square me-1"></i>Adjustment Fields
+                            <span class="text-muted fw-normal ms-1">(edit only)</span>
+                        </div>
+                        <div class="card-body pb-2">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">Due Date</label>
+                                {{ form.due_date }}
+                                {% if form.due_date.errors %}<div class="text-danger small mt-1">{{ form.due_date.errors }}</div>{% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">Amount Paid (KES)</label>
+                                {{ form.amount_paid }}
+                                {% if form.amount_paid.errors %}<div class="text-danger small mt-1">{{ form.amount_paid.errors }}</div>{% endif %}
+                                <div class="form-text">Sum of all recorded payments. Adjust only if correcting historical data.</div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold small">Status</label>
+                                {{ form.status }}
+                                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors }}</div>{% endif %}
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold small">Overdue Months (Penalty Applied)</label>
+                                <div class="input-group">
+                                    {{ form.late_penalty_months }}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="autoCalcBtn" title="Auto-calculate from due date">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>Auto
+                                    </button>
+                                </div>
+                                {% if form.late_penalty_months.errors %}<div class="text-danger small mt-1">{{ form.late_penalty_months.errors }}</div>{% endif %}
+                                <div class="form-text" id="penaltyHint">
+                                    Each month adds <strong>10% of principal</strong> to the total payable.
+                                </div>
+                                <div id="overdueCalcInfo" class="mt-1" style="display:none;font-size:0.8rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <div class="mb-4">
                         <label class="form-label fw-semibold small">Notes <span class="text-muted fw-normal">(optional)</span></label>
                         {{ form.notes }}
@@ -129,7 +181,7 @@
             <div class="card-body" style="font-size:0.82rem;color:#64748b;">
                 <strong style="color:#334155;">Interest Rules:</strong>
                 <ul class="mb-0 mt-1 ps-3">
-                    <li>Flat <strong>10%</strong> one-off interest on principal</li>
+                    <li>Flat <strong id="rateDisplay">10%</strong> one-off interest on principal</li>
                     <li>e.g. Borrow KES 2,000 → repay KES 2,200</li>
                     <li>A member cannot borrow while a previous loan is active.</li>
                     <li>Guarantors required if loan exceeds member's contributions.</li>
@@ -168,6 +220,8 @@ function fetchCalc() {
             document.getElementById('calcTotal').textContent     = fmt(data.total_payable);
             document.getElementById('calcSummary').style.display = 'flex';
             document.getElementById('calcPlaceholder').style.display = 'none';
+            const rateEl = document.getElementById('rateDisplay');
+            if (rateEl) rateEl.textContent = data.rate_percent + '%';
         });
 }
 
@@ -322,5 +376,153 @@ document.getElementById('addGuarantorBtn').addEventListener('click', addGuaranto
 memberSelect.addEventListener('change', checkGuarantorNeeded);
 amountInput.addEventListener('input', () => { fetchCalc(); checkGuarantorNeeded(); });
 durationInput.addEventListener('change', fetchCalc);
+
+// ── Overdue months auto-calculator (edit mode only) ──────────────
+(function () {
+    const dueDateInput = document.getElementById('id_due_date');
+    const penaltyInput = document.getElementById('id_late_penalty_months');
+    const autoBtn      = document.getElementById('autoCalcBtn');
+    const infoBox      = document.getElementById('overdueCalcInfo');
+    if (!dueDateInput || !penaltyInput) return;
+
+    // amountInput may be null on the edit form if the widget id differs — fall back gracefully
+    function getPrincipal() {
+        const el = document.getElementById('id_loan_amount');
+        return el ? (parseFloat(el.value) || 0) : 0;
+    }
+
+    function monthsOverdue(dueDateStr) {
+        if (!dueDateStr) return 0;
+        const due   = new Date(dueDateStr);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (today <= due) return 0;
+        let months = (today.getFullYear() - due.getFullYear()) * 12
+                   + (today.getMonth() - due.getMonth());
+        if (today.getDate() < due.getDate()) months -= 1;
+        return Math.max(months, 0);
+    }
+
+    function applyAutoCalc() {
+        const months = monthsOverdue(dueDateInput.value);
+        penaltyInput.value = months;
+        updatePenaltyInfo(months);
+        updateStatus();
+    }
+
+    function updateStatus() {
+        const statusSelect = document.getElementById('id_status');
+        if (!statusSelect) return;
+        const amountPaidEl = document.getElementById('id_amount_paid');
+        const amountPaid   = amountPaidEl ? parseFloat(amountPaidEl.value) || 0 : 0;
+        const principal    = getPrincipal();
+        const penaltyMonths = parseInt(penaltyInput.value) || 0;
+        const interest     = principal * 0.10;
+        const totalPayable = principal + interest + (interest * penaltyMonths);
+
+        if (amountPaid > 0 && totalPayable > 0 && amountPaid >= totalPayable) {
+            statusSelect.value = 'cleared';
+        } else {
+            const due = dueDateInput.value ? new Date(dueDateInput.value) : null;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (due && today > due) {
+                statusSelect.value = 'late';
+            } else {
+                statusSelect.value = 'active';
+            }
+        }
+    }
+
+    function updatePenaltyInfo(months) {
+        if (!infoBox) return;
+        const principal = getPrincipal();
+        if (months <= 0) {
+            infoBox.style.display = 'none';
+            return;
+        }
+        const penaltyPerMonth = principal > 0 ? principal * 0.10 : 0;
+        const totalPenalty    = penaltyPerMonth * months;
+        const interest        = penaltyPerMonth;
+        const totalPayable    = principal > 0 ? principal + interest + totalPenalty : 0;
+
+        const fmt2 = n => n.toLocaleString('en-KE', {minimumFractionDigits: 2});
+        infoBox.innerHTML = `
+            <div class="p-2 rounded" style="background:#fef9c3;border:1px solid #fde68a;">
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Overdue months:</span><strong>${months}</strong>
+                </div>
+                ${principal > 0 ? `
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Penalty/month:</span>
+                    <strong>KES ${fmt2(penaltyPerMonth)}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Total penalties:</span>
+                    <strong>KES ${fmt2(totalPenalty)}</strong>
+                </div>
+                <div class="d-flex justify-content-between border-top mt-1 pt-1">
+                    <span class="fw-semibold">New total payable:</span>
+                    <strong style="color:#dc2626;">KES ${fmt2(totalPayable)}</strong>
+                </div>` : `
+                <div class="text-muted small">Enter loan amount above to see penalty breakdown.</div>`}
+            </div>`;
+        infoBox.style.display = 'block';
+    }
+
+    dueDateInput.addEventListener('change', applyAutoCalc);
+
+    const amtEl = document.getElementById('id_loan_amount');
+    if (amtEl) amtEl.addEventListener('input', () => updatePenaltyInfo(parseInt(penaltyInput.value) || 0));
+
+    penaltyInput.addEventListener('input', () => updatePenaltyInfo(parseInt(penaltyInput.value) || 0));
+
+    const amtPaidEl = document.getElementById('id_amount_paid');
+    if (amtPaidEl) amtPaidEl.addEventListener('input', updateStatus);
+
+    if (autoBtn) autoBtn.addEventListener('click', applyAutoCalc);
+
+    // ── Auto-fill due date from date_taken + duration_months ──────
+    const dateTakenInput = document.getElementById('id_date_taken');
+    const durationSelect = document.getElementById('id_duration_months');
+
+    function calcDueDate(dateTakenStr, durationMonths) {
+        if (!dateTakenStr || !durationMonths) return null;
+        const d = new Date(dateTakenStr);
+        if (isNaN(d)) return null;
+        // Add duration months, clamping day to end of target month
+        const targetMonth = d.getMonth() + parseInt(durationMonths);
+        const year  = d.getFullYear() + Math.floor(targetMonth / 12);
+        const month = targetMonth % 12;
+        // Last day of target month
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const day = Math.min(d.getDate(), lastDay);
+        const due = new Date(year, month, day);
+        return due.toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+
+    function autoFillDueDate() {
+        const dateTaken = dateTakenInput ? dateTakenInput.value : '';
+        const duration  = durationSelect ? durationSelect.value : '';
+        const computed  = calcDueDate(dateTaken, duration);
+        if (computed) {
+            dueDateInput.value = computed;
+            applyAutoCalc();
+        }
+    }
+
+    if (dateTakenInput) dateTakenInput.addEventListener('change', autoFillDueDate);
+    if (durationSelect) durationSelect.addEventListener('change', autoFillDueDate);
+
+    // Run on page load after DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        // Always recompute due date from date_taken + duration on edit load
+        // so stale stored values get corrected before overdue calc runs
+        autoFillDueDate();
+    });
+    if (document.readyState !== 'loading') {
+        autoFillDueDate();
+    }
+})();
 </script>
 {% endblock %}

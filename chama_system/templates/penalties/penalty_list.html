@@ -55,9 +55,12 @@
         <a href="{% url 'penalties:list' %}" class="btn btn-sm btn-outline-danger ajax-clear"
            {% if not q and not selected_month and not selected_year and not selected_paid %}style="display:none"{% endif %}>Clear</a>
     </form>
-    <a href="{% url 'penalties:add' %}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-circle me-1"></i>Record Penalty
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'penalties:add' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Record Penalty
+        </a>
+        {% include 'includes/export_buttons.html' with export_url='/penalties/export/' %}
+    </div>
 </div>
 
 <div id="results-container">

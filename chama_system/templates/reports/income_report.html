@@ -5,10 +5,12 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted small mb-0">Summary of all income streams collected by the chama.</p>
-    <a href="{% url 'reports:export_members' %}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-download me-1"></i>Export Members CSV
-    </a>
+    <p class="text-muted small mb-0">Summary of all income streams collected by DC Welfare Group.</p>
+    <div class="d-flex gap-2">
+        <a href="{% url 'reports:export_income_pdf' %}" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-filetype-pdf me-1"></i>Download PDF
+        </a>
+    </div>
 </div>
 
 <!-- Stat Cards -->

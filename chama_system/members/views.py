@@ -1,6 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView, TemplateView
+from django.views import View
 from django.urls import reverse_lazy
 from django.db import models
 from django.contrib import messages
@@ -9,10 +10,11 @@ import csv
 import io
 from .models import Member
 from .forms import MemberForm
-from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin
+from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin
+from utils.exports import export_csv, export_pdf
 
 
-class MemberListView(LoginRequiredMixin, ListView):
+class MemberListView(MemberAccessMixin, ListView):
     model = Member
     template_name = 'members/member_list.html'
     context_object_name = 'members'
@@ -54,7 +56,7 @@ class MemberDeleteView(AdminRequiredMixin, SuccessMessageMixin, DeleteView):
     success_message = "Member deleted."
 
 
-class MemberDetailView(LoginRequiredMixin, DetailView):
+class MemberDetailView(MemberAccessMixin, DetailView):
     model = Member
     template_name = 'members/member_detail.html'
     context_object_name = 'member'
@@ -114,3 +116,23 @@ class MemberImportView(TreasurerRequiredMixin, TemplateView):
             messages.error(request, err)
 
         return redirect('members:list')
+
+
+class MemberExportView(MemberAccessMixin, View):
+    def get(self, request):
+        format_type = request.GET.get('format', 'csv')
+        qs = Member.objects.all()
+        q = request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(models.Q(name__icontains=q) | models.Q(phone__icontains=q))
+
+        fields = [
+            ('name', 'Name'),
+            ('phone', 'Phone'),
+            ('date_joined', 'Date Joined'),
+            ('registration_fee', 'Reg. Fee (KES)'),
+            (lambda obj: f"KES {obj.total_contributions():,.2f}", 'Total Contributions'),
+        ]
+        if format_type == 'pdf':
+            return export_pdf(qs, 'members', 'Members List', fields)
+        return export_csv(qs, 'members', fields)

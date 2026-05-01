@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}Welfare Dashboard{% endblock %}
+{% block page_title %}Welfare Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card" style="border:2px solid #16a34a;background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box" style="background:#16a34a;color:#fff;"><i class="bi bi-heart-pulse-fill"></i></div>
+                <div>
+                    <div class="stat-label" style="color:#166534;">Welfare Balance</div>
+                    <div class="stat-value" style="color:#15803d;">KES {{ welfare_balance|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box accent-blue"><i class="bi bi-cash"></i></div>
+                <div>
+                    <div class="stat-label">Total Contributions</div>
+                    <div class="stat-value">KES {{ total_contributions|floatformat:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box accent-rose"><i class="bi bi-arrow-up-circle"></i></div>
+                <div>
+                    <div class="stat-label">Total Disbursed</div>
+                    <div class="stat-value" style="color:#e11d48;">KES {{ total_disbursements|floatformat:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box accent-amber"><i class="bi bi-clipboard2-heart"></i></div>
+                <div>
+                    <div class="stat-label">Open Events</div>
+                    <div class="stat-value">{{ open_events_count }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Rate + Quick Links -->
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">Monthly Contribution Rate:</span>
+        {% if current_rate %}
+        <span class="badge bg-success fs-6">KES {{ current_rate.amount|floatformat:2 }}</span>
+        <span class="text-muted small">(effective {{ current_rate.effective_date }})</span>
+        {% else %}
+        <span class="badge bg-secondary">Not set</span>
+        {% endif %}
+        {% if user.profile.role != 'readonly' %}
+        <a href="{% url 'welfare:rate' %}" class="btn btn-sm btn-outline-primary ms-2">
+            <i class="bi bi-pencil me-1"></i>Set Rate
+        </a>
+        {% endif %}
+    </div>
+    <div class="d-flex gap-2">
+        {% if user.profile.role != 'readonly' %}
+        <a href="{% url 'welfare:contribution_add' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Record Contribution
+        </a>
+        <a href="{% url 'welfare:event_add' %}" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-clipboard2-heart me-1"></i>New Event
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Recent Contributions -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-cash me-2 text-success"></i>Recent Welfare Contributions</span>
+                <a href="{% url 'welfare:contribution_list' %}" class="btn btn-sm btn-outline-secondary">View all</a>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for c in recent_contributions %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
+                    <div>
+                        <div class="fw-semibold" style="font-size:0.875rem;">{{ c.member.name }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">{{ c.get_month_display }} {{ c.year }}</div>
+                    </div>
+                    <span class="badge rounded-pill" style="background:#f0fdf4;color:#16a34a;">KES {{ c.amount }}</span>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted text-center py-4" style="font-size:0.875rem;">No contributions yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Open Events -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clipboard2-heart me-2 text-danger"></i>Open Welfare Events</span>
+                <a href="{% url 'welfare:event_list' %}" class="btn btn-sm btn-outline-secondary">View all</a>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for event in open_events %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
+                    <div>
+                        <div class="fw-semibold" style="font-size:0.875rem;">{{ event.beneficiary.name }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">{{ event.description|truncatechars:50 }}</div>
+                    </div>
+                    <a href="{% url 'welfare:event_detail' event.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted text-center py-4" style="font-size:0.875rem;">No open events.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

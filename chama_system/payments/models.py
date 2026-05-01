@@ -1,4 +1,6 @@
 from django.db import models
+from django.core.validators import MinValueValidator
+from decimal import Decimal
 from members.models import Member
 from loans.models import Loan
 
@@ -6,7 +8,11 @@ from loans.models import Loan
 class Payment(models.Model):
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
     loan = models.ForeignKey(Loan, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
     date = models.DateField()
     notes = models.TextField(blank=True)
 

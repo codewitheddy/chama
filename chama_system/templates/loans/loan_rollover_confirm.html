@@ -6,6 +6,18 @@
 <div class="row justify-content-center">
     <div class="col-md-6">
 
+        {% if available_fund_balance is not None %}
+        <div class="alert {% if outstanding > available_fund_balance %}alert-danger{% else %}alert-info{% endif %} d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-info-circle-fill"></i>
+            <div>
+                Available fund balance: <strong>KES {{ available_fund_balance|floatformat:2 }}</strong>
+                {% if outstanding > available_fund_balance %}
+                — <strong class="text-danger">Rollover will be rejected (outstanding exceeds balance)</strong>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         <div class="card mb-3">
             <div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Rollover Summary</div>
             <div class="card-body p-0">

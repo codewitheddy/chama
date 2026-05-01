@@ -16,4 +16,6 @@ urlpatterns = [
     path('reports/', include('reports.urls')),
     path('penalties/', include('penalties.urls')),
     path('meetings/', include('meetings.urls')),
+    path('welfare/', include('welfare.urls')),
+    path('yearend/', include('yearend.urls', namespace='yearend')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,11 +1,17 @@
-from django.db import models
+from django.db import models, transaction
+from django.core.validators import MinValueValidator
+from decimal import Decimal
 from members.models import Member
 
 
 class MeetingPenaltyRule(models.Model):
     """Configurable penalty types — admin can add/edit/delete these."""
     name = models.CharField(max_length=100, unique=True)
-    default_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    default_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
     description = models.CharField(max_length=255, blank=True)
 
     class Meta:
@@ -39,6 +45,33 @@ class Meeting(models.Model):
         from django.db.models import Sum
         return self.penalties.aggregate(t=Sum('amount'))['t'] or 0
 
+    @property
+    def attendance_summary(self):
+        from django.db.models import Count
+        counts = {
+            row['status']: row['count']
+            for row in self.attendance.values('status').annotate(count=Count('pk'))
+        }
+        return {
+            'present':           counts.get('present', 0),
+            'late':              counts.get('late', 0),
+            'absent_apology':    counts.get('absent_apology', 0),
+            'absent_no_apology': counts.get('absent_no_apology', 0),
+            'total':             sum(counts.values()),
+        }
+
+    def auto_populate_attendance(self):
+        """Pre-populate all current members as 'present'. Call after meeting creation."""
+        with transaction.atomic():
+            existing = set(self.attendance.values_list('member_id', flat=True))
+            new_records = [
+                MeetingAttendance(meeting=self, member=m, status='present')
+                for m in Member.objects.exclude(pk__in=existing)
+            ]
+            if new_records:
+                MeetingAttendance.objects.bulk_create(new_records, ignore_conflicts=True)
+        return len(new_records)
+
 
 class MeetingAttendance(models.Model):
     STATUS_CHOICES = [
@@ -64,7 +97,11 @@ class MeetingPenalty(models.Model):
     meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name='penalties')
     member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='meeting_penalties')
     rule = models.ForeignKey(MeetingPenaltyRule, on_delete=models.SET_NULL, null=True, blank=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
     reason = models.CharField(max_length=255)
     penalty_record = models.OneToOneField(
         'penalties.Penalty', on_delete=models.SET_NULL,

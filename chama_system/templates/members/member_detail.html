@@ -2,6 +2,43 @@
 {% block title %}{{ member.name }}{% endblock %}
 {% block page_title %}Member Profile{% endblock %}
 
+{% block extra_css %}
+<style>
+    .statement-table thead th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #475569;
+        background: #f8fafc;
+        padding: 10px 14px;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .statement-table tbody td {
+        padding: 11px 14px;
+        font-size: 0.875rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1e293b;
+    }
+    .statement-table tbody tr:last-child td { border-bottom: none; }
+    .statement-table tbody tr:hover td { background: #f8fafc; }
+    .statement-table tfoot td {
+        padding: 10px 14px;
+        font-size: 0.875rem;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+    }
+    .empty-row td {
+        padding: 24px 14px !important;
+        color: #94a3b8;
+        font-size: 0.82rem;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row g-3">
 
@@ -17,9 +54,17 @@
                 <p class="text-muted small mb-1"><i class="bi bi-phone me-1"></i>{{ member.phone }}</p>
                 <p class="text-muted small mb-1"><i class="bi bi-calendar me-1"></i>Joined {{ member.date_joined }}</p>
                 <p class="text-muted small mb-3"><i class="bi bi-cash me-1"></i>Reg. Fee: KES {{ member.registration_fee }}</p>
-                <div class="d-flex gap-2 justify-content-center">
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
                     <a href="{% url 'members:edit' member.pk %}" class="btn btn-sm btn-outline-warning">
                         <i class="bi bi-pencil me-1"></i>Edit
+                    </a>
+                    <a href="{% url 'reports:export_member_statement_pdf' %}?member={{ member.pk }}"
+                       class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-filetype-pdf me-1"></i>PDF
+                    </a>
+                    <a href="{% url 'reports:export_member_statement_csv' %}?member={{ member.pk }}"
+                       class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-filetype-csv me-1"></i>CSV
                     </a>
                     <a href="{% url 'members:list' %}" class="btn btn-sm btn-outline-secondary">Back</a>
                 </div>
@@ -84,7 +129,7 @@
                 </a>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm mb-0">
+                <table class="statement-table table mb-0">
                     <thead>
                         <tr><th>Month</th><th>Year</th><th>Amount</th><th>Date</th></tr>
                     </thead>
@@ -93,11 +138,11 @@
                         <tr>
                             <td>{{ c.get_month_display }}</td>
                             <td>{{ c.year }}</td>
-                            <td style="color:#16a34a;">KES {{ c.amount|floatformat:2 }}</td>
-                            <td>{{ c.date }}</td>
+                            <td style="color:#16a34a;font-weight:600;">KES {{ c.amount|floatformat:2 }}</td>
+                            <td class="text-muted">{{ c.date }}</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="4" class="text-muted text-center py-3">No contributions.</td></tr>
+                        <tr class="empty-row"><td colspan="4">No contributions.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -115,16 +160,16 @@
                 {% endif %}
             </div>
             <div class="table-responsive">
-                <table class="table table-sm mb-0">
+                <table class="statement-table table mb-0">
                     <thead>
                         <tr><th>Date</th><th>Reason</th><th>Amount</th><th>Status</th></tr>
                     </thead>
                     <tbody>
                         {% for p in penalties %}
                         <tr>
-                            <td>{{ p.date }}</td>
+                            <td class="text-muted">{{ p.date }}</td>
                             <td>{{ p.reason }}</td>
-                            <td style="color:#e11d48;">KES {{ p.amount|floatformat:2 }}</td>
+                            <td style="color:#e11d48;font-weight:600;">KES {{ p.amount|floatformat:2 }}</td>
                             <td>
                                 {% if p.paid %}
                                     <span class="badge" style="background:#f0fdf4;color:#16a34a;">
@@ -136,13 +181,13 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="4" class="text-muted text-center py-3">No penalties.</td></tr>
+                        <tr class="empty-row"><td colspan="4">No penalties.</td></tr>
                         {% endfor %}
                     </tbody>
                     {% if penalties %}
-                    <tfoot class="table-light">
+                    <tfoot>
                         <tr>
-                            <td colspan="2" class="text-end fw-semibold">Total</td>
+                            <td colspan="2" class="text-end fw-semibold text-muted" style="font-size:0.82rem;">Total</td>
                             <td class="fw-bold" style="color:#e11d48;">KES {{ total_penalties_issued|floatformat:2 }}</td>
                             <td></td>
                         </tr>
@@ -161,17 +206,17 @@
                 </a>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm mb-0">
+                <table class="statement-table table mb-0">
                     <thead>
                         <tr><th>Amount</th><th>Interest</th><th>Total</th><th>Balance</th><th>Status</th><th></th></tr>
                     </thead>
                     <tbody>
                         {% for l in loans %}
                         <tr>
-                            <td>KES {{ l.loan_amount|floatformat:2 }}</td>
+                            <td class="fw-semibold">KES {{ l.loan_amount|floatformat:2 }}</td>
                             <td style="color:#16a34a;">KES {{ l.interest_amount|floatformat:2 }}</td>
                             <td>KES {{ l.total_payable|floatformat:2 }}</td>
-                            <td class="{% if l.balance == 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                            <td class="fw-semibold {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
                                 KES {{ l.balance|floatformat:2 }}
                             </td>
                             <td>
@@ -190,7 +235,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" class="text-muted text-center py-3">No loans.</td></tr>
+                        <tr class="empty-row"><td colspan="6">No loans.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -201,7 +246,7 @@
         <div class="card mb-3">
             <div class="card-header"><i class="bi bi-receipt me-2"></i>Loan Payments</div>
             <div class="table-responsive">
-                <table class="table table-sm mb-0">
+                <table class="statement-table table mb-0">
                     <thead>
                         <tr><th>Loan</th><th>Amount</th><th>Date</th><th>Notes</th></tr>
                     </thead>
@@ -209,12 +254,12 @@
                         {% for p in payments %}
                         <tr>
                             <td>KES {{ p.loan.loan_amount|floatformat:2 }}</td>
-                            <td style="color:#2563eb;">KES {{ p.amount|floatformat:2 }}</td>
-                            <td>{{ p.date }}</td>
-                            <td>{{ p.notes|default:"—" }}</td>
+                            <td style="color:#2563eb;font-weight:600;">KES {{ p.amount|floatformat:2 }}</td>
+                            <td class="text-muted">{{ p.date }}</td>
+                            <td class="text-muted">{{ p.notes|default:"—" }}</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="4" class="text-muted text-center py-3">No payments.</td></tr>
+                        <tr class="empty-row"><td colspan="4">No payments.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -225,7 +270,7 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-shield-check me-2"></i>Loans Guaranteed</div>
             <div class="table-responsive">
-                <table class="table table-sm mb-0">
+                <table class="statement-table table mb-0">
                     <thead>
                         <tr><th>Borrower</th><th>Loan Amount</th><th>Guaranteed</th><th>Balance</th><th>Status</th></tr>
                     </thead>
@@ -233,13 +278,13 @@
                         {% for g in guarantees %}
                         <tr>
                             <td>
-                                <a href="{% url 'loans:detail' g.loan.pk %}" class="fw-semibold text-decoration-none">
+                                <a href="{% url 'loans:detail' g.loan.pk %}" class="fw-semibold text-decoration-none" style="color:#2563eb;">
                                     {{ g.loan.member.name }}
                                 </a>
                             </td>
                             <td>KES {{ g.loan.loan_amount|floatformat:2 }}</td>
-                            <td style="color:#2563eb;">KES {{ g.amount_guaranteed|floatformat:2 }}</td>
-                            <td class="{% if g.loan.balance == 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                            <td style="color:#2563eb;font-weight:600;">KES {{ g.amount_guaranteed|floatformat:2 }}</td>
+                            <td class="fw-semibold {% if g.loan.balance == 0 %}text-success{% else %}text-danger{% endif %}">
                                 KES {{ g.loan.balance|floatformat:2 }}
                             </td>
                             <td>
@@ -253,7 +298,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="5" class="text-muted text-center py-3">Not guaranteeing any loans.</td></tr>
+                        <tr class="empty-row"><td colspan="5">Not guaranteeing any loans.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

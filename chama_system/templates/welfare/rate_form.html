@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Contribution Rate{% endblock %}
+{% block page_title %}Monthly Welfare Contribution Rate{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <!-- Set new rate form -->
+    <div class="col-lg-5">
+        {% if current_rate %}
+        <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-check-circle-fill"></i>
+            <div>
+                Current rate: <strong>KES {{ current_rate.amount|floatformat:2 }}</strong>
+                &mdash; effective {{ current_rate.effective_date }}
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div>No rate has been set yet.</div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-sliders me-2"></i>Set New Monthly Rate
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Setting a new rate creates a new entry. The rate with the most recent
+                    effective date is used for each contribution period.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Save Rate
+                        </button>
+                        <a href="{% url 'welfare:dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rate history -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-2"></i>Rate History
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>#</th><th>Amount (KES)</th><th>Effective From</th><th>Set On</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for rate in rate_history %}
+                        <tr {% if forloop.first %}class="table-success fw-semibold"{% endif %}>
+                            <td class="text-muted">{{ forloop.counter }}</td>
+                            <td>
+                                KES {{ rate.amount|floatformat:2 }}
+                                {% if forloop.first %}
+                                <span class="badge bg-success ms-1">Current</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ rate.effective_date }}</td>
+                            <td class="text-muted">{{ rate.created_at|date:"d M Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">No rates configured yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

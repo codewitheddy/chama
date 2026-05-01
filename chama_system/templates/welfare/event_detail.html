@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}Welfare Event — {{ event.beneficiary.name }}{% endblock %}
+{% block page_title %}Welfare Event{% endblock %}
+
+{% block content %}
+<!-- Event Header -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span>
+            <i class="bi bi-clipboard2-heart me-2"></i>
+            Event #{{ event.pk }} — {{ event.beneficiary.name }}
+        </span>
+        <div class="d-flex gap-2 align-items-center">
+            {% if event.status == 'open' %}
+            <span class="badge bg-success">Open</span>
+            {% if user.profile.role != 'readonly' %}
+            <form method="post" action="{% url 'welfare:event_close' event.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-check2-all me-1"></i>Close Event
+                </button>
+            </form>
+            {% endif %}
+            {% else %}
+            <span class="badge bg-secondary">Closed</span>
+            {% endif %}
+            {% if user.profile.role != 'readonly' %}
+            <a href="{% url 'welfare:event_edit' event.pk %}" class="btn btn-sm btn-outline-warning">
+                <i class="bi bi-pencil me-1"></i>Edit
+            </a>
+            {% if user.profile.role != 'readonly' %}
+            <a href="{% url 'welfare:event_export' event.pk %}" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-filetype-pdf me-1"></i>Export PDF
+            </a>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="text-muted small">Beneficiary</div>
+                <div class="fw-semibold">{{ event.beneficiary.name }}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Date Opened</div>
+                <div>{{ event.date_opened }}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Description</div>
+                <div>{{ event.description }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fund Disbursement -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-safe2 me-2"></i>Welfare Fund Disbursement</span>
+        {% if not disbursement and user.profile.role != 'readonly' and event.status == 'open' %}
+        <a href="{% url 'welfare:disbursement_add' event.pk %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Add Disbursement
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if disbursement %}
+        <div class="row g-3 align-items-center">
+            <div class="col-md-3">
+                <div class="text-muted small">Amount</div>
+                <div class="fw-bold fs-5" style="color:#16a34a;">KES {{ disbursement.amount|floatformat:2 }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Date</div>
+                <div>{{ disbursement.date }}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Notes</div>
+                <div>{{ disbursement.notes|default:"—" }}</div>
+            </div>
+            {% if user.profile.role != 'readonly' %}
+            <div class="col-md-2 text-end">
+                <a href="{% url 'welfare:disbursement_edit' disbursement.pk %}" class="btn btn-sm btn-outline-warning me-1">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                {% if user.profile.is_admin %}
+                <a href="{% url 'welfare:disbursement_delete' disbursement.pk %}" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">
+            <i class="bi bi-info-circle me-1"></i>No disbursement from the welfare fund has been recorded for this event.
+            {% if welfare_balance %}
+            Available balance: <strong>KES {{ welfare_balance|floatformat:2 }}</strong>
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Member Support Contributions -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people me-2"></i>Member Support Contributions</span>
+        {% if user.profile.role != 'readonly' and event.status == 'open' %}
+        <a href="{% url 'welfare:support_add' event.pk %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Add Contribution
+        </a>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr><th>#</th><th>Contributor</th><th>Amount</th><th>Date</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for sc in support_contributions %}
+                <tr>
+                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td class="fw-semibold">{{ sc.contributor.name }}</td>
+                    <td style="color:#16a34a;">KES {{ sc.amount|floatformat:2 }}</td>
+                    <td>{{ sc.date }}</td>
+                    <td>
+                        {% if user.profile.role != 'readonly' %}
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'welfare:support_edit' sc.pk %}" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% if user.profile.is_admin %}
+                            <a href="{% url 'welfare:support_delete' sc.pk %}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        No member support contributions recorded.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Event Total Summary -->
+<div class="card border-success">
+    <div class="card-body">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="text-muted small">Welfare Fund Disbursement</div>
+                <div class="fw-semibold">KES {{ event.disbursement_amount|floatformat:2 }}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Member Support Total</div>
+                <div class="fw-semibold">KES {{ event.support_total|floatformat:2 }}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Total Received by {{ event.beneficiary.name }}</div>
+                <div class="fw-bold fs-4" style="color:#16a34a;">KES {{ event_total|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

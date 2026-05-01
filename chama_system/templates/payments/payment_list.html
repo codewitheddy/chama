@@ -10,18 +10,18 @@
         <a href="{% url 'payments:list' %}" class="btn btn-sm btn-outline-danger ajax-clear"
            {% if not q %}style="display:none"{% endif %}>Clear</a>
     </form>
-    <a href="{% url 'payments:add' %}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-circle me-1"></i>Record Payment
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'payments:add' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Record Payment
+        </a>
+        {% include 'includes/export_buttons.html' with export_url='/payments/export/' %}
+    </div>
 </div>
 
 <div id="results-container">
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-receipt me-2"></i>All Payments</span>
-        <a href="{% url 'reports:export_payments' %}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-download me-1"></i>Export CSV
-        </a>
     </div>
     <div class="table-responsive">
         <table class="table table-hover mb-0">

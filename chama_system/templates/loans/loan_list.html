@@ -53,6 +53,14 @@
             </div>
         </div>
     </div>
+    <div class="col-6 col-lg-2">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Total Paid</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#2563eb;">KES {{ total_paid|floatformat:0 }}</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Toolbar -->
@@ -74,11 +82,16 @@
                     data-status="cleared">Cleared</button>
             <button type="button" class="btn btn-sm {% if current_status == 'late' %}btn-danger{% else %}btn-outline-secondary{% endif %}"
                     data-status="late">Late</button>
+            <button type="button" class="btn btn-sm {% if current_status == 'unpaid' %}btn-dark{% else %}btn-outline-secondary{% endif %}"
+                    data-status="unpaid">Unpaid</button>
         </div>
     </div>
-    <a href="{% url 'loans:add' %}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-circle me-1"></i>Issue Loan
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'loans:add' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Issue Loan
+        </a>
+        {% include 'includes/export_buttons.html' with export_url='/loans/export/' %}
+    </div>
 </div>
 
 <div id="results-container">
@@ -89,7 +102,7 @@
                 <thead>
                     <tr>
                         <th>#</th><th>Member</th><th>Amount</th><th>Duration</th>
-                        <th>Interest</th><th>Total</th><th>Balance</th>
+                        <th>Interest</th><th>Total</th><th>Paid</th><th>Balance</th>
                         <th>Progress</th><th>Due Date</th><th>Status</th><th></th>
                     </tr>
                 </thead>
@@ -102,6 +115,13 @@
                         <td>{{ l.duration_months }} mo.</td>
                         <td style="color:#16a34a;">KES {{ l.interest_amount|floatformat:0 }}</td>
                         <td>KES {{ l.total_payable|floatformat:0 }}</td>
+                        <td style="color:#2563eb;">
+                            {% if l.amount_paid > 0 %}
+                                KES {{ l.amount_paid|floatformat:0 }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
                         <td class="fw-semibold {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
                             KES {{ l.balance|floatformat:0 }}
                         </td>
@@ -134,7 +154,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="11" class="text-center text-muted py-5">No loans found.</td></tr>
+                    <tr><td colspan="12" class="text-center text-muted py-5">No loans found.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -161,6 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
             else if (active === 'active') this.className = 'btn btn-sm btn-warning';
             else if (active === 'cleared') this.className = 'btn btn-sm btn-success';
             else if (active === 'late') this.className = 'btn btn-sm btn-danger';
+            else if (active === 'unpaid') this.className = 'btn btn-sm btn-dark';
             form.dispatchEvent(new Event('submit'));
         });
     });

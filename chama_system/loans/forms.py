@@ -29,6 +29,12 @@ class LoanForm(forms.ModelForm):
     def clean_duration_months(self):
         return int(self.cleaned_data['duration_months'])
 
+    def clean_loan_amount(self):
+        amount = self.cleaned_data.get('loan_amount')
+        if amount is None or amount <= 0:
+            raise ValidationError("Loan amount must be greater than zero.")
+        return amount
+
     def clean(self):
         cleaned = super().clean()
         member = cleaned.get('member')
@@ -77,6 +83,68 @@ class LoanGuarantorForm(forms.ModelForm):
                     f"{guarantor.name} has an active loan and cannot act as guarantor."
                 )
         return cleaned
+
+
+class LoanAdjustForm(forms.ModelForm):
+    """
+    Extended form used when editing an existing loan.
+    Exposes all financially relevant fields so historical/cleared loans
+    can be corrected to match the new interest formula.
+    """
+    duration_months = forms.ChoiceField(
+        choices=DURATION_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    # Expose penalty months so historical loans can be corrected manually.
+    # editable=False on the model field means we must declare it explicitly here.
+    late_penalty_months = forms.IntegerField(
+        min_value=0,
+        required=False,
+        initial=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control', 'step': '1', 'min': '0', 'placeholder': '0'
+        }),
+        help_text="Number of overdue months penalty has been applied (each = 10% of principal).",
+    )
+
+    class Meta:
+        model = Loan
+        fields = [
+            'member', 'loan_amount', 'duration_months', 'date_taken',
+            'due_date', 'amount_paid', 'status', 'notes',
+        ]
+        widgets = {
+            'member': forms.Select(attrs={'class': 'form-select'}),
+            'loan_amount': forms.NumberInput(attrs={
+                'class': 'form-control', 'step': '100', 'placeholder': '0.00'
+            }),
+            'due_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'date_taken': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'amount_paid': forms.NumberInput(attrs={
+                'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'
+            }),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def clean_duration_months(self):
+        return int(self.cleaned_data['duration_months'])
+
+    def clean_loan_amount(self):
+        amount = self.cleaned_data.get('loan_amount')
+        if amount is None or amount <= 0:
+            raise ValidationError("Loan amount must be greater than zero.")
+        return amount
+
+    def clean_amount_paid(self):
+        amount = self.cleaned_data.get('amount_paid')
+        if amount is None or amount < 0:
+            raise ValidationError("Amount paid cannot be negative.")
+        return amount
+
+    def clean_late_penalty_months(self):
+        val = self.cleaned_data.get('late_penalty_months')
+        return val if val is not None else 0
 
 
 class CollateralForm(forms.ModelForm):
