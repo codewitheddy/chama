@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Exit Record — {{ member.name }}{% endblock %}
+{% block page_title %}Exit Record{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-8">
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    {% if member.photo %}
+    <img src="{{ member.photo.url }}" alt="{{ member.name }}"
+         class="rounded-circle"
+         style="width:56px;height:56px;object-fit:cover;border:2px solid #e2e8f0;">
+    {% else %}
+    <div class="rounded-circle d-flex align-items-center justify-content-center"
+         style="width:56px;height:56px;background:#eff6ff;flex-shrink:0;">
+      <i class="bi bi-person-fill" style="font-size:1.8rem;color:#2563eb;"></i>
+    </div>
+    {% endif %}
+    <div>
+      <h4 class="fw-bold mb-0">{{ member.name }}</h4>
+      <span class="badge" style="background:#fff1f2;color:#e11d48;">Exited</span>
+    </div>
+    <div class="ms-auto d-flex gap-2">
+      <a href="{% url 'members:exit_list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-list me-1"></i>All Exits
+      </a>
+      <a href="{% url 'members:detail' member.pk %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Profile
+      </a>
+    </div>
+  </div>
+
+  <!-- Receipt card -->
+  <div class="card mb-4" style="border:1.5px solid #bbf7d0;">
+    <div class="card-header" style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;">
+      <i class="bi bi-receipt me-2 text-success"></i>Exit Receipt
+      <span class="text-muted float-end" style="font-size:0.82rem;">{{ exit_record.exit_date }}</span>
+    </div>
+    <div class="card-body p-0">
+      <table class="table mb-0" style="font-size:0.95rem;">
+        <tbody>
+          <tr>
+            <td class="ps-4 py-3 text-muted">Contributions Returned</td>
+            <td class="pe-4 py-3 text-end fw-semibold" style="color:#16a34a;">
+              KES {{ exit_record.contributions_returned|kes }}
+            </td>
+          </tr>
+          <tr>
+            <td class="ps-4 py-3 text-muted">
+              Registration Fee
+              <span class="badge ms-1" style="background:#fff1f2;color:#e11d48;font-size:0.68rem;">Non-refundable</span>
+            </td>
+            <td class="pe-4 py-3 text-end text-muted">
+              Retained
+            </td>
+          </tr>
+          <tr>
+            <td class="ps-4 py-3 text-muted">Profit Share</td>
+            <td class="pe-4 py-3 text-end fw-semibold" style="color:#d97706;">
+              KES {{ exit_record.profit_share_paid|kes }}
+            </td>
+          </tr>
+          {% if exit_record.outstanding_loans_deducted %}
+          <tr>
+            <td class="ps-4 py-3 text-muted">Loans Deducted</td>
+            <td class="pe-4 py-3 text-end fw-semibold text-danger">
+              − KES {{ exit_record.outstanding_loans_deducted|kes }}
+            </td>
+          </tr>
+          {% endif %}
+          {% if exit_record.outstanding_penalties_deducted %}
+          <tr>
+            <td class="ps-4 py-3 text-muted">Penalties Deducted</td>
+            <td class="pe-4 py-3 text-end fw-semibold text-danger">
+              − KES {{ exit_record.outstanding_penalties_deducted|kes }}
+            </td>
+          </tr>
+          {% endif %}
+          <tr style="background:#f0fdf4;border-top:2px solid #bbf7d0;">
+            <td class="ps-4 py-3 fw-bold" style="font-size:1.05rem;">Net Payout</td>
+            <td class="pe-4 py-3 text-end fw-bold" style="color:#16a34a;font-size:1.2rem;">
+              KES {{ exit_record.net_payout|kes }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% if exit_record.notes %}
+    <div class="card-footer py-2 px-4" style="background:#f8fafc;border-top:1px solid #e2e8f0;">
+      <span class="text-muted" style="font-size:0.85rem;">
+        <i class="bi bi-chat-text me-1"></i>{{ exit_record.notes }}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Meta -->
+  <div class="text-muted" style="font-size:0.82rem;">
+    Recorded by <strong>{{ exit_record.recorded_by.username }}</strong>
+    on {{ exit_record.created_at|date:"d M Y, H:i" }}
+  </div>
+
+</div>
+</div>
+{% endblock %}

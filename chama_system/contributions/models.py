@@ -1,8 +1,13 @@
 from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
+from django.utils import timezone
 from members.models import Member
 from utils.payment_type_mixin import PaymentTypeMixin
+
+
+def current_year():
+    return timezone.now().year
 
 
 MONTH_CHOICES = [
@@ -21,10 +26,14 @@ class Contribution(PaymentTypeMixin, models.Model):
     )
     date = models.DateField()
     month = models.IntegerField(choices=MONTH_CHOICES)
-    year = models.IntegerField(default=2024)
+    year = models.IntegerField(default=current_year)
 
     class Meta:
         ordering = ['-date']
 
     def __str__(self):
-        return f"{self.member.name} - {self.get_month_display()} {self.year}"
+        try:
+            name = self.member.name
+        except Exception:
+            name = f"Member #{self.member_id}"
+        return f"{name} - {self.get_month_display()} {self.year}"

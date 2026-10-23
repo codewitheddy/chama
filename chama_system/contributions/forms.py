@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import Contribution
+from members.models import Member
 from utils.payment_type_mixin import PaymentTypeFormMixin
 
 
@@ -16,6 +17,8 @@ class ContributionForm(PaymentTypeFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Only active members can receive contributions
+        self.fields['member'].queryset = Member.objects.filter(is_active=True).order_by('name')
         self._add_payment_type_widgets()
 
     def clean_amount(self):
@@ -26,6 +29,12 @@ class ContributionForm(PaymentTypeFormMixin, forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        # Block contributions for inactive/exited members
+        member = cleaned.get('member')
+        if member and not member.is_active:
+            raise ValidationError(
+                f'{member.name} is no longer an active member and cannot receive contributions.'
+            )
         cleaned = self.clean_payment_type_fields()
         return cleaned
 

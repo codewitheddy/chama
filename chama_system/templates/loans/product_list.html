@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Loan Products{% endblock %}
+{% block page_title %}Loan Products{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted mb-0" style="font-size:0.9rem;">
+        Define reusable loan templates. When issuing a loan, selecting a product auto-fills interest type, rate and duration.
+    </p>
+    <a href="{% url 'loans:product_add' %}" class="btn btn-primary btn-sm ms-3 flex-shrink-0">
+        <i class="bi bi-plus-circle me-1"></i>New Product
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">Configured Loan Products</div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Interest Type</th>
+                    <th>Frequency</th>
+                    <th>Rate</th>
+                    <th>Duration</th>
+                    <th>Min Amount</th>
+                    <th>Max Amount</th>
+                    <th>Status</th>
+                    <th>Loans</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in products %}
+                <tr>
+                    <td>
+                        <div class="fw-semibold">
+                            {% if p.is_emergency %}
+                            <span class="badge me-1" style="background:#fff7ed;color:#d97706;font-size:0.75rem;">
+                                <i class="bi bi-lightning-charge-fill me-1"></i>Emergency
+                            </span>
+                            {% endif %}
+                            {{ p.name }}
+                        </div>
+                        {% if p.description %}
+                        <div class="text-muted" style="font-size:0.78rem;">{{ p.description|truncatechars:60 }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.interest_type == 'flat' %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Flat Rate</span>
+                        {% elif p.interest_type == 'reducing_emi' %}
+                            <span class="badge" style="background:#eff6ff;color:#2563eb;">Reducing – EMI</span>
+                        {% elif p.interest_type == 'emergency' %}
+                            <span class="badge" style="background:#fff7ed;color:#d97706;">Emergency (0%)</span>
+                        {% else %}
+                            <span class="badge" style="background:#f5f3ff;color:#7c3aed;">Reducing – Eq. Principal</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-capitalize">{{ p.get_interest_frequency_display }}</td>
+                    <td><strong>{{ p.interest_rate }}%</strong></td>
+                    <td>
+                        {% if p.duration_months %}{{ p.duration_months }} mo.{% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if p.min_amount %}KES {{ p.min_amount|kes:0 }}{% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if p.max_amount %}KES {{ p.max_amount|kes:0 }}{% else %}<span class="text-muted">No limit</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if p.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">{{ p.loans.count }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'loans:product_edit' p.pk %}" class="btn btn-sm btn-outline-warning" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'loans:product_delete' p.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                        No loan products defined yet.
+                        <a href="{% url 'loans:product_add' %}">Create the first one.</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

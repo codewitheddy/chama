@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Delete Applicant{% endblock %}
+{% block page_title %}Delete Non-Member Applicant{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header text-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>Confirm Deletion
+            </div>
+            <div class="card-body">
+                <p>Are you sure you want to delete <strong>{{ object.full_name }}</strong>?</p>
+                {% if object.loans.exists %}
+                <div class="alert alert-danger py-2" style="font-size:0.875rem;">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    This applicant has <strong>{{ object.loans.count }}</strong> associated loan(s).
+                    Deleting them will also delete all their loan records.
+                </div>
+                {% endif %}
+                <form method="post">
+                    {% csrf_token %}
+                    {% include 'includes/delete_auth_fields.html' %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>Yes, Delete
+                        </button>
+                        <a href="{% url 'loans:non_member_detail' object.pk %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

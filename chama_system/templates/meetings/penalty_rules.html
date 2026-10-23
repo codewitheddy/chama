@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Penalty Rules{% endblock %}
 {% block page_title %}Meeting Penalty Rules{% endblock %}
 
@@ -18,7 +19,7 @@
                 {% for r in rules %}
                 <tr>
                     <td class="fw-semibold">{{ r.name }}</td>
-                    <td style="color:#e11d48;">KES {{ r.default_amount|floatformat:2 }}</td>
+                    <td style="color:#e11d48;">KES {{ r.default_amount|kes }}</td>
                     <td class="text-muted">{{ r.description|default:"—" }}</td>
                     <td>
                         <div class="d-flex gap-1">

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+
+{% block title %}Registration Fee Rates{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-receipt"></i> Registration Fee Rates</h2>
+            <p class="text-muted">Set the fixed registration fee for all members</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{% url 'members:fee_payment_bulk' %}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-people me-1"></i> Bulk Record Fees
+            </a>
+            <a href="{% url 'members:fee_rate_add' %}" class="btn btn-success">
+                <i class="bi bi-plus"></i> Add Rate
+            </a>
+        </div>
+    </div>
+
+    {% if current_rate %}
+    <div class="alert alert-info mb-4">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-info-circle me-2" style="font-size: 1.2rem;"></i>
+            <div>
+                <strong>Current Rate:</strong> KES {{ current_rate.amount|kes }} (effective {{ current_rate.effective_date|date:"d M Y" }})
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead>
+                    <tr class="border-bottom">
+                        <th class="ps-3">Amount (KES)</th>
+                        <th>Effective Date</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                        <th>Created On</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rate in rates %}
+                    <tr>
+                        <td class="ps-3 fw-semibold" style="color:#16a34a;">
+                            {{ rate.amount|kes }}
+                        </td>
+                        <td>
+                            <strong>{{ rate.effective_date|date:"d M Y" }}</strong>
+                        </td>
+                        <td>
+                            {% if rate.effective_date <= today %}
+                                {% if rate == current_rate %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Expired</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="badge bg-info">Scheduled</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">
+                            {% if rate.notes %}
+                            {{ rate.notes|truncatechars:40 }}
+                            {% else %}
+                            <em>—</em>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">{{ rate.created_at|date:"d M Y, H:i" }}</td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'members:fee_rate_edit' rate.pk %}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            No registration fee rates configured yet.
+                            <br><a href="{% url 'members:fee_rate_add' %}" class="btn btn-sm btn-primary mt-3">Create First Rate</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if is_paginated %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

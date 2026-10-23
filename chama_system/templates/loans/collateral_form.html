@@ -6,7 +6,7 @@
 <div class="row justify-content-center">
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">Collateral for {{ loan.member.name }}'s Loan</div>
+            <div class="card-header">Collateral for {{ loan.borrower_name }}'s Loan</div>
             <div class="card-body">
                 <form method="post" enctype="multipart/form-data" novalidate>
                     {% csrf_token %}

@@ -4,23 +4,71 @@ from .models import Meeting, MeetingAttendance, MeetingPenalty, MeetingPenaltyRu
 from members.models import Member
 
 
+from django.utils import timezone
+
 ALLOWED_MINUTES_TAGS = [
     'p', 'br', 'strong', 'em', 'u', 's', 'blockquote',
-    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span',
+    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span',
+    'div', 'hr', 'a', 'sub', 'sup', 'code', 'pre',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td',
 ]
 ALLOWED_MINUTES_ATTRIBUTES = {
-    'span': ['style'],
+    'span': ['style', 'class', 'contenteditable'],
+    'p': ['style', 'class'],
+    'div': ['style', 'class', 'contenteditable'],
+    'a': ['href', 'title', 'target', 'rel'],
+    'table': ['style', 'class', 'width', 'border', 'cellpadding', 'cellspacing', 'contenteditable'],
+    'tr': ['style', 'class', 'contenteditable'],
+    'th': ['style', 'class', 'colspan', 'rowspan', 'width', 'contenteditable'],
+    'td': ['style', 'class', 'colspan', 'rowspan', 'width', 'contenteditable'],
+    'strong': ['style', 'class'],
+    'li': ['data-list', 'style', 'class'],
+    'h1': ['style', 'class'],
+    'h2': ['style', 'class'],
+    'h3': ['style', 'class'],
+    'h4': ['style', 'class'],
 }
+ALLOWED_MINUTES_STYLES = [
+    'color', 'background-color', 'background', 'text-align', 'font-weight', 'font-style',
+    'text-decoration', 'width', 'border', 'border-collapse', 'padding', 'margin', 'font-size',
+    'user-select', '-webkit-user-select', 'border-radius', 'display', 'align-items', 'gap',
+]
+
+
+try:
+    from bleach.css_sanitizer import CSSSanitizer
+    _css_sanitizer = CSSSanitizer(allowed_css_properties=ALLOWED_MINUTES_STYLES)
+except (ImportError, AttributeError):
+    _css_sanitizer = None
+
+
+def sanitize_minutes(minutes):
+    if not minutes:
+        return ''
+    kwargs = {
+        'tags': ALLOWED_MINUTES_TAGS,
+        'attributes': ALLOWED_MINUTES_ATTRIBUTES,
+        'strip': True,
+    }
+    if _css_sanitizer:
+        kwargs['css_sanitizer'] = _css_sanitizer
+    return bleach.clean(minutes, **kwargs)
 
 
 class MeetingForm(forms.ModelForm):
+    date = forms.DateField(
+        initial=timezone.localdate,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        help_text='Date when the meeting is scheduled.'
+    )
+
     class Meta:
         model = Meeting
         fields = ['date', 'venue', 'agenda', 'status', 'minutes']
         widgets = {
             'date':    forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'venue':   forms.TextInput(attrs={'class': 'form-control', 'placeholder': "e.g. Chairman's house"}),
-            'agenda':  forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'venue':   forms.TextInput(attrs={'class': 'form-control', 'placeholder': "e.g. Community Hall, Nairobi or Chairman's Residence"}),
+            'agenda':  forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Enter meeting agenda items, e.g.:\n1. Opening prayer & remarks\n2. Review of previous minutes\n3. Contributions collection\n4. Loan applications & approvals\n5. AOB & adjournment'}),
             'minutes': forms.Textarea(attrs={'class': 'form-control', 'rows': 6}),
             'status':  forms.Select(attrs={'class': 'form-select'}),
         }
@@ -40,12 +88,7 @@ class MeetingForm(forms.ModelForm):
 
     def clean_minutes(self):
         minutes = self.cleaned_data.get('minutes', '')
-        return bleach.clean(
-            minutes,
-            tags=ALLOWED_MINUTES_TAGS,
-            attributes=ALLOWED_MINUTES_ATTRIBUTES,
-            strip=True,
-        )
+        return sanitize_minutes(minutes)
 
 
 class MeetingMinutesForm(forms.ModelForm):
@@ -59,12 +102,7 @@ class MeetingMinutesForm(forms.ModelForm):
 
     def clean_minutes(self):
         minutes = self.cleaned_data.get('minutes', '')
-        return bleach.clean(
-            minutes,
-            tags=ALLOWED_MINUTES_TAGS,
-            attributes=ALLOWED_MINUTES_ATTRIBUTES,
-            strip=True,
-        )
+        return sanitize_minutes(minutes)
 
 
 class MeetingPenaltyForm(forms.ModelForm):

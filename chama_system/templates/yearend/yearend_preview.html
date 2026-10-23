@@ -1,0 +1,568 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Year-End Distribution Preview{% endblock %}
+{% block page_title %}Year-End Distribution Preview{% endblock %}
+
+{% block content %}
+
+<!-- Info banner -->
+<div class="alert mb-4 d-flex align-items-start gap-2 shadow-sm"
+     style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:10px;">
+    <i class="bi bi-info-circle-fill mt-1 fs-5" style="flex-shrink:0;"></i>
+    <div>
+        <strong>Live Estimation & Policy Simulation</strong> — Toggle the checkboxes below to simulate dividend payout options. Unchecked revenue streams remain in group reserves to accumulate for next financial year. Actual payouts are officially finalized when recording the closing.
+    </div>
+</div>
+
+<!-- Section 1: Revenue Stream Inclusion & Accumulation Policy -->
+<div class="card mb-4 shadow-sm border-0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+    <div class="card-header py-3 px-4" style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:#ffffff;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="mb-0 fw-bold"><i class="bi bi-sliders2 me-2"></i>Distributable Revenue Streams & Accumulation Policy</h5>
+                <small class="opacity-75">Select which revenue streams to share with members vs. retain to accumulate for the next financial year.</small>
+            </div>
+            <span class="badge bg-light text-primary px-3 py-2 fw-semibold">Live Simulation</span>
+        </div>
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-3">
+
+            <!-- 1. Loan Interest -->
+            <div class="col-md-4 col-sm-6">
+                <div class="card h-100 revenue-stream-card" id="card_loan_interest" style="border:2px solid {% if include_loan_interest %}#16a34a{% else %}#e2e8f0{% endif %};background:{% if include_loan_interest %}#f0fdf4{% else %}#f8fafc{% endif %};border-radius:10px;transition:all 0.2s ease;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="form-check form-switch fs-5 mb-0">
+                                <input type="checkbox" class="form-check-input preview-stream-cb" id="cb_loan_interest" {% if include_loan_interest %}checked{% endif %}>
+                            </div>
+                            <span class="badge {% if include_loan_interest %}bg-success{% else %}bg-purple{% endif %} stream-badge" id="badge_loan_interest" {% if not include_loan_interest %}style="background-color:#7c3aed;"{% endif %}>
+                                {% if include_loan_interest %}Shared in Pool{% else %}Accumulating{% endif %}
+                            </span>
+                        </div>
+                        <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-graph-up-arrow text-primary"></i> Loan Interest
+                        </div>
+                        <div class="fs-5 fw-bold text-primary my-1" id="val_loan_interest" data-amount="{{ interest_collected|default:'0' }}">
+                            KES {{ interest_collected|kes }}
+                        </div>
+                        <small class="text-muted d-block" style="font-size:0.75rem;">Interest collected from member loans issued during the cycle.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Penalties & Fines -->
+            <div class="col-md-4 col-sm-6">
+                <div class="card h-100 revenue-stream-card" id="card_penalties" style="border:2px solid {% if include_penalties %}#16a34a{% else %}#e2e8f0{% endif %};background:{% if include_penalties %}#f0fdf4{% else %}#f8fafc{% endif %};border-radius:10px;transition:all 0.2s ease;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="form-check form-switch fs-5 mb-0">
+                                <input type="checkbox" class="form-check-input preview-stream-cb" id="cb_penalties" {% if include_penalties %}checked{% endif %}>
+                            </div>
+                            <span class="badge {% if include_penalties %}bg-success{% else %}bg-purple{% endif %} stream-badge" id="badge_penalties" {% if not include_penalties %}style="background-color:#7c3aed;"{% endif %}>
+                                {% if include_penalties %}Shared in Pool{% else %}Accumulating{% endif %}
+                            </span>
+                        </div>
+                        <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-octagon text-warning"></i> Penalties & Fines
+                        </div>
+                        <div class="fs-5 fw-bold text-warning my-1" id="val_penalties" data-amount="{{ total_penalties_income|default:'0' }}">
+                            KES {{ total_penalties_income|kes }}
+                        </div>
+                        <small class="text-muted d-block" style="font-size:0.75rem;">Late meeting attendance, absence and default fines paid.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Other / External Income -->
+            <div class="col-md-4 col-sm-6">
+                <div class="card h-100 revenue-stream-card" id="card_other_income" style="border:2px solid {% if include_other_income %}#16a34a{% else %}#e2e8f0{% endif %};background:{% if include_other_income %}#f0fdf4{% else %}#f8fafc{% endif %};border-radius:10px;transition:all 0.2s ease;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="form-check form-switch fs-5 mb-0">
+                                <input type="checkbox" class="form-check-input preview-stream-cb" id="cb_other_income" {% if include_other_income %}checked{% endif %}>
+                            </div>
+                            <span class="badge {% if include_other_income %}bg-success{% else %}bg-purple{% endif %} stream-badge" id="badge_other_income" {% if not include_other_income %}style="background-color:#7c3aed;"{% endif %}>
+                                {% if include_other_income %}Shared in Pool{% else %}Accumulating{% endif %}
+                            </span>
+                        </div>
+                        <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-cash-coin text-info"></i> Other / External Income
+                        </div>
+                        <div class="fs-5 fw-bold text-info my-1" id="val_other_income" data-amount="{{ total_other_income|default:'0' }}">
+                            KES {{ total_other_income|kes }}
+                        </div>
+                        <small class="text-muted d-block" style="font-size:0.75rem;">Grants, bank fixed-deposit interest & external earnings.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Registration Fees -->
+            <div class="col-md-4 col-sm-6">
+                <div class="card h-100 revenue-stream-card" id="card_registration_fees" style="border:2px solid {% if include_registration_fees %}#16a34a{% else %}#e2e8f0{% endif %};background:{% if include_registration_fees %}#f0fdf4{% else %}#f8fafc{% endif %};border-radius:10px;transition:all 0.2s ease;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="form-check form-switch fs-5 mb-0">
+                                <input type="checkbox" class="form-check-input preview-stream-cb" id="cb_registration_fees" {% if include_registration_fees %}checked{% endif %}>
+                            </div>
+                            <span class="badge {% if include_registration_fees %}bg-success{% else %}bg-purple{% endif %} stream-badge" id="badge_registration_fees" {% if not include_registration_fees %}style="background-color:#7c3aed;"{% endif %}>
+                                {% if include_registration_fees %}Shared in Pool{% else %}Retained in Reserve{% endif %}
+                            </span>
+                        </div>
+                        <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-person-plus text-indigo" style="color:#6366f1;"></i> Registration Fees Fund
+                        </div>
+                        <div class="fs-5 fw-bold my-1" style="color:#6366f1;" id="val_registration_fees" data-amount="{{ total_reg_fees|default:'0' }}">
+                            KES {{ total_reg_fees|kes }}
+                        </div>
+                        <small class="text-muted d-block" style="font-size:0.75rem;">Member joining fees. Usually retained as core permanent capital.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Investment Returns -->
+            <div class="col-md-4 col-sm-6">
+                <div class="card h-100 revenue-stream-card" id="card_investment_returns" style="border:2px solid {% if include_investment_returns %}#16a34a{% else %}#e2e8f0{% endif %};background:{% if include_investment_returns %}#f0fdf4{% else %}#f8fafc{% endif %};border-radius:10px;transition:all 0.2s ease;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="form-check form-switch fs-5 mb-0">
+                                <input type="checkbox" class="form-check-input preview-stream-cb" id="cb_investment_returns" {% if include_investment_returns %}checked{% endif %}>
+                            </div>
+                            <span class="badge {% if include_investment_returns %}bg-success{% else %}bg-purple{% endif %} stream-badge" id="badge_investment_returns" {% if not include_investment_returns %}style="background-color:#7c3aed;"{% endif %}>
+                                {% if include_investment_returns %}Shared in Pool{% else %}Accumulating{% endif %}
+                            </span>
+                        </div>
+                        <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-building text-success"></i> Investment Returns
+                        </div>
+                        <div class="fs-5 fw-bold text-success my-1" id="val_investment_returns" data-amount="{{ total_investment_returns|default:'0' }}">
+                            KES {{ total_investment_returns|kes }}
+                        </div>
+                        <small class="text-muted d-block" style="font-size:0.75rem;">Dividends and income received from group investment projects.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Group Fund Expenses -->
+            <div class="col-md-4 col-sm-6">
+                <div class="card h-100 revenue-stream-card" id="card_expenses" style="border:2px solid {% if deduct_expenses %}#fecdd3{% else %}#e2e8f0{% endif %};background:{% if deduct_expenses %}#fff1f2{% else %}#f8fafc{% endif %};border-radius:10px;transition:all 0.2s ease;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="form-check form-switch fs-5 mb-0">
+                                <input type="checkbox" class="form-check-input preview-stream-cb" id="cb_expenses" {% if deduct_expenses %}checked{% endif %}>
+                            </div>
+                            <span class="badge {% if deduct_expenses %}bg-danger{% else %}bg-secondary{% endif %} stream-badge" id="badge_expenses">
+                                {% if deduct_expenses %}Deducted from Pool{% else %}Not Deducted{% endif %}
+                            </span>
+                        </div>
+                        <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-receipt text-danger"></i> Deduct Group Expenses
+                        </div>
+                        <div class="fs-5 fw-bold text-danger my-1" id="val_expenses" data-amount="{{ total_group_expenses|default:'0' }}">
+                            -KES {{ total_group_expenses|kes }}
+                        </div>
+                        <small class="text-muted d-block" style="font-size:0.75rem;">Subtracts meeting and group operational expenses from the profit pool.</small>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Section 2: Live KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100" style="background:#ffffff;border-radius:10px;">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label text-muted small"><i class="bi bi-wallet2 me-1"></i>Gross Revenue Available</div>
+                <div class="stat-value fw-bold fs-5 text-primary" id="kpi_total_revenue">KES {{ total_revenue_available|kes }}</div>
+                <div class="text-muted" style="font-size:0.72rem;">evaluated gross revenue</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100" style="background:#ffffff;border-radius:10px;">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label text-muted small"><i class="bi bi-pie-chart-fill me-1"></i>Distributable Profit Pool</div>
+                <div class="stat-value fw-bold fs-5 text-warning" id="kpi_profit_pool">KES {{ remaining_balance|kes }}</div>
+                <div class="text-muted" style="font-size:0.72rem;">to share proportionately</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100" style="background:#ffffff;border-radius:10px;">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label text-muted small"><i class="bi bi-piggy-bank-fill me-1" style="color:#7c3aed;"></i>Retained for Next Year</div>
+                <div class="stat-value fw-bold fs-5" style="color:#7c3aed;" id="kpi_retained_funds">KES {{ retained_funds|kes }}</div>
+                <div class="text-muted" style="font-size:0.72rem;">accumulating in treasury</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100" style="background:#ffffff;border-radius:10px;">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label text-muted small"><i class="bi bi-person-check-fill me-1"></i>Principal to Return</div>
+                <div class="stat-value fw-bold fs-5 text-dark" id="kpi_principal_back">KES {{ total_principal_back|kes }}</div>
+                <div class="text-muted" style="font-size:0.72rem;">100% member savings returned</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border-radius:10px;">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label text-success fw-semibold small"><i class="bi bi-cash-stack me-1"></i>Total Year-End Payout</div>
+                <div class="stat-value fw-bold fs-5 text-success" id="kpi_total_payout">KES {{ total_payout|kes }}</div>
+                <div class="text-muted" style="font-size:0.72rem;">Net after loan & penalty deductions ({{ member_count }} active member{{ member_count|pluralize }})</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section 3: Per-member table -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+    <div class="card-header bg-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-people-fill me-2 text-primary"></i><strong>Per-Member Expected Payout</strong></span>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <span class="text-muted small me-2">{{ member_count }} active member{{ member_count|pluralize }}</span>
+            <a id="btnExportPdf" href="{% url 'yearend:preview_pdf' %}" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+            </a>
+            <a href="{% url 'yearend:create' %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-check-circle me-1"></i>Record Official Closing
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="previewTable">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:50px;">#</th>
+                    <th>Member</th>
+                    <th class="text-end">Contributions</th>
+                    <th class="text-end" style="color:#2563eb;">Principal Back</th>
+                    <th class="text-end" style="color:#d97706;">Profit Share</th>
+                    <th class="text-end" style="color:#dc2626;">Less Deductions</th>
+                    <th class="text-end fw-bold" style="color:#16a34a;">Expected Total</th>
+                    <th class="text-end" style="width:90px;">Share %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in member_breakdown %}
+                <tr class="member-preview-row" 
+                    data-contrib="{{ row.contributions|default:'0' }}" 
+                    data-principal="{{ row.principal_back|default:'0' }}"
+                    data-loans="{{ row.outstanding_loans|default:'0' }}"
+                    data-penalties="{{ row.outstanding_penalties|default:'0' }}">
+                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td>
+                        <div class="fw-semibold text-dark">{{ row.member.name }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">{{ row.member.phone }}</div>
+                    </td>
+                    <td class="text-end fw-medium">KES {{ row.contributions|kes }}</td>
+                    <td class="text-end fw-semibold" style="color:#2563eb;">KES {{ row.principal_back|kes }}</td>
+                    <td class="text-end fw-semibold row-profit-share" style="color:#d97706;">KES {{ row.interest_share|kes }}</td>
+                    <td class="text-end fw-semibold text-danger row-deductions">
+                        {% if row.total_deductions > 0 %}
+                            - KES {{ row.total_deductions|kes }}
+                            <div class="text-muted" style="font-size:0.7rem;">
+                                {% if row.outstanding_loans > 0 and row.outstanding_penalties > 0 %}
+                                    Loan: {{ row.outstanding_loans|kes }} | Fine: {{ row.outstanding_penalties|kes }}
+                                {% elif row.outstanding_loans > 0 %}
+                                    Loan: {{ row.outstanding_loans|kes }}
+                                {% elif row.outstanding_penalties > 0 %}
+                                    Fine: {{ row.outstanding_penalties|kes }}
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end fw-bold row-total-payout" style="color:#16a34a;">
+                        KES {{ row.total|kes }}
+                        {% if row.deficit > 0 %}
+                            <div><span class="badge bg-danger-subtle text-danger" style="font-size:0.68rem;">Deficit: KES {{ row.deficit|kes }}</span></div>
+                        {% endif %}
+                    </td>
+                    <td class="text-end text-muted small">
+                        {% if total_member_contributions %}
+                        {% widthratio row.contributions total_member_contributions 100 %}%
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-5">
+                        <i class="bi bi-people" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                        No active members found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if member_breakdown %}
+            <tfoot class="table-success fw-semibold">
+                <tr>
+                    <td colspan="2">Total</td>
+                    <td class="text-end">KES {{ total_contributions_back|kes }}</td>
+                    <td class="text-end" id="foot_principal" style="color:#2563eb;">KES {{ total_principal_back|kes }}</td>
+                    <td class="text-end" id="foot_interest" style="color:#d97706;">KES {{ total_interest_shared|kes }}</td>
+                    <td class="text-end text-danger" id="foot_deductions">{% if total_deductions_all > 0 %}- KES {{ total_deductions_all|kes }}{% else %}—{% endif %}</td>
+                    <td class="text-end" id="foot_payout" style="color:#16a34a;">KES {{ total_payout|kes }}</td>
+                    <td class="text-end">100%</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+<!-- Section 4: How it works explanation -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius:12px;border:1px solid #e2e8f0;">
+    <div class="card-header bg-light py-3 px-4">
+        <i class="bi bi-question-circle me-2 text-primary"></i>How Year-End Distribution & Retained Accumulation Works
+    </div>
+    <div class="card-body p-4" style="font-size:0.9rem;color:#475569;">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="d-flex align-items-start gap-2">
+                    <span class="badge bg-primary rounded-circle p-2">1</span>
+                    <div>
+                        <strong class="text-dark">Principal Back Guarantee</strong>
+                        <p class="mb-0 text-muted mt-1">Each active member receives back 100% of their share contributions saved during the financial year.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex align-items-start gap-2">
+                    <span class="badge bg-warning text-dark rounded-circle p-2">2</span>
+                    <div>
+                        <strong class="text-dark">Customizable Distributable Pool</strong>
+                        <p class="mb-0 text-muted mt-1">Gross revenue from checked streams minus operational expenses equals the profit pool, shared proportionately to member savings.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex align-items-start gap-2">
+                    <span class="badge bg-purple rounded-circle p-2" style="background-color:#7c3aed !important;">3</span>
+                    <div>
+                        <strong class="text-dark">Retained Accumulation</strong>
+                        <p class="mb-0 text-muted mt-1">Unchecked revenue streams (like Registration Fees or Other Income) remain in the group treasury and continue accumulating for future financial years.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const totalMemberContrib = parseFloat("{{ total_member_contributions|default:'0' }}") || 0;
+    const totalGroupExpenses = parseFloat("{{ total_group_expenses|default:'0' }}") || 0;
+
+    const streams = {
+        loan_interest: {
+            checkbox: document.getElementById('cb_loan_interest'),
+            amount: parseFloat(document.getElementById('val_loan_interest')?.dataset.amount || '0') || 0,
+            card: document.getElementById('card_loan_interest'),
+            badge: document.getElementById('badge_loan_interest'),
+            sharedText: 'Shared in Pool',
+            retainedText: 'Accumulating'
+        },
+        penalties: {
+            checkbox: document.getElementById('cb_penalties'),
+            amount: parseFloat(document.getElementById('val_penalties')?.dataset.amount || '0') || 0,
+            card: document.getElementById('card_penalties'),
+            badge: document.getElementById('badge_penalties'),
+            sharedText: 'Shared in Pool',
+            retainedText: 'Accumulating'
+        },
+        other_income: {
+            checkbox: document.getElementById('cb_other_income'),
+            amount: parseFloat(document.getElementById('val_other_income')?.dataset.amount || '0') || 0,
+            card: document.getElementById('card_other_income'),
+            badge: document.getElementById('badge_other_income'),
+            sharedText: 'Shared in Pool',
+            retainedText: 'Accumulating'
+        },
+        registration_fees: {
+            checkbox: document.getElementById('cb_registration_fees'),
+            amount: parseFloat(document.getElementById('val_registration_fees')?.dataset.amount || '0') || 0,
+            card: document.getElementById('card_registration_fees'),
+            badge: document.getElementById('badge_registration_fees'),
+            sharedText: 'Shared in Pool',
+            retainedText: 'Retained in Reserve'
+        },
+        investment_returns: {
+            checkbox: document.getElementById('cb_investment_returns'),
+            amount: parseFloat(document.getElementById('val_investment_returns')?.dataset.amount || '0') || 0,
+            card: document.getElementById('card_investment_returns'),
+            badge: document.getElementById('badge_investment_returns'),
+            sharedText: 'Shared in Pool',
+            retainedText: 'Accumulating'
+        },
+        expenses: {
+            checkbox: document.getElementById('cb_expenses'),
+            amount: parseFloat(document.getElementById('val_expenses')?.dataset.amount || '0') || 0,
+            card: document.getElementById('card_expenses'),
+            badge: document.getElementById('badge_expenses'),
+            sharedText: 'Deducted from Pool',
+            retainedText: 'Not Deducted'
+        }
+    };
+
+    function formatKes(val) {
+        return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function recalculatePreview() {
+        let grossSelected = 0;
+        let retainedTotal = 0;
+        let totalRevenueAvail = 0;
+
+        ['loan_interest', 'penalties', 'other_income', 'registration_fees', 'investment_returns'].forEach(key => {
+            const item = streams[key];
+            if (item) {
+                totalRevenueAvail += item.amount;
+                if (item.checkbox && item.checkbox.checked) {
+                    grossSelected += item.amount;
+                    if (item.badge) {
+                        item.badge.textContent = item.sharedText;
+                        item.badge.className = 'badge bg-success stream-badge';
+                        item.badge.style.backgroundColor = '';
+                    }
+                    if (item.card) {
+                        item.card.style.borderColor = '#16a34a';
+                        item.card.style.background = '#f0fdf4';
+                    }
+                } else {
+                    retainedTotal += item.amount;
+                    if (item.badge) {
+                        item.badge.textContent = item.retainedText;
+                        item.badge.className = 'badge stream-badge';
+                        item.badge.style.backgroundColor = '#7c3aed';
+                    }
+                    if (item.card) {
+                        item.card.style.borderColor = '#e2e8f0';
+                        item.card.style.background = '#f8fafc';
+                    }
+                }
+            }
+        });
+
+        // Expenses handling
+        const expItem = streams.expenses;
+        let expensesToDeduct = 0;
+        if (expItem) {
+            if (expItem.checkbox && expItem.checkbox.checked) {
+                expensesToDeduct = expItem.amount;
+                if (expItem.badge) {
+                    expItem.badge.textContent = expItem.sharedText;
+                    expItem.badge.className = 'badge bg-danger stream-badge';
+                }
+                if (expItem.card) {
+                    expItem.card.style.borderColor = '#fecdd3';
+                    expItem.card.style.background = '#fff1f2';
+                }
+            } else {
+                expensesToDeduct = 0;
+                if (expItem.badge) {
+                    expItem.badge.textContent = expItem.retainedText;
+                    expItem.badge.className = 'badge bg-secondary stream-badge';
+                }
+                if (expItem.card) {
+                    expItem.card.style.borderColor = '#e2e8f0';
+                    expItem.card.style.background = '#f8fafc';
+                }
+            }
+        }
+
+        const distributableProfit = Math.max(0, grossSelected - expensesToDeduct);
+
+        // Update KPI Cards
+        const kpiRevenue = document.getElementById('kpi_total_revenue');
+        const kpiProfit = document.getElementById('kpi_profit_pool');
+        const kpiRetained = document.getElementById('kpi_retained_funds');
+        const kpiPayout = document.getElementById('kpi_total_payout');
+
+        if (kpiRevenue) kpiRevenue.textContent = `KES ${formatKes(totalRevenueAvail)}`;
+        if (kpiProfit) kpiProfit.textContent = `KES ${formatKes(distributableProfit)}`;
+        if (kpiRetained) kpiRetained.textContent = `KES ${formatKes(retainedTotal)}`;
+
+        // Recalculate member breakdown table
+        const rows = document.querySelectorAll('.member-preview-row');
+        let totalPrincipal = 0;
+        let totalInterestShared = 0;
+        let grandTotalPayout = 0;
+        let totalDeductionsAll = 0;
+
+        rows.forEach(row => {
+            const contrib = parseFloat(row.dataset.contrib || '0') || 0;
+            const principal = parseFloat(row.dataset.principal || '0') || 0;
+            const loans = parseFloat(row.dataset.loans || '0') || 0;
+            const penalties = parseFloat(row.dataset.penalties || '0') || 0;
+            const deductions = loans + penalties;
+            totalPrincipal += principal;
+            totalDeductionsAll += deductions;
+
+            let share = 0;
+            if (totalMemberContrib > 0 && distributableProfit > 0) {
+                share = Math.floor(((contrib / totalMemberContrib) * distributableProfit) * 100) / 100;
+            } else if (distributableProfit > 0 && rows.length > 0) {
+                share = Math.floor((distributableProfit / rows.length) * 100) / 100;
+            }
+
+            totalInterestShared += share;
+            const grossReturn = principal + share;
+            const netPayout = Math.max(0, grossReturn - deductions);
+            const deficit = Math.max(0, deductions - grossReturn);
+            grandTotalPayout += netPayout;
+
+            const shareCell = row.querySelector('.row-profit-share');
+            const totalCell = row.querySelector('.row-total-payout');
+            if (shareCell) shareCell.textContent = `KES ${formatKes(share)}`;
+            if (totalCell) {
+                let html = `KES ${formatKes(netPayout)}`;
+                if (deficit > 0) {
+                    html += `<div><span class="badge bg-danger-subtle text-danger" style="font-size:0.68rem;">Deficit: KES ${formatKes(deficit)}</span></div>`;
+                }
+                totalCell.innerHTML = html;
+            }
+        });
+
+        if (kpiPayout) kpiPayout.textContent = `KES ${formatKes(grandTotalPayout)}`;
+
+        const footInterest = document.getElementById('foot_interest');
+        const footDeductions = document.getElementById('foot_deductions');
+        const footPayout = document.getElementById('foot_payout');
+        if (footInterest) footInterest.textContent = `KES ${formatKes(totalInterestShared)}`;
+        if (footDeductions) footDeductions.textContent = totalDeductionsAll > 0 ? `- KES ${formatKes(totalDeductionsAll)}` : '—';
+        if (footPayout) footPayout.textContent = `KES ${formatKes(grandTotalPayout)}`;
+
+        // Update Export PDF link query params
+        const btnPdf = document.getElementById('btnExportPdf');
+        if (btnPdf) {
+            const params = new URLSearchParams({
+                include_loan_interest: streams.loan_interest.checkbox.checked ? '1' : '0',
+                include_penalties: streams.penalties.checkbox.checked ? '1' : '0',
+                include_other_income: streams.other_income.checkbox.checked ? '1' : '0',
+                include_registration_fees: streams.registration_fees.checkbox.checked ? '1' : '0',
+                include_investment_returns: streams.investment_returns.checkbox.checked ? '1' : '0',
+                deduct_expenses: streams.expenses.checkbox.checked ? '1' : '0',
+            });
+            btnPdf.href = `{% url 'yearend:preview_pdf' %}?${params.toString()}`;
+        }
+    }
+
+    Object.values(streams).forEach(item => {
+        if (item && item.checkbox) {
+            item.checkbox.addEventListener('change', recalculatePreview);
+        }
+    });
+
+    recalculatePreview();
+});
+</script>
+{% endblock %}

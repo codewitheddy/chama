@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Non-Member Applicants{% endblock %}
+{% block page_title %}Non-Member Loan Applicants{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Pending Review</div>
+                <div class="stat-value" style="font-size:1.3rem;color:#d97706;">{{ pending_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Qualified</div>
+                <div class="stat-value" style="font-size:1.3rem;color:#16a34a;">{{ qualified_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Disqualified</div>
+                <div class="stat-value" style="font-size:1.3rem;color:#e11d48;">{{ disqualified_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toolbar -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <form class="d-flex gap-2" method="get">
+            <input type="hidden" name="status" value="{{ current_status }}" id="nm-status-input">
+            <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+                   placeholder="Search name or phone…" style="width:220px;">
+            {% if q or current_status %}
+            <a href="{% url 'loans:non_members' %}" class="btn btn-sm btn-outline-danger">Clear</a>
+            {% endif %}
+        </form>
+        <div class="d-flex gap-1" id="nm-status-btns">
+            <button type="button" class="btn btn-sm {% if not current_status %}btn-primary{% else %}btn-outline-secondary{% endif %}" data-status="">All</button>
+            <button type="button" class="btn btn-sm {% if current_status == 'pending' %}btn-warning{% else %}btn-outline-secondary{% endif %}" data-status="pending">Pending</button>
+            <button type="button" class="btn btn-sm {% if current_status == 'qualified' %}btn-success{% else %}btn-outline-secondary{% endif %}" data-status="qualified">Qualified</button>
+            <button type="button" class="btn btn-sm {% if current_status == 'disqualified' %}btn-danger{% else %}btn-outline-secondary{% endif %}" data-status="disqualified">Disqualified</button>
+        </div>
+    </div>
+    <a href="{% url 'loans:non_member_add' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-person-plus me-1"></i>Register Applicant
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>ID Number</th>
+                        <th>Employer</th>
+                        <th>Income (KES)</th>
+                        <th>Status</th>
+                        <th>Active Loan</th>
+                        <th>Registered</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in applicants %}
+                    <tr>
+                        <td class="text-muted" style="font-size:0.8rem;">#{{ a.pk }}</td>
+                        <td class="fw-semibold">
+                            <a href="{% url 'loans:non_member_detail' a.pk %}" class="text-decoration-none">{{ a.full_name }}</a>
+                        </td>
+                        <td>{{ a.phone }}</td>
+                        <td class="text-muted small">{{ a.id_number|default:"—" }}</td>
+                        <td class="text-muted small">{{ a.employer|default:"—" }}</td>
+                        <td>{% if a.monthly_income %}{{ a.monthly_income|kes:0 }}{% else %}—{% endif %}</td>
+                        <td>
+                            {% if a.qualification_status == 'qualified' %}
+                                <span class="badge" style="background:#f0fdf4;color:#16a34a;">Qualified</span>
+                            {% elif a.qualification_status == 'disqualified' %}
+                                <span class="badge" style="background:#fff1f2;color:#e11d48;">Disqualified</span>
+                            {% else %}
+                                <span class="badge" style="background:#fffbeb;color:#d97706;">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if a.has_active_loan %}
+                                <span class="badge bg-warning text-dark">Yes</span>
+                            {% else %}
+                                <span class="text-muted small">No</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:0.8rem;">{{ a.created_at|date:"d M Y" }}</td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'loans:non_member_detail' a.pk %}" class="btn btn-sm btn-outline-secondary" title="View"><i class="bi bi-eye"></i></a>
+                                <a href="{% url 'loans:non_member_edit' a.pk %}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="bi bi-pencil"></i></a>
+                                {% if a.is_qualified and not a.has_active_loan %}
+                                <a href="{% url 'loans:add' %}?non_member={{ a.pk }}" class="btn btn-sm btn-success" title="Issue Loan">
+                                    <i class="bi bi-cash me-1"></i>Issue Loan
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="10" class="text-center text-muted py-5">No applicants found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% include 'includes/pagination.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const statusInput = document.getElementById('nm-status-input');
+    document.getElementById('nm-status-btns').querySelectorAll('button[data-status]').forEach(btn => {
+        btn.addEventListener('click', function () {
+            statusInput.value = this.dataset.status;
+            this.closest('form') || statusInput.closest('form').submit();
+            statusInput.closest('form').submit();
+        });
+    });
+});
+</script>
+{% endblock %}

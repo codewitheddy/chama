@@ -1,25 +1,44 @@
 {# Reusable admin-password + reason fields for all delete confirmation forms #}
+
+{% if delete_error %}
+<div class="alert alert-danger py-2 small mb-3">
+    <i class="bi bi-exclamation-circle me-1"></i>{{ delete_error }}
+</div>
+{% endif %}
+
 <div class="mb-3">
     <label for="delete_reason" class="form-label fw-semibold">
         Reason for deletion <span class="text-danger">*</span>
     </label>
     <textarea id="delete_reason" name="delete_reason" rows="2"
-              class="form-control {% if messages %}{% for m in messages %}{% if 'reason' in m.message %}is-invalid{% endif %}{% endfor %}{% endif %}"
-              placeholder="Briefly explain why this record is being deleted…" required></textarea>
+              class="form-control {% if delete_error and not delete_reason_value %}is-invalid{% endif %}"
+              placeholder="Briefly explain why this record is being deleted…"
+              required>{{ delete_reason_value }}</textarea>
 </div>
 <div class="mb-3">
     <label for="admin_password" class="form-label fw-semibold">
         Admin password <span class="text-danger">*</span>
     </label>
-    <input type="password" id="admin_password" name="admin_password"
-           class="form-control" placeholder="Enter your password to confirm" required autocomplete="current-password">
+    <div class="input-group">
+        <input type="password" id="admin_password" name="admin_password"
+               class="form-control {% if delete_error %}is-invalid{% endif %}"
+               placeholder="Enter your password to confirm"
+               required autocomplete="off">
+        <button class="btn btn-outline-secondary" type="button" id="togglePwd" tabindex="-1">
+            <i class="bi bi-eye" id="togglePwdIcon"></i>
+        </button>
+    </div>
 </div>
-{% if messages %}
-{% for message in messages %}
-{% if message.tags == 'error' %}
-<div class="alert alert-danger py-2 small mb-3">
-    <i class="bi bi-exclamation-circle me-1"></i>{{ message }}
-</div>
-{% endif %}
-{% endfor %}
-{% endif %}
+<script>
+document.getElementById('togglePwd').addEventListener('click', function () {
+    var inp = document.getElementById('admin_password');
+    var icon = document.getElementById('togglePwdIcon');
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        inp.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+});
+</script>

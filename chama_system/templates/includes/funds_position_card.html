@@ -1,0 +1,146 @@
+{% load finance_tags %}
+<!-- Funds Position Card — Live Treasury Position -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius: 12px; overflow: hidden; background: #ffffff;">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <div style="width:36px; height:36px; border-radius:8px; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); display:flex; align-items:center; justify-content:center; color:#fff;">
+                <i class="bi bi-shield-check fs-5"></i>
+            </div>
+            <div>
+                <h6 class="mb-0 fw-bold text-dark" style="letter-spacing: -0.2px;">Funds Position &amp; Money Movement Invariant</h6>
+                <small class="text-muted">Total Funds = Cash + M-Pesa + Bank + Investments + Outstanding Loans (Excl. Welfare Fund)</small>
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <a href="{% url 'money_movement:transfer_add' %}?type=cash_to_bank" class="btn btn-sm btn-outline-primary fw-semibold">
+                <i class="bi bi-bank me-1"></i>Bank Cash
+            </a>
+            <a href="{% url 'money_movement:transfer_add' %}" class="btn btn-sm btn-primary fw-semibold shadow-sm">
+                <i class="bi bi-arrow-left-right me-1"></i>New Transfer
+            </a>
+            <a href="{% url 'money_movement:dashboard' %}" class="btn btn-sm btn-light border text-secondary" title="View Full Treasury Dashboard">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- 6 Column Metrics Row -->
+    <div class="card-body p-3 p-md-4">
+        <div class="row g-2 text-center">
+            <!-- 1. Cash in Hand -->
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="p-3 rounded-3 h-100 border" style="background:#f8fafc;">
+                    <div class="text-muted small fw-semibold text-uppercase" style="font-size:0.72rem; letter-spacing:0.5px;">
+                        <i class="bi bi-cash-stack text-success me-1"></i>Cash in Hand
+                    </div>
+                    <div class="fs-5 fw-bold text-dark mt-1" style="font-family: monospace;">
+                        KES {{ cash_in_hand|kes }}
+                    </div>
+                    <div class="text-muted" style="font-size:0.7rem;">Held by Treasurer</div>
+                </div>
+            </div>
+
+            <!-- 2. M-Pesa Wallet -->
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="p-3 rounded-3 h-100 border" style="background:#f8fafc;">
+                    <div class="text-muted small fw-semibold text-uppercase" style="font-size:0.72rem; letter-spacing:0.5px;">
+                        <i class="bi bi-phone text-success me-1"></i>M-Pesa Wallet
+                    </div>
+                    <div class="fs-5 fw-bold text-dark mt-1" style="font-family: monospace;">
+                        KES {{ mpesa_wallet|kes }}
+                    </div>
+                    <div class="text-muted" style="font-size:0.7rem;">Till / Paybill / Mobile</div>
+                </div>
+            </div>
+
+            <!-- 3. Money in Bank -->
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="p-3 rounded-3 h-100 border" style="background:#f8fafc;">
+                    <div class="text-muted small fw-semibold text-uppercase" style="font-size:0.72rem; letter-spacing:0.5px;">
+                        <i class="bi bi-bank text-primary me-1"></i>Money in Bank
+                    </div>
+                    <div class="fs-5 fw-bold text-dark mt-1" style="font-family: monospace;">
+                        KES {{ bank_balance|kes }}
+                    </div>
+                    <div class="text-muted" style="font-size:0.68rem;">General Lending Accounts</div>
+                    {% if welfare_bank_balance %}
+                    <div class="text-success mt-1" style="font-size:0.65rem; font-weight:600;" title="Welfare Fund Bank Account is segregated">
+                        <i class="bi bi-heart-pulse-fill me-0.5"></i>Welfare: {{ welfare_bank_balance|kes }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 4. Investments (Principal + ROI) -->
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="p-3 rounded-3 h-100 border" style="background:#f8fafc;">
+                    <div class="text-muted small fw-semibold text-uppercase" style="font-size:0.72rem; letter-spacing:0.5px;">
+                        <i class="bi bi-briefcase text-info me-1"></i>Investments
+                    </div>
+                    <div class="fs-5 fw-bold text-dark mt-1" style="font-family: monospace;">
+                        KES {{ investments_total|kes }}
+                    </div>
+                    <div class="text-muted" style="font-size:0.68rem;">
+                        P: {{ investments_principal|kes }} | ROI: {{ investments_roi|kes }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Outstanding Loans -->
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="p-3 rounded-3 h-100 border" style="background:#f8fafc;">
+                    <div class="text-muted small fw-semibold text-uppercase" style="font-size:0.72rem; letter-spacing:0.5px;">
+                        <i class="bi bi-credit-card text-warning me-1"></i>Outstanding Loans
+                    </div>
+                    <div class="fs-5 fw-bold text-dark mt-1" style="font-family: monospace;">
+                        KES {{ outstanding_loans|kes }}
+                    </div>
+                    <div class="text-muted" style="font-size:0.7rem;">Loan Principal Receivable</div>
+                </div>
+            </div>
+
+            <!-- 6. TOTAL FUNDS -->
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="p-3 rounded-3 h-100 border border-primary" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                    <div class="text-primary small fw-bold text-uppercase" style="font-size:0.72rem; letter-spacing:0.5px;">
+                        <i class="bi bi-trophy-fill me-1"></i>TOTAL FUNDS
+                    </div>
+                    <div class="fs-5 fw-bolder text-primary mt-1" style="font-family: monospace;">
+                        KES {{ total_funds|kes }}
+                    </div>
+                    <div class="text-primary-emphasis" style="font-size:0.7rem; font-weight:600;">Total Group Wealth</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- The Invariant Check Line -->
+        <div class="mt-3 p-3 rounded-3 d-flex justify-content-between align-items-center flex-wrap gap-2 {% if is_balanced %}bg-success-subtle text-success-emphasis border border-success-subtle{% else %}bg-danger-subtle text-danger-emphasis border border-danger-subtle{% endif %}">
+            <div class="d-flex align-items-center gap-2">
+                {% if is_balanced %}
+                <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                <div>
+                    <span class="fw-bold">CHECK LINE BALANCED:</span>
+                    <span>Total Income (KES {{ total_income|kes }}) − Total Expenses (KES {{ total_expenses|kes }}) = <strong>KES {{ expected_funds|kes }}</strong></span>
+                </div>
+                {% else %}
+                <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+                <div>
+                    <span class="fw-bold text-danger">DISCREPANCY FLAGGED:</span>
+                    <span>Total Income (KES {{ total_income|kes }}) − Total Expenses (KES {{ total_expenses|kes }}) ≠ Total Funds (KES {{ total_funds|kes }}). Variance: <strong>KES {{ variance|kes }}</strong></span>
+                </div>
+                {% endif %}
+            </div>
+            <div>
+                {% if is_balanced %}
+                <span class="badge bg-success text-white px-3 py-2 rounded-pill fw-semibold" style="font-size:0.78rem;">
+                    <i class="bi bi-lock-fill me-1"></i>100% Balanced (Diff: KES 0.00)
+                </span>
+                {% else %}
+                <span class="badge bg-danger text-white px-3 py-2 rounded-pill fw-semibold" style="font-size:0.78rem;">
+                    Unreconciled Variance: KES {{ variance|kes }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import Penalty
+from members.models import Member
 from utils.payment_type_mixin import PaymentTypeFormMixin
 
 
@@ -17,6 +18,8 @@ class PenaltyForm(PaymentTypeFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Only active members can receive penalties
+        self.fields['member'].queryset = Member.objects.filter(is_active=True).order_by('name')
         self._add_payment_type_widgets()
 
     def clean_amount(self):

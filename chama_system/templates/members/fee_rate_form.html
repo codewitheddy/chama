@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} Registration Fee Rate{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-receipt"></i> {% if object %}Edit{% else %}Create{% endif %} Registration Fee Rate</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Rate Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.amount.id_for_label }}" class="form-label">Amount (KES) <span class="text-danger">*</span></label>
+                            {{ form.amount }}
+                            {% if form.amount.errors %}<div class="text-danger small mt-1">{{ form.amount.errors }}</div>{% endif %}
+                            <small class="text-muted">The fixed fee all members must pay</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.effective_date.id_for_label }}" class="form-label">Effective Date <span class="text-danger">*</span></label>
+                            {{ form.effective_date }}
+                            {% if form.effective_date.errors %}<div class="text-danger small mt-1">{{ form.effective_date.errors }}</div>{% endif %}
+                            <small class="text-muted">From which date this rate applies</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}<div class="text-danger small mt-1">{{ form.notes.errors }}</div>{% endif %}
+                            <small class="text-muted">Optional: Why this rate was set, any changes from previous rate</small>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check"></i> Save Rate
+                            </button>
+                            <a href="{% url 'members:fee_rate_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-x"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Registration Fee Rate</strong></p>
+                    <p>This is a fixed amount that ALL members must pay when joining the group. Unlike welfare contributions or other fees, this ensures equal treatment across all members.</p>
+                    
+                    <div class="alert alert-info small mt-3">
+                        <strong>Example:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>If you set 300 KES, all new members pay exactly 300 KES</li>
+                            <li>Change the rate in the future to 400 KES, new members then pay 400 KES</li>
+                            <li>Historical payments are tracked separately</li>
+                        </ul>
+                    </div>
+
+                    <p class="small text-muted mt-3">
+                        <i class="bi bi-check-circle"></i> The system will calculate total collected as: (Active members) × (Current rate)
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

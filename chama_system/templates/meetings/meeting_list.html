@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Meetings{% endblock %}
 {% block page_title %}Meetings{% endblock %}
 
@@ -33,7 +34,7 @@
         <div class="card stat-card">
             <div class="card-body py-3 px-3">
                 <div class="stat-label">Penalties Collected</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#e11d48;">KES {{ total_penalties_collected|floatformat:0 }}</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#e11d48;">KES {{ total_penalties_collected|kes:0 }}</div>
             </div>
         </div>
     </div>
@@ -73,7 +74,7 @@
             <tbody>
                 {% for m in meetings %}
                 <tr>
-                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td class="text-muted">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                     <td class="fw-semibold">{{ m.date }}</td>
                     <td>{{ m.venue|default:"—" }}</td>
                     <td>
@@ -86,7 +87,7 @@
                         {% endif %}
                     </td>
                     <td>{{ m.attendance.count }} members</td>
-                    <td style="color:#e11d48;">KES {{ m.total_penalties|floatformat:2 }}</td>
+                    <td style="color:#e11d48;">KES {{ m.total_penalties|kes }}</td>
                     <td>
                         <div class="d-flex gap-1">
                             <a href="{% url 'meetings:detail' m.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>

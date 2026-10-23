@@ -11,3 +11,7 @@ lxml==6.0.2
 pillow==12.1.0
 reportlab==4.4.9
 soupsieve==2.8.3
+waitress==3.0.2
+# pywebview — proper embedded window on machines with .NET.
+# Falls back to Edge --app mode or system browser automatically if unavailable.
+pywebview==4.4.1

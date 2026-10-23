@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Member Statement{% endblock %}
 {% block page_title %}Member Statement{% endblock %}
 
@@ -104,7 +105,7 @@
                 <h5 class="fw-bold mb-1">{{ selected_member.name }}</h5>
                 <p class="text-muted small mb-1"><i class="bi bi-phone me-1"></i>{{ selected_member.phone|default:"—" }}</p>
                 <p class="text-muted small mb-1"><i class="bi bi-calendar me-1"></i>Joined {{ selected_member.date_joined }}</p>
-                <p class="text-muted small mb-3"><i class="bi bi-cash me-1"></i>Reg. Fee: KES {{ selected_member.registration_fee }}</p>
+                <p class="text-muted small mb-3"><i class="bi bi-cash me-1"></i>Reg. Fee: KES {{ selected_member.registration_fee_paid|kes }}</p>
                 <div class="d-flex gap-2 justify-content-center flex-wrap">
                     <a href="{% url 'reports:export_member_statement_pdf' %}?member={{ selected_member.pk }}"
                        class="btn btn-sm btn-outline-danger">
@@ -119,49 +120,115 @@
         </div>
 
         <!-- Financial Summary -->
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-header">Financial Summary</div>
             <div class="card-body p-0">
                 <table class="table table-sm mb-0">
                     <tr>
                         <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Total Contributions</td>
                         <td class="fw-semibold pe-3 py-2 text-end" style="color:#16a34a;font-size:0.82rem;">
-                            KES {{ selected_member.total_contributions|floatformat:2 }}
+                            KES {{ selected_member.total_contributions|kes }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Welfare Contributions</td>
+                        <td class="fw-semibold pe-3 py-2 text-end" style="color:#16a34a;font-size:0.82rem;">
+                            KES {{ total_welfare_contributions|kes }}
                         </td>
                     </tr>
                     <tr>
                         <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Total Loans</td>
                         <td class="fw-semibold pe-3 py-2 text-end" style="color:#d97706;font-size:0.82rem;">
-                            KES {{ selected_member.total_loans|floatformat:2 }}
+                            KES {{ selected_member.total_loans|kes }}
                         </td>
                     </tr>
                     <tr>
                         <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Loan Balance</td>
                         <td class="fw-semibold pe-3 py-2 text-end text-danger" style="font-size:0.82rem;">
-                            KES {{ selected_member.total_loan_balance|floatformat:2 }}
+                            KES {{ selected_member.total_loan_balance|kes }}
                         </td>
                     </tr>
                     <tr>
                         <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Penalties Issued</td>
                         <td class="fw-semibold pe-3 py-2 text-end" style="color:#e11d48;font-size:0.82rem;">
-                            KES {{ total_penalties_issued|floatformat:2 }}
+                            KES {{ total_penalties_issued|kes }}
                         </td>
                     </tr>
                     <tr>
                         <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Penalties Paid</td>
                         <td class="fw-semibold pe-3 py-2 text-end" style="color:#16a34a;font-size:0.82rem;">
-                            KES {{ total_penalties_paid|floatformat:2 }}
+                            KES {{ total_penalties_paid|kes }}
                         </td>
                     </tr>
                     <tr>
                         <td class="text-muted ps-3 py-2" style="font-size:0.82rem;">Penalties Outstanding</td>
                         <td class="fw-semibold pe-3 py-2 text-end text-danger" style="font-size:0.82rem;">
-                            KES {{ total_penalties_outstanding|floatformat:2 }}
+                            KES {{ total_penalties_outstanding|kes }}
                         </td>
                     </tr>
                 </table>
             </div>
         </div>
+
+        <!-- Year-End Expected Payout -->
+        {% if yearend_preview %}
+        <div class="card" style="border:1.5px solid #bbf7d0;">
+            <div class="card-header" style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;font-size:0.85rem;">
+                <i class="bi bi-calculator me-2 text-success"></i>Year-End Estimate
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <td class="text-muted ps-3 py-2" style="font-size:0.8rem;">Principal Back</td>
+                        <td class="fw-semibold pe-3 py-2 text-end" style="color:#2563eb;font-size:0.8rem;">
+                            KES {{ yearend_preview.principal_back|kes }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3 py-2" style="font-size:0.8rem;">Profit Share</td>
+                        <td class="fw-semibold pe-3 py-2 text-end" style="color:#d97706;font-size:0.8rem;">
+                            KES {{ yearend_preview.interest_share|kes }}
+                        </td>
+                    </tr>
+                    {% if yearend_preview.outstanding_loans > 0 %}
+                    <tr>
+                        <td class="text-danger ps-3 py-1.5" style="font-size:0.8rem;">
+                            <i class="bi bi-dash-circle me-1"></i>Less: Outstanding Loan
+                        </td>
+                        <td class="fw-semibold pe-3 py-1.5 text-end text-danger" style="font-size:0.8rem;">
+                            - KES {{ yearend_preview.outstanding_loans|kes }}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% if yearend_preview.outstanding_penalties > 0 %}
+                    <tr>
+                        <td class="text-danger ps-3 py-1.5" style="font-size:0.8rem;">
+                            <i class="bi bi-dash-circle me-1"></i>Less: Unpaid Penalties
+                        </td>
+                        <td class="fw-semibold pe-3 py-1.5 text-end text-danger" style="font-size:0.8rem;">
+                            - KES {{ yearend_preview.outstanding_penalties|kes }}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    <tr style="background:#f0fdf4;border-top:1.5px solid #86efac;">
+                        <td class="ps-3 py-2 fw-bold" style="font-size:0.82rem;">Expected Total (Net)</td>
+                        <td class="fw-bold pe-3 py-2 text-end" style="color:#16a34a;font-size:0.82rem;">
+                            KES {{ yearend_preview.total|kes }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            {% if yearend_preview.deficit > 0 %}
+            <div class="p-2 mx-2 my-1.5 rounded text-danger small border border-danger-subtle" style="background:#fef2f2;font-size:0.72rem;">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                <strong>Deficit:</strong> Outstanding debt of KES {{ yearend_preview.deficit|kes }} exceeds member savings.
+            </div>
+            {% endif %}
+            <div class="card-footer py-1 px-3" style="background:#f0fdf4;border-top:1px solid #bbf7d0;">
+                <span class="text-muted" style="font-size:0.72rem;">Live estimate — updates with records</span>
+            </div>
+        </div>
+        {% endif %}
 
     </div>
 
@@ -183,7 +250,7 @@
                         <tr>
                             <td>{{ c.get_month_display }}</td>
                             <td>{{ c.year }}</td>
-                            <td style="color:#16a34a;font-weight:600;">KES {{ c.amount|floatformat:2 }}</td>
+                            <td style="color:#16a34a;font-weight:600;">KES {{ c.amount|kes }}</td>
                             <td class="text-muted">{{ c.date }}</td>
                         </tr>
                         {% empty %}
@@ -194,13 +261,59 @@
             </div>
         </div>
 
+        <!-- Welfare Contributions -->
+        <div class="section-card">
+            <div class="section-header">
+                <span><i class="bi bi-heart-pulse me-2 text-danger"></i>Welfare Contributions</span>
+                {% if total_welfare_contributions %}
+                <span class="fw-semibold text-success" style="font-size:0.82rem;">KES {{ total_welfare_contributions|kes }}</span>
+                {% endif %}
+            </div>
+            <div class="table-responsive">
+                <table class="statement-table table mb-0">
+                    <thead>
+                        <tr><th>Month</th><th>Year</th><th>Amount</th><th>Method</th><th>Date</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for w in welfare_contributions %}
+                        <tr>
+                            <td>{{ w.get_month_display }}</td>
+                            <td>{{ w.year }}</td>
+                            <td style="color:#16a34a;font-weight:600;">KES {{ w.amount|kes }}</td>
+                            <td>
+                                {% if w.payment_type == 'mpesa' %}
+                                    <span class="badge" style="background:#f0fdf4;color:#16a34a;font-size:0.72rem;">M-Pesa</span>
+                                    {% if w.mpesa_code %}<div class="text-muted" style="font-size:0.7rem;font-family:monospace;">{{ w.mpesa_code }}</div>{% endif %}
+                                {% else %}
+                                    <span class="badge" style="background:#eff6ff;color:#2563eb;font-size:0.72rem;">Cash</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted">{{ w.date }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr class="empty-row"><td colspan="5">No welfare contributions recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if welfare_contributions %}
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="text-end fw-semibold text-muted" style="font-size:0.82rem;">Total</td>
+                            <td class="fw-bold" style="color:#16a34a;">KES {{ total_welfare_contributions|kes }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
         <!-- Penalties -->
         <div class="section-card">
             <div class="section-header">
                 <span><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Penalties</span>
                 {% if total_penalties_outstanding %}
                 <span class="badge" style="background:#fff1f2;color:#e11d48;">
-                    KES {{ total_penalties_outstanding|floatformat:2 }} outstanding
+                    KES {{ total_penalties_outstanding|kes }} outstanding
                 </span>
                 {% endif %}
             </div>
@@ -214,7 +327,7 @@
                         <tr>
                             <td class="text-muted">{{ p.date }}</td>
                             <td>{{ p.reason }}</td>
-                            <td style="color:#e11d48;font-weight:600;">KES {{ p.amount|floatformat:2 }}</td>
+                            <td style="color:#e11d48;font-weight:600;">KES {{ p.amount|kes }}</td>
                             <td>
                                 {% if p.paid %}
                                     <span class="badge" style="background:#f0fdf4;color:#16a34a;">
@@ -233,7 +346,7 @@
                     <tfoot>
                         <tr>
                             <td colspan="2" class="text-end fw-semibold text-muted" style="font-size:0.82rem;">Total</td>
-                            <td class="fw-bold" style="color:#e11d48;">KES {{ total_penalties_issued|floatformat:2 }}</td>
+                            <td class="fw-bold" style="color:#e11d48;">KES {{ total_penalties_issued|kes }}</td>
                             <td></td>
                         </tr>
                     </tfoot>
@@ -255,12 +368,12 @@
                     <tbody>
                         {% for l in loans %}
                         <tr>
-                            <td class="fw-semibold">KES {{ l.loan_amount|floatformat:2 }}</td>
-                            <td style="color:#16a34a;">KES {{ l.interest_amount|floatformat:2 }}</td>
-                            <td>KES {{ l.total_payable|floatformat:2 }}</td>
-                            <td style="color:#2563eb;">KES {{ l.amount_paid|floatformat:2 }}</td>
+                            <td class="fw-semibold">KES {{ l.loan_amount|kes }}</td>
+                            <td style="color:#16a34a;">KES {{ l.interest_amount|kes }}</td>
+                            <td>KES {{ l.total_payable|kes }}</td>
+                            <td style="color:#2563eb;">KES {{ l.amount_paid|kes }}</td>
                             <td class="fw-semibold {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
-                                KES {{ l.balance|floatformat:2 }}
+                                KES {{ l.balance|kes }}
                             </td>
                             <td>
                                 {% if l.status == 'cleared' %}
@@ -293,8 +406,8 @@
                     <tbody>
                         {% for p in payments %}
                         <tr>
-                            <td>KES {{ p.loan.loan_amount|floatformat:2 }}</td>
-                            <td style="color:#2563eb;font-weight:600;">KES {{ p.amount|floatformat:2 }}</td>
+                            <td>KES {{ p.loan.loan_amount|kes }}</td>
+                            <td style="color:#2563eb;font-weight:600;">KES {{ p.amount|kes }}</td>
                             <td>
                                 {% if p.payment_type == 'mpesa' %}
                                     <span class="badge" style="background:#f0fdf4;color:#16a34a;">
@@ -335,13 +448,13 @@
                         <tr>
                             <td>
                                 <a href="{% url 'loans:detail' g.loan.pk %}" class="fw-semibold text-decoration-none" style="color:#2563eb;">
-                                    {{ g.loan.member.name }}
+                                    {{ g.loan.borrower_name }}
                                 </a>
                             </td>
-                            <td>KES {{ g.loan.loan_amount|floatformat:2 }}</td>
-                            <td style="color:#2563eb;font-weight:600;">KES {{ g.amount_guaranteed|floatformat:2 }}</td>
+                            <td>KES {{ g.loan.loan_amount|kes }}</td>
+                            <td style="color:#2563eb;font-weight:600;">KES {{ g.amount_guaranteed|kes }}</td>
                             <td class="fw-semibold {% if g.loan.balance == 0 %}text-success{% else %}text-danger{% endif %}">
-                                KES {{ g.loan.balance|floatformat:2 }}
+                                KES {{ g.loan.balance|kes }}
                             </td>
                             <td>
                                 {% if g.loan.status == 'cleared' %}

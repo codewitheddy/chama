@@ -1,0 +1,381 @@
+{% extends 'base.html' %}
+{% block title %}Bulk Contributions{% endblock %}
+{% block page_title %}Bulk Contribution Entry{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Payment type mini-toggle */
+    .pt-group { display:flex; gap:0.4rem; }
+    .pt-group label { flex:1; cursor:pointer; }
+    .pt-group input[type=radio] { display:none; }
+    .pt-btn {
+        display:flex; align-items:center; justify-content:center; gap:0.3rem;
+        padding:0.3rem 0.5rem; border:1.5px solid #e2e8f0; border-radius:6px;
+        font-size:0.78rem; font-weight:600; color:#64748b; background:#f8fafc;
+        transition:all 0.12s; white-space:nowrap; user-select:none;
+    }
+    .pt-group input[type=radio]:checked + .pt-btn { border-color:#2563eb; background:#eff6ff; color:#2563eb; }
+    .pt-group input[type=radio][value=mpesa]:checked + .pt-btn { border-color:#16a34a; background:#f0fdf4; color:#16a34a; }
+
+    /* Mpesa code slide */
+    .mpesa-field { overflow:hidden; transition:max-height 0.2s ease, opacity 0.15s ease; }
+    .mpesa-field.hidden { max-height:0; opacity:0; }
+    .mpesa-field.visible { max-height:60px; opacity:1; }
+
+    /* Row states */
+    .bulk-row { transition:background 0.1s; }
+    .bulk-row.is-skipped td { opacity:0.38; }
+    .bulk-row.is-skipped td:first-child { opacity:1; }
+    .bulk-row.has-error { background:#fff8f8 !important; }
+    .bulk-row.already-paid { background:#f0fdf4 !important; }
+
+    /* Sticky header */
+    .bulk-table thead th {
+        position:sticky; top:0; z-index:2;
+        background:#f8fafc;
+        font-size:0.72rem; font-weight:700; text-transform:uppercase;
+        letter-spacing:0.5px; color:#475569;
+        padding:10px 10px; border-bottom:2px solid #e2e8f0;
+        white-space:nowrap;
+    }
+    .bulk-table tbody td { padding:8px 10px; vertical-align:middle; border-bottom:1px solid #f1f5f9; }
+    .bulk-table tbody tr:last-child td { border-bottom:none; }
+
+    /* Apply-all bar */
+    .apply-bar {
+        background:#1e2a3a; border-radius:10px; padding:1rem 1.25rem;
+        display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap;
+    }
+    .apply-bar label { color:#94a3b8; font-size:0.78rem; font-weight:600; margin-bottom:3px; }
+    .apply-bar .form-control, .apply-bar .form-select { font-size:0.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="post" id="bulkForm">
+{% csrf_token %}
+
+<!-- Month / Year selector -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="d-flex gap-3 align-items-center flex-wrap">
+            <div class="d-flex align-items-center gap-2">
+                <label class="fw-semibold small mb-0">Period:</label>
+                <select name="month" id="hdrMonth" class="form-select form-select-sm" style="width:130px;">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if num == selected_month %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="year" id="hdrYear" class="form-select form-select-sm" style="width:90px;">
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" id="reloadPeriod" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Reload
+                </button>
+            </div>
+            {% if already_paid_count %}
+            <span class="badge" style="background:#f0fdf4;color:#16a34a;">
+                <i class="bi bi-check-circle me-1"></i>{{ already_paid_count }} already paid this period
+            </span>
+            {% endif %}
+            <div class="ms-auto d-flex gap-2">
+                <a href="{% url 'contributions:add' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-person me-1"></i>Single Entry
+                </a>
+                <button type="submit" class="btn btn-sm btn-primary" id="saveBtn">
+                    <i class="bi bi-check-circle me-1"></i>Save All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Apply-all defaults bar -->
+<div class="apply-bar mb-3">
+    <div>
+        <label>Default Date</label>
+        <input type="date" id="applyDate" class="form-control form-control-sm" value="{{ default_date }}" style="width:150px;">
+    </div>
+    <div>
+        <label>Default Amount (KES)</label>
+        <input type="number" id="applyAmount" class="form-control form-control-sm" step="0.01"
+               value="{{ default_amount }}" placeholder="e.g. 500" style="width:130px;">
+    </div>
+    <div>
+        <label>Default Method</label>
+        <select id="applyMethod" class="form-select form-select-sm" style="width:110px;">
+            <option value="cash" {% if default_method == 'cash' %}selected{% endif %}>Cash</option>
+            <option value="mpesa" {% if default_method == 'mpesa' %}selected{% endif %}>M-Pesa</option>
+        </select>
+    </div>
+    <button type="button" id="applyAll" class="btn btn-sm btn-light">
+        <i class="bi bi-arrow-down-circle me-1"></i>Apply to All
+    </button>
+    <div class="ms-auto d-flex gap-2 align-items-end">
+        <button type="button" id="selectAll" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-check2-all me-1"></i>Include All
+        </button>
+        <button type="button" id="skipPaid" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-skip-forward me-1"></i>Skip Already Paid
+        </button>
+    </div>
+</div>
+
+<!-- Bulk table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people me-2"></i>Members — {{ rows|length }} active</span>
+        <span class="text-muted small" id="includedCount"></span>
+    </div>
+    <div class="table-responsive" style="max-height:65vh; overflow-y:auto;">
+        <table class="bulk-table table mb-0">
+            <thead>
+                <tr>
+                    <th style="width:36px;">
+                        <input type="checkbox" id="masterCheck" class="form-check-input" checked title="Toggle all">
+                    </th>
+                    <th>Member</th>
+                    <th style="width:160px;">Method</th>
+                    <th style="width:200px;">M-Pesa Code</th>
+                    <th style="width:120px;">Amount (KES)</th>
+                    <th style="width:145px;">Date</th>
+                    <th style="width:36px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr class="bulk-row {% if row.already_paid %}already-paid{% endif %} {% if row.error %}has-error{% endif %}"
+                    id="row_{{ row.member.pk }}" data-pk="{{ row.member.pk }}">
+
+                    <!-- Skip checkbox -->
+                    <td>
+                        <input type="hidden" name="{{ row.prefix }}_skip" value="1" class="skip-hidden" id="skip_hidden_{{ row.member.pk }}">
+                        <input type="checkbox" class="form-check-input row-check"
+                               id="check_{{ row.member.pk }}"
+                               data-pk="{{ row.member.pk }}"
+                               {% if not row.skip %}checked{% endif %}>
+                    </td>
+
+                    <!-- Member name -->
+                    <td>
+                        <span class="fw-semibold">{{ row.member.name }}</span>
+                        {% if row.already_paid %}
+                        <span class="badge ms-1" style="background:#f0fdf4;color:#16a34a;font-size:0.68rem;">Paid</span>
+                        {% endif %}
+                        {% if row.error %}
+                        <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ row.error }}</div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Payment method -->
+                    <td>
+                        <div class="pt-group">
+                            <label>
+                                <input type="radio" name="{{ row.prefix }}_payment_type"
+                                       value="cash" class="pt-radio"
+                                       data-pk="{{ row.member.pk }}"
+                                       {% if row.payment_type != 'mpesa' %}checked{% endif %}>
+                                <div class="pt-btn"><i class="bi bi-cash-coin"></i> Cash</div>
+                            </label>
+                            <label>
+                                <input type="radio" name="{{ row.prefix }}_payment_type"
+                                       value="mpesa" class="pt-radio"
+                                       data-pk="{{ row.member.pk }}"
+                                       {% if row.payment_type == 'mpesa' %}checked{% endif %}>
+                                <div class="pt-btn"><i class="bi bi-phone"></i> M-Pesa</div>
+                            </label>
+                        </div>
+                    </td>
+
+                    <!-- M-Pesa code -->
+                    <td>
+                        <div class="mpesa-field {% if row.payment_type == 'mpesa' %}visible{% else %}hidden{% endif %}"
+                             id="mpesa_field_{{ row.member.pk }}">
+                            <input type="text"
+                                   name="{{ row.prefix }}_mpesa_code"
+                                   value="{{ row.mpesa_code }}"
+                                   class="form-control form-control-sm text-uppercase mpesa-input"
+                                   placeholder="e.g. QHX4Y2Z1AB"
+                                   maxlength="20"
+                                   autocomplete="off"
+                                   id="mpesa_{{ row.member.pk }}">
+                        </div>
+                    </td>
+
+                    <!-- Amount -->
+                    <td>
+                        <input type="number"
+                               name="{{ row.prefix }}_amount"
+                               value="{{ row.amount }}"
+                               class="form-control form-control-sm amount-input"
+                               step="0.01" min="0.01"
+                               placeholder="0.00">
+                    </td>
+
+                    <!-- Date -->
+                    <td>
+                        <input type="date"
+                               name="{{ row.prefix }}_date"
+                               value="{{ row.date }}"
+                               class="form-control form-control-sm date-input">
+                    </td>
+
+                    <!-- Status icon -->
+                    <td class="text-center">
+                        {% if row.already_paid %}
+                        <i class="bi bi-check-circle-fill text-success" title="Already paid this period"></i>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <span class="text-muted small" id="footerCount"></span>
+        <button type="submit" class="btn btn-primary" id="saveBtn2">
+            <i class="bi bi-check-circle me-1"></i>Save All Contributions
+        </button>
+    </div>
+</div>
+
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    // ── Helpers ───────────────────────────────────────────────────
+    function setRowEnabled(pk, enabled) {
+        const row = document.getElementById('row_' + pk);
+        const hiddenSkip = document.getElementById('skip_hidden_' + pk);
+        if (!row) return;
+        // When enabled (included), skip = 0; when disabled (skipped), skip = 1
+        hiddenSkip.value = enabled ? '0' : '1';
+        row.classList.toggle('is-skipped', !enabled);
+        // Disable/enable inputs inside the row (except the checkbox itself)
+        row.querySelectorAll('input:not(.row-check), select').forEach(el => {
+            el.disabled = !enabled;
+        });
+    }
+
+    function toggleMpesa(pk) {
+        const selected = document.querySelector(`input[name="member_${pk}_payment_type"]:checked`);
+        const field = document.getElementById('mpesa_field_' + pk);
+        const input = document.getElementById('mpesa_' + pk);
+        if (!field) return;
+        const isMpesa = selected && selected.value === 'mpesa';
+        field.classList.toggle('visible', isMpesa);
+        field.classList.toggle('hidden', !isMpesa);
+        if (input) input.required = isMpesa;
+    }
+
+    function updateCounts() {
+        const total = document.querySelectorAll('.row-check').length;
+        const included = document.querySelectorAll('.row-check:checked').length;
+        const txt = `${included} of ${total} members included`;
+        const el1 = document.getElementById('includedCount');
+        const el2 = document.getElementById('footerCount');
+        if (el1) el1.textContent = txt;
+        if (el2) el2.textContent = txt;
+    }
+
+    // ── Row checkboxes ────────────────────────────────────────────
+    document.querySelectorAll('.row-check').forEach(cb => {
+        const pk = cb.dataset.pk;
+        // Init state
+        setRowEnabled(pk, cb.checked);
+
+        cb.addEventListener('change', function () {
+            setRowEnabled(pk, this.checked);
+            updateCounts();
+            // Sync master checkbox
+            const all = document.querySelectorAll('.row-check');
+            const checked = document.querySelectorAll('.row-check:checked');
+            const master = document.getElementById('masterCheck');
+            master.indeterminate = checked.length > 0 && checked.length < all.length;
+            master.checked = checked.length === all.length;
+        });
+    });
+
+    // Master checkbox
+    document.getElementById('masterCheck').addEventListener('change', function () {
+        document.querySelectorAll('.row-check').forEach(cb => {
+            cb.checked = this.checked;
+            setRowEnabled(cb.dataset.pk, this.checked);
+        });
+        updateCounts();
+    });
+
+    // ── Payment type radios ───────────────────────────────────────
+    document.querySelectorAll('.pt-radio').forEach(r => {
+        r.addEventListener('change', function () {
+            toggleMpesa(this.dataset.pk);
+        });
+        // Init
+        toggleMpesa(r.dataset.pk);
+    });
+
+    // ── Apply-all bar ─────────────────────────────────────────────
+    document.getElementById('applyAll').addEventListener('click', function () {
+        const date   = document.getElementById('applyDate').value;
+        const amount = document.getElementById('applyAmount').value;
+        const method = document.getElementById('applyMethod').value;
+
+        document.querySelectorAll('.row-check:checked').forEach(cb => {
+            const pk  = cb.dataset.pk;
+            const row = document.getElementById('row_' + pk);
+            if (!row) return;
+
+            if (date)   row.querySelector('.date-input').value   = date;
+            if (amount) row.querySelector('.amount-input').value = amount;
+
+            // Set payment type radio
+            const radio = row.querySelector(`input[value="${method}"].pt-radio`);
+            if (radio) { radio.checked = true; toggleMpesa(pk); }
+        });
+    });
+
+    // Include all / skip paid buttons
+    document.getElementById('selectAll').addEventListener('click', function () {
+        document.querySelectorAll('.row-check').forEach(cb => {
+            cb.checked = true;
+            setRowEnabled(cb.dataset.pk, true);
+        });
+        const master = document.getElementById('masterCheck');
+        master.checked = true;
+        master.indeterminate = false;
+        updateCounts();
+    });
+
+    document.getElementById('skipPaid').addEventListener('click', function () {
+        document.querySelectorAll('.bulk-row.already-paid .row-check').forEach(cb => {
+            cb.checked = false;
+            setRowEnabled(cb.dataset.pk, false);
+        });
+        updateCounts();
+    });
+
+    // ── Period reload ─────────────────────────────────────────────
+    document.getElementById('reloadPeriod').addEventListener('click', function () {
+        const month = document.getElementById('hdrMonth').value;
+        const year  = document.getElementById('hdrYear').value;
+        window.location.href = `?month=${month}&year=${year}`;
+    });
+
+    // ── Prevent double-submit ─────────────────────────────────────
+    document.getElementById('bulkForm').addEventListener('submit', function () {
+        document.getElementById('saveBtn').disabled  = true;
+        document.getElementById('saveBtn2').disabled = true;
+    });
+
+    // ── Init counts ───────────────────────────────────────────────
+    updateCounts();
+
+    // Run mpesa toggle for all rows on load (handles re-render after error)
+    document.querySelectorAll('.pt-radio').forEach(r => toggleMpesa(r.dataset.pk));
+})();
+</script>
+{% endblock %}

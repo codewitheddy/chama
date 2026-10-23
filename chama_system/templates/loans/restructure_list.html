@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Loan Restructuring Requests{% endblock %}
+{% block page_title %}Loan Restructuring{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1 small">
+                <li class="breadcrumb-item"><a href="{% url 'loans:list' %}" class="text-decoration-none">Loans</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Restructuring</li>
+            </ol>
+        </nav>
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-arrow-repeat text-primary me-2"></i>Loan Restructuring Requests
+        </h5>
+        <div class="text-muted small">
+            Review and manage loan term modifications, moratoria, rate adjustments, and consolidations.
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'loans:list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Loans
+        </a>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-3 col-6">
+        <div class="card stat-card shadow-sm border-0">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label text-muted small fw-semibold">Total Proposals</div>
+                <div class="stat-value fw-bold text-dark fs-5">{{ total_requests }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3 col-6">
+        <div class="card stat-card shadow-sm border-0">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label text-muted small fw-semibold">Pending Review</div>
+                <div class="stat-value fw-bold text-warning fs-5">{{ pending_requests }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3 col-6">
+        <div class="card stat-card shadow-sm border-0">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label text-muted small fw-semibold">Approved & Applied</div>
+                <div class="stat-value fw-bold text-success fs-5">{{ approved_requests }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3 col-6">
+        <div class="card stat-card shadow-sm border-0">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label text-muted small fw-semibold">Rejected</div>
+                <div class="stat-value fw-bold text-danger fs-5">{{ rejected_requests }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters & Table -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <!-- Status Filter Tabs -->
+        <div class="btn-group btn-group-sm">
+            <a href="{% url 'loans:restructure_list' %}" class="btn {% if active_tab == 'all' or not active_tab %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+                All ({{ total_requests }})
+            </a>
+            <a href="{% url 'loans:restructure_list' %}?status=PENDING" class="btn {% if active_tab == 'PENDING' %}btn-warning{% else %}btn-outline-secondary{% endif %}">
+                Pending ({{ pending_requests }})
+            </a>
+            <a href="{% url 'loans:restructure_list' %}?status=APPROVED" class="btn {% if active_tab == 'APPROVED' %}btn-success{% else %}btn-outline-secondary{% endif %}">
+                Approved ({{ approved_requests }})
+            </a>
+            <a href="{% url 'loans:restructure_list' %}?status=REJECTED" class="btn {% if active_tab == 'REJECTED' %}btn-danger{% else %}btn-outline-secondary{% endif %}">
+                Rejected ({{ rejected_requests }})
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-muted text-uppercase" style="font-size:0.75rem; letter-spacing:0.5px;">
+                    <th>ID</th>
+                    <th>Loan & Borrower</th>
+                    <th>Restructure Type</th>
+                    <th>Requested By</th>
+                    <th>Requested At</th>
+                    <th>Status</th>
+                    <th class="text-end pe-3">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in restructures %}
+                <tr>
+                    <td class="fw-bold text-secondary">#{{ r.pk }}</td>
+                    <td>
+                        <div class="fw-semibold text-dark">
+                            <a href="{% url 'loans:detail' r.loan.pk %}" class="text-decoration-none">
+                                Loan #{{ r.loan.pk }}
+                            </a>
+                        </div>
+                        <div class="small text-muted">{{ r.loan.borrower_name }}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">
+                            {{ r.get_restructure_type_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="small fw-semibold text-dark">{{ r.requested_by.get_full_name|default:r.requested_by.username }}</div>
+                    </td>
+                    <td class="small text-muted">
+                        {{ r.requested_at|date:"M d, Y H:i" }}
+                    </td>
+                    <td>
+                        {% if r.status == 'PENDING' %}
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1">
+                            <i class="bi bi-clock me-1"></i>Pending Review
+                        </span>
+                        {% elif r.status == 'APPROVED' %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                            <i class="bi bi-check-circle me-1"></i>Approved
+                        </span>
+                        {% elif r.status == 'REJECTED' %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">
+                            <i class="bi bi-x-circle me-1"></i>Rejected
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-3">
+                        <a href="{% url 'loans:restructure_detail' r.pk %}" class="btn btn-xs btn-outline-primary py-1 px-2 rounded-pill">
+                            <i class="bi bi-eye me-1"></i>Review Details
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                        No loan restructure requests found in this category.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="card-footer bg-white border-top py-2 d-flex justify-content-between align-items-center">
+        <span class="small text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <ul class="pagination pagination-sm mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+            {% endif %}
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

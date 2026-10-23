@@ -1,4 +1,28 @@
 {
+    "python.defaultInterpreterPath": "${workspaceFolder}/venv/Scripts/python.exe",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/chama_system"
+    ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/chama_system"
+    ],
+    "python.analysis.exclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/installer_output/**",
+        "**/_archived_build_scripts/**",
+        "**/venv/**",
+        "**/__pycache__/**"
+    ],
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true
+    },
+    "search.exclude": {
+        "**/dist": true,
+        "**/build": true,
+        "**/venv": true
+    },
     "kiroAgent.configureMCP": "Disabled",
     "html.autoClosingTags": false
 }

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Add Guarantor{% endblock %}
 {% block page_title %}Add Guarantor — Loan #{{ loan.pk }}{% endblock %}
 
@@ -12,16 +13,16 @@
                 <div class="row g-3 text-center">
                     <div class="col-4">
                         <div class="text-muted small">Borrower</div>
-                        <div class="fw-semibold">{{ loan.member.name }}</div>
+                        <div class="fw-semibold">{{ loan.borrower_name }}</div>
                     </div>
                     <div class="col-4">
                         <div class="text-muted small">Loan Amount</div>
-                        <div class="fw-semibold">KES {{ loan.loan_amount|floatformat:2 }}</div>
+                        <div class="fw-semibold">KES {{ loan.loan_amount|kes }}</div>
                     </div>
                     <div class="col-4">
                         <div class="text-muted small">Already Guaranteed</div>
                         <div class="fw-semibold {% if loan.total_guaranteed >= loan.loan_amount %}text-success{% else %}text-warning{% endif %}">
-                            KES {{ loan.total_guaranteed|floatformat:2 }}
+                            KES {{ loan.total_guaranteed|kes }}
                         </div>
                     </div>
                 </div>
@@ -35,7 +36,7 @@
                         <div class="progress-bar bg-warning" style="width:{{ loan.guarantee_coverage_percent }}%;"></div>
                     </div>
                     <div class="text-muted mt-1" style="font-size:0.75rem;">
-                        Still needs KES {{ loan.loan_amount|floatformat:2 }} — KES {{ loan.total_guaranteed|floatformat:2 }} = 
+                        Still needs KES {{ loan.loan_amount|kes }} — KES {{ loan.total_guaranteed|kes }} = 
                         <strong class="text-danger">KES {% widthratio loan.loan_amount 1 1 %}</strong>
                     </div>
                 </div>

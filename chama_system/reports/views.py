@@ -10,6 +10,7 @@ from loans.models import Loan
 from payments.models import Payment
 from penalties.models import Penalty
 from utils.exports import export_csv, export_pdf
+from utils.exports import _get_group_name, _get_document_footer, draw_pdf_page_chrome, _get_document_footer, draw_pdf_page_chrome
 from accounts.mixins import TreasurerRequiredMixin, MemberAccessMixin
 
 
@@ -18,20 +19,99 @@ class IncomeReportView(TreasurerRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        from django.db.models import F, ExpressionWrapper, DecimalField
-        ctx['total_reg_fees'] = Member.objects.aggregate(t=Sum('registration_fee'))['t'] or 0
-        ctx['total_contributions'] = Contribution.objects.aggregate(t=Sum('amount'))['t'] or 0
-        ctx['total_loans_given'] = Loan.objects.aggregate(t=Sum('loan_amount'))['t'] or 0
-        # Interest collected using interest-first allocation:
-        # payments cover interest+penalties before principal.
-        # Per loan: min(amount_paid, total_payable - loan_amount)
-        ctx['total_interest'] = sum(
-            min(l.amount_paid, l.total_payable - l.loan_amount)
-            for l in Loan.objects.all()
+        from decimal import Decimal
+        from django.utils import timezone
+        from welfare.models import get_welfare_balance, WelfareContribution, WelfareDisbursement
+
+        today = timezone.localdate()
+        year_filter = self.request.GET.get('year', '').strip()
+        years = list(range(today.year - 4, today.year + 1))
+        ctx['years'] = years
+        ctx['selected_year'] = year_filter
+
+        def qs_filter(qs, date_field='date'):
+            if year_filter:
+                return qs.filter(**{f'{date_field}__year': year_filter})
+            return qs
+
+        # ── Income streams ────────────────────────────────────────
+        # NOTE: Registration fees are a separate fund — excluded from group income
+        ctx['total_reg_fees'] = (
+            Member.objects.aggregate(t=Sum('registration_fee_paid'))['t'] or Decimal('0')
         )
-        ctx['total_penalties'] = Penalty.objects.filter(paid=True).aggregate(t=Sum('amount'))['t'] or 0
-        ctx['total_income'] = (ctx['total_reg_fees'] + ctx['total_contributions']
-                               + ctx['total_interest'] + ctx['total_penalties'])
+
+        ctx['total_contributions'] = (
+            qs_filter(Contribution.objects).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        )
+
+        # Interest collected: per loan, min(amount_paid, interest_charged)
+        # Using interest_charged = total_payable - loan_amount avoids counting
+        # late penalties as collected interest.
+        from django.db.models import F, ExpressionWrapper, DecimalField as _DF
+        all_loans = list(Loan.objects.annotate(
+            interest_charged=ExpressionWrapper(
+                F('total_payable') - F('loan_amount'), output_field=_DF()
+            )
+        ).only('amount_paid', 'total_payable', 'loan_amount'))
+        ctx['total_interest'] = sum(
+            min(l.amount_paid, l.interest_charged)
+            for l in all_loans
+        )
+
+        # Penalties
+        pen_qs = Penalty.objects
+        ctx['total_penalties_paid']    = (
+            qs_filter(pen_qs.filter(paid=True), 'paid_date').aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        )
+        ctx['total_penalties_unpaid']  = (
+            pen_qs.filter(paid=False).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        )
+        ctx['total_penalties_issued']  = (
+            qs_filter(pen_qs).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        )
+
+        # Welfare
+        ctx['total_welfare_contributions'] = (
+            qs_filter(WelfareContribution.objects).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        )
+        ctx['total_welfare_disbursed'] = (
+            qs_filter(WelfareDisbursement.objects).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        )
+        ctx['welfare_balance'] = get_welfare_balance()
+
+        # Total group income — registration fees excluded (separate Registration Fee Fund)
+        # Other income (external interest, investments, etc.) is included
+        try:
+            from other_income.models import OtherIncome as _OI
+            total_other_income = _OI.objects.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        except Exception:
+            total_other_income = Decimal('0')
+
+        ctx['total_other_income'] = total_other_income
+        ctx['total_income'] = (
+            ctx['total_contributions']
+            + ctx['total_interest']
+            + ctx['total_penalties_paid']
+            + total_other_income
+        )
+
+        # ── Loans portfolio ───────────────────────────────────────
+        ctx['total_loans_given']    = (
+            qs_filter(Loan.objects, 'date_taken').aggregate(t=Sum('loan_amount'))['t'] or Decimal('0')
+        )
+        ctx['total_loans_paid']     = Loan.objects.filter(status='cleared').aggregate(t=Sum('loan_amount'))['t'] or Decimal('0')
+        ctx['active_loan_balance']  = sum(l.balance for l in all_loans if l.status == 'active')
+        ctx['late_loan_balance']    = sum(l.balance for l in all_loans if l.status == 'late')
+        ctx['unpaid_loan_balance']  = sum(l.balance for l in all_loans if l.status in ('active', 'late'))
+        ctx['active_count']         = sum(1 for l in all_loans if l.status == 'active')
+        ctx['late_count']           = sum(1 for l in all_loans if l.status == 'late')
+        ctx['cleared_count']        = sum(1 for l in all_loans if l.status == 'cleared')
+        ctx['total_loan_count']     = len(all_loans)
+
+        # ── Members ───────────────────────────────────────────────
+        ctx['total_members']        = Member.objects.count()
+        ctx['active_members']       = Member.objects.filter(is_active=True).count()
+
         return ctx
 
 
@@ -97,24 +177,54 @@ class MemberStatementView(TreasurerRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         member_id = self.request.GET.get('member')
-        ctx['members'] = Member.objects.all()
+        ctx['members'] = Member.objects.all().order_by('name')
         if member_id:
             try:
                 from loans.models import LoanGuarantor
+                from django.db.models import Sum
+                from welfare.models import WelfareContribution
+                from yearend.views import _compute_year_end_distribution
+
                 member = Member.objects.get(pk=member_id)
                 ctx['selected_member'] = member
-                ctx['contributions'] = member.contribution_set.all()
+
+                # Core records
+                ctx['contributions'] = member.contribution_set.order_by('-date')
                 ctx['loans'] = member.loan_set.all()
-                ctx['payments'] = member.payment_set.all()
+                ctx['payments'] = member.payment_set.select_related('loan').order_by('-date')
                 ctx['guarantees'] = LoanGuarantor.objects.filter(
                     guarantor=member
                 ).select_related('loan__member')
-                from django.db.models import Sum
+
+                # Penalties
                 penalties = member.penalties.all()
                 ctx['penalties'] = penalties
                 ctx['total_penalties_issued'] = penalties.aggregate(t=Sum('amount'))['t'] or 0
                 ctx['total_penalties_paid'] = penalties.filter(paid=True).aggregate(t=Sum('amount'))['t'] or 0
                 ctx['total_penalties_outstanding'] = penalties.filter(paid=False).aggregate(t=Sum('amount'))['t'] or 0
+
+                # Welfare contributions
+                ctx['welfare_contributions'] = WelfareContribution.objects.filter(
+                    member=member
+                ).order_by('-date')
+                ctx['total_welfare_contributions'] = (
+                    WelfareContribution.objects.filter(member=member)
+                    .aggregate(t=Sum('amount'))['t'] or 0
+                )
+
+                # Year-end expected payout (live estimate)
+                try:
+                    active_members = list(Member.objects.filter(is_active=True).order_by('name'))
+                    distribution = _compute_year_end_distribution(active_members)
+                    member_row = next(
+                        (r for r in distribution['member_breakdown'] if r['member'].pk == member.pk),
+                        None
+                    )
+                    ctx['yearend_preview'] = member_row
+                    ctx['yearend_totals'] = distribution
+                except Exception:
+                    ctx['yearend_preview'] = None
+
             except Member.DoesNotExist:
                 pass
         return ctx
@@ -170,7 +280,7 @@ class ExportMembersCSV(TreasurerRequiredMixin, View):
         fields = [
             ('name', 'Name'),
             ('phone', 'Phone'),
-            ('registration_fee', 'Reg. Fee'),
+            ('registration_fee_paid', 'Reg. Fee'),
             ('date_joined', 'Date Joined'),
             (lambda m: str(m.total_contributions()), 'Total Contributions'),
             (lambda m: str(m.total_loans()), 'Total Loans'),
@@ -198,7 +308,14 @@ class ExportMemberStatementCSV(TreasurerRequiredMixin, View):
 
         w.writerow([f'Member Statement — {member.name}'])
         w.writerow([f'Phone: {member.phone}', f'Joined: {member.date_joined}',
-                    f'Reg. Fee: KES {member.registration_fee}'])
+                    f'Reg. Fee: KES {member.registration_fee_paid}'])
+        if member.next_of_kin_name:
+            nok = member.next_of_kin_name
+            if member.next_of_kin_relationship:
+                nok += f' ({member.next_of_kin_relationship})'
+            if member.next_of_kin_phone:
+                nok += f' · {member.next_of_kin_phone}'
+            w.writerow([f'Next of Kin: {nok}'])
         w.writerow([])
 
         w.writerow(['CONTRIBUTIONS'])
@@ -207,6 +324,18 @@ class ExportMemberStatementCSV(TreasurerRequiredMixin, View):
             w.writerow([c.get_month_display(), c.year, c.amount,
                         c.get_payment_type_display(), c.mpesa_code or '', c.date])
         w.writerow(['Total', '', member.total_contributions(), '', '', ''])
+        w.writerow([])
+
+        w.writerow(['WELFARE CONTRIBUTIONS'])
+        w.writerow(['Month', 'Year', 'Amount (KES)', 'Method', 'M-Pesa Code', 'Date'])
+        from welfare.models import WelfareContribution
+        from django.db.models import Sum as _Sum
+        welfare_qs = WelfareContribution.objects.filter(member=member).order_by('-date')
+        for wc in welfare_qs:
+            w.writerow([wc.get_month_display(), wc.year, wc.amount,
+                        wc.get_payment_type_display(), wc.mpesa_code or '', wc.date])
+        welfare_total = welfare_qs.aggregate(t=_Sum('amount'))['t'] or 0
+        w.writerow(['Total', '', welfare_total, '', '', ''])
         w.writerow([])
 
         w.writerow(['LOANS'])
@@ -283,27 +412,7 @@ class ExportMemberStatementPDF(TreasurerRequiredMixin, View):
         usable = A4[0] - 3*cm
 
         def on_page(canvas, d):
-            canvas.saveState()
-            w, h = A4
-            canvas.setFillColor(PRIMARY)
-            canvas.rect(0, h - 28*mm, w, 28*mm, fill=1, stroke=0)
-            canvas.setFillColor(WHITE)
-            canvas.setFont('Helvetica-Bold', 13)
-            canvas.drawString(1.5*cm, h - 13*mm, 'DC Welfare Group')
-            canvas.setFont('Helvetica', 8)
-            canvas.drawString(1.5*cm, h - 20*mm, 'Member Statement')
-            canvas.setFont('Helvetica', 9)
-            canvas.drawRightString(w - 1.5*cm, h - 14*mm, member.name)
-            canvas.setFont('Helvetica', 8)
-            canvas.drawRightString(w - 1.5*cm, h - 21*mm,
-                                   f'Generated: {dt.today().strftime("%d %B %Y")}')
-            canvas.setFillColor(BORDER)
-            canvas.rect(0, 0, w, 10*mm, fill=1, stroke=0)
-            canvas.setFillColor(TEXT_MUTED)
-            canvas.setFont('Helvetica', 8)
-            canvas.drawString(1.5*cm, 3.5*mm, 'DC Welfare Group — Confidential')
-            canvas.drawRightString(w - 1.5*cm, 3.5*mm, f'Page {d.page}')
-            canvas.restoreState()
+            draw_pdf_page_chrome(canvas, d, subtitle='Member Statement', header_right_line1=member.name, header_right_line2=f'Generated: {dt.today().strftime("%d %B %Y")}')
 
         def ps(name, **kw):
             return ParagraphStyle(name, parent=styles['Normal'], **kw)
@@ -351,6 +460,9 @@ class ExportMemberStatementPDF(TreasurerRequiredMixin, View):
             return t
 
         # ── Aggregate data ────────────────────────────────────────
+        from welfare.models import WelfareContribution
+        welfare_qs    = WelfareContribution.objects.filter(member=member).order_by('-date')
+        welfare_total = welfare_qs.aggregate(t=Sum('amount'))['t'] or Decimal('0')
         total_pen_issued = member.penalties.aggregate(t=Sum('amount'))['t'] or Decimal('0')
         total_pen_paid   = member.penalties.filter(paid=True).aggregate(t=Sum('amount'))['t'] or Decimal('0')
         total_pen_unpaid = total_pen_issued - total_pen_paid
@@ -363,8 +475,15 @@ class ExportMemberStatementPDF(TreasurerRequiredMixin, View):
             [Paragraph(member.name, title_s)],
             [Paragraph(f'Phone: {member.phone or "—"}', sub_s)],
             [Paragraph(f'Joined: {member.date_joined}', sub_s)],
-            [Paragraph(f'Reg. Fee: KES {member.registration_fee:,.2f}', sub_s)],
+            [Paragraph(f'Reg. Fee: KES {member.registration_fee_paid:,.2f}', sub_s)],
         ]
+        if member.next_of_kin_name:
+            nok = member.next_of_kin_name
+            if member.next_of_kin_relationship:
+                nok += f' ({member.next_of_kin_relationship})'
+            if member.next_of_kin_phone:
+                nok += f' · {member.next_of_kin_phone}'
+            profile_rows.append([Paragraph(f'Next of Kin: {nok}', sub_s)])
         profile_tbl = Table(profile_rows, colWidths=[usable * 0.44])
         profile_tbl.setStyle(TableStyle([
             ('TOPPADDING',    (0, 0), (-1, -1), 3),
@@ -376,6 +495,7 @@ class ExportMemberStatementPDF(TreasurerRequiredMixin, View):
         fin_rows = [
             [Paragraph('<b>Financial Summary</b>', bold_s), Paragraph('')],
             [Paragraph('Total Contributions', muted_s), kes(member.total_contributions(), green_s)],
+            [Paragraph('Welfare Contributions', muted_s), kes(welfare_total, green_s)],
             [Paragraph('Total Loans', muted_s),         kes(member.total_loans(), blue_s)],
             [Paragraph('Loan Balance', muted_s),        kes(member.total_loan_balance(), red_s)],
             [Paragraph('Penalties Issued', muted_s),    kes(total_pen_issued, red_s)],
@@ -431,6 +551,30 @@ class ExportMemberStatementPDF(TreasurerRequiredMixin, View):
             Paragraph('Contributions', section_s),
             make_table(contrib_data, [0.22, 0.12, 0.20, 0.18, 0.28]),
         ]))
+
+        # ── Welfare Contributions ─────────────────────────────────
+        welfare_data = [[Paragraph('<b>MONTH</b>', hdr_s), Paragraph('<b>YEAR</b>', hdr_s),
+                         Paragraph('<b>AMOUNT</b>', hdr_r), Paragraph('<b>METHOD</b>', hdr_s),
+                         Paragraph('<b>DATE</b>', hdr_s)]]
+        for wc in welfare_qs:
+            method_text = wc.get_payment_type_display()
+            if wc.payment_type == 'mpesa' and wc.mpesa_code:
+                method_text = f"M-Pesa\n{wc.mpesa_code}"
+            welfare_data.append([
+                Paragraph(wc.get_month_display(), cell_s),
+                Paragraph(str(wc.year), cell_s),
+                kes(wc.amount, green_s),
+                Paragraph(method_text, cell_s),
+                Paragraph(str(wc.date), cell_s),
+            ])
+        if len(welfare_data) == 1:
+            welfare_data.append([Paragraph('No welfare contributions recorded.', muted_s),
+                                  Paragraph(''), Paragraph(''), Paragraph(''), Paragraph('')])
+        else:
+            welfare_data.append([Paragraph(''), Paragraph('<b>Total</b>', bold_s),
+                                  kes(welfare_total, green_s), Paragraph(''), Paragraph('')])
+        welfare_tbl = make_table(welfare_data, [0.22, 0.12, 0.20, 0.18, 0.28])
+        elements.append(KeepTogether([Paragraph('Welfare Contributions', section_s), welfare_tbl]))
 
         # ── Penalties ─────────────────────────────────────────────
         pen_data = [[Paragraph('<b>DATE</b>', hdr_s), Paragraph('<b>REASON</b>', hdr_s),
@@ -558,6 +702,39 @@ class ExportMemberStatementPDF(TreasurerRequiredMixin, View):
 
 class ExportContributionsPDF(TreasurerRequiredMixin, View):
     def get(self, request):
+        from decimal import Decimal
+        from django.db.models import Sum
+        qs = Contribution.objects.select_related('member').all()
+        year = request.GET.get('year', '').strip()
+        month = request.GET.get('month', '').strip()
+        if year:
+            qs = qs.filter(year=year)
+        if month:
+            qs = qs.filter(month=month)
+
+        total_amount = qs.aggregate(t=Sum('amount'))['t'] or Decimal('0.00')
+        total_count = qs.count()
+
+        summary_cards = [
+            ('Total Records', f'{total_count:,}'),
+            ('Total Contributions', f'KES {total_amount:,.2f}'),
+        ]
+        if month:
+            from contributions.models import MONTH_CHOICES
+            m_dict = dict(MONTH_CHOICES)
+            m_label = m_dict.get(int(month), month) if str(month).isdigit() else month
+            summary_cards.append(('Month', str(m_label)))
+        if year:
+            summary_cards.append(('Year', str(year)))
+
+        total_row = [
+            'TOTAL SUMMARY',
+            '',
+            '',
+            f'KES {total_amount:,.2f}',
+            '',
+        ]
+
         fields = [
             ('member.name', 'Member'),
             (lambda obj: obj.get_month_display(), 'Month'),
@@ -566,13 +743,41 @@ class ExportContributionsPDF(TreasurerRequiredMixin, View):
             ('date', 'Date'),
         ]
         return export_pdf(
-            Contribution.objects.select_related('member').all(),
-            'contributions_report', 'Contributions Report', fields
+            qs,
+            'contributions_report', 'Contributions Report', fields,
+            summary_cards=summary_cards, total_row=total_row
         )
 
 
 class ExportLoansPDF(TreasurerRequiredMixin, View):
     def get(self, request):
+        from decimal import Decimal
+        from django.db.models import Sum
+        qs = Loan.objects.select_related('member').all()
+        total_principal = qs.aggregate(t=Sum('loan_amount'))['t'] or Decimal('0.00')
+        total_interest = qs.aggregate(t=Sum('interest_amount'))['t'] or Decimal('0.00')
+        total_payable = qs.aggregate(t=Sum('total_payable'))['t'] or Decimal('0.00')
+        total_paid = qs.aggregate(t=Sum('amount_paid'))['t'] or Decimal('0.00')
+        total_balance = sum(l.balance for l in qs)
+
+        summary_cards = [
+            ('Total Loans', f'{qs.count():,}'),
+            ('Total Principal', f'KES {total_principal:,.2f}'),
+            ('Total Repaid', f'KES {total_paid:,.2f}'),
+            ('Total Outstanding', f'KES {total_balance:,.2f}'),
+        ]
+
+        total_row = [
+            'TOTAL SUMMARY',
+            f'KES {total_principal:,.2f}',
+            f'KES {total_interest:,.2f}',
+            f'KES {total_payable:,.2f}',
+            f'KES {total_paid:,.2f}',
+            f'KES {total_balance:,.2f}',
+            '',
+            '',
+        ]
+
         fields = [
             ('member.name', 'Member'),
             ('loan_amount', 'Principal (KES)'),
@@ -584,125 +789,237 @@ class ExportLoansPDF(TreasurerRequiredMixin, View):
             ('due_date', 'Due Date'),
         ]
         return export_pdf(
-            Loan.objects.select_related('member').all(),
-            'loans_report', 'Loans Report', fields, orientation='landscape'
+            qs,
+            'loans_report', 'Loans Report', fields, orientation='landscape',
+            summary_cards=summary_cards, total_row=total_row
         )
 
 
 class ExportIncomePDF(TreasurerRequiredMixin, View):
     def get(self, request):
         from io import BytesIO
+        from decimal import Decimal
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import cm, mm
         from reportlab.lib import colors
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
-        from reportlab.lib.enums import TA_CENTER
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable, KeepTogether
+        from reportlab.lib.enums import TA_RIGHT
         from django.http import HttpResponse
         from datetime import date as dt
+        from django.utils import timezone
+        from welfare.models import get_welfare_balance, WelfareContribution, WelfareDisbursement
 
-        PRIMARY = colors.HexColor('#1e3a5f')
-        ACCENT  = colors.HexColor('#2563eb')
-        ALT_ROW = colors.HexColor('#f0f4ff')
-        BORDER  = colors.HexColor('#cbd5e1')
-        TEXT_DARK = colors.HexColor('#1e293b')
+        year_filter = request.GET.get('year', '').strip()
+
+        def qs_filter(qs, date_field='date'):
+            if year_filter:
+                return qs.filter(**{f'{date_field}__year': year_filter})
+            return qs
+
+        # ── Aggregate data ────────────────────────────────────────
+        total_reg         = Member.objects.aggregate(t=Sum('registration_fee_paid'))['t'] or Decimal('0')
+        total_contrib     = qs_filter(Contribution.objects).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        # Interest collected: min(amount_paid, interest_charged) — excludes late penalties
+        from django.db.models import F as _F, ExpressionWrapper as _EW, DecimalField as _DF2
+        all_loans = list(Loan.objects.annotate(
+            interest_charged=_EW(_F('total_payable') - _F('loan_amount'), output_field=_DF2())
+        ).only('amount_paid', 'total_payable', 'loan_amount', 'status', 'loan_amount'))
+        total_interest    = sum(min(l.amount_paid, l.interest_charged) for l in all_loans)
+        pen_paid          = qs_filter(Penalty.objects.filter(paid=True), 'paid_date').aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        pen_unpaid        = Penalty.objects.filter(paid=False).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        pen_issued        = qs_filter(Penalty.objects).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        # Other income — included in group income, registration fees excluded (separate fund)
+        try:
+            from other_income.models import OtherIncome as _OI2
+            total_other_income = _OI2.objects.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        except Exception:
+            total_other_income = Decimal('0')
+        total_income      = total_contrib + total_interest + pen_paid + total_other_income
+        loans_given       = qs_filter(Loan.objects, 'date_taken').aggregate(t=Sum('loan_amount'))['t'] or Decimal('0')
+        loans_cleared     = Loan.objects.filter(status='cleared').aggregate(t=Sum('loan_amount'))['t'] or Decimal('0')
+        active_bal        = sum(l.balance for l in all_loans if l.status == 'active')
+        late_bal          = sum(l.balance for l in all_loans if l.status == 'late')
+        unpaid_bal        = active_bal + late_bal
+        active_count      = sum(1 for l in all_loans if l.status == 'active')
+        late_count        = sum(1 for l in all_loans if l.status == 'late')
+        cleared_count     = sum(1 for l in all_loans if l.status == 'cleared')
+        welfare_contrib   = qs_filter(WelfareContribution.objects).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        welfare_disbursed = qs_filter(WelfareDisbursement.objects).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        welfare_balance   = get_welfare_balance()
+        total_members     = Member.objects.count()
+        active_members    = Member.objects.filter(is_active=True).count()
+
+        # ── PDF setup ─────────────────────────────────────────────
+        PRIMARY    = colors.HexColor('#1e3a5f')
+        ACCENT     = colors.HexColor('#2563eb')
+        GREEN      = colors.HexColor('#16a34a')
+        GREEN_BG   = colors.HexColor('#f0fdf4')
+        AMBER      = colors.HexColor('#d97706')
+        RED        = colors.HexColor('#e11d48')
+        TEAL       = colors.HexColor('#0d9488')
+        ALT_ROW    = colors.HexColor('#f8fafc')
+        BORDER     = colors.HexColor('#e2e8f0')
+        HEADER_BG  = colors.HexColor('#f1f5f9')
+        TEXT_DARK  = colors.HexColor('#1e293b')
         TEXT_MUTED = colors.HexColor('#64748b')
-
-        from django.db.models import F, ExpressionWrapper, DecimalField as _DecField
-        total_reg = Member.objects.aggregate(t=Sum('registration_fee'))['t'] or 0
-        total_contrib = Contribution.objects.aggregate(t=Sum('amount'))['t'] or 0
-        total_interest = sum(
-            min(l.amount_paid, l.total_payable - l.loan_amount)
-            for l in Loan.objects.all()
-        )
-        total_penalties = Penalty.objects.filter(paid=True).aggregate(t=Sum('amount'))['t'] or 0
-        total_income = total_reg + total_contrib + total_interest + total_penalties
+        WHITE      = colors.white
 
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="income_report.pdf"'
+        fname = f'income_report_{year_filter or "all"}.pdf'
+        response['Content-Disposition'] = f'attachment; filename="{fname}"'
         buffer = BytesIO()
 
         doc = SimpleDocTemplate(buffer, pagesize=A4,
                                 topMargin=32*mm, bottomMargin=16*mm,
                                 leftMargin=1.5*cm, rightMargin=1.5*cm)
+        usable = A4[0] - 3*cm
         styles = getSampleStyleSheet()
 
-        def footer(canvas, doc):
-            canvas.saveState()
-            w, h = A4
-            canvas.setFillColor(PRIMARY)
-            canvas.rect(0, h - 28*mm, w, 28*mm, fill=1, stroke=0)
-            canvas.setFillColor(colors.white)
-            canvas.setFont('Helvetica-Bold', 14)
-            canvas.drawString(1.5*cm, h - 14*mm, 'DC Welfare Group')
-            canvas.setFont('Helvetica', 9)
-            canvas.drawRightString(w - 1.5*cm, h - 14*mm, 'Income Report')
-            canvas.setFillColor(BORDER)
-            canvas.rect(0, 0, w, 10*mm, fill=1, stroke=0)
-            canvas.setFillColor(TEXT_MUTED)
-            canvas.setFont('Helvetica', 8)
-            canvas.drawString(1.5*cm, 3.5*mm, f'Generated: {dt.today().strftime("%d %B %Y")}')
-            canvas.drawRightString(w - 1.5*cm, 3.5*mm, f'Page {doc.page}')
-            canvas.restoreState()
+        def on_page(canvas, d):
+            draw_pdf_page_chrome(canvas, d, subtitle='Financial Report', header_right_line1=f'Period: {year_filter or "All Time"}', header_right_line2=f'Generated: {dt.today().strftime("%d %B %Y")}')
 
-        title_style = ParagraphStyle('T', parent=styles['Normal'], fontSize=16,
-                                     fontName='Helvetica-Bold', textColor=PRIMARY, spaceAfter=2*mm)
-        sub_style = ParagraphStyle('S', parent=styles['Normal'], fontSize=9,
-                                   fontName='Helvetica', textColor=TEXT_MUTED, spaceAfter=4*mm)
-        cell_style = ParagraphStyle('C', parent=styles['Normal'], fontSize=10,
-                                    fontName='Helvetica', textColor=TEXT_DARK)
-        bold_style = ParagraphStyle('B', parent=styles['Normal'], fontSize=10,
-                                    fontName='Helvetica-Bold', textColor=TEXT_DARK)
+        def ps(name, **kw):
+            return ParagraphStyle(name, parent=styles['Normal'], **kw)
 
-        elements = [
-            Paragraph('Income Report', title_style),
-            Paragraph(f'Generated on {dt.today().strftime("%d %B %Y")}', sub_style),
-            HRFlowable(width='100%', thickness=1, color=ACCENT, spaceAfter=6*mm),
+        title_s  = ps('t',  fontSize=16, fontName='Helvetica-Bold', textColor=PRIMARY, spaceAfter=1*mm)
+        sub_s    = ps('s',  fontSize=9,  fontName='Helvetica', textColor=TEXT_MUTED, spaceAfter=4*mm)
+        sec_s    = ps('sc', fontSize=10, fontName='Helvetica-Bold', textColor=PRIMARY, spaceBefore=5*mm, spaceAfter=2*mm)
+        cell_s   = ps('c',  fontSize=9,  fontName='Helvetica', textColor=TEXT_DARK, leading=13)
+        cell_r   = ps('cr', fontSize=9,  fontName='Helvetica', textColor=TEXT_DARK, leading=13, alignment=TA_RIGHT)
+        bold_s   = ps('b',  fontSize=9,  fontName='Helvetica-Bold', textColor=TEXT_DARK, leading=13)
+        bold_r   = ps('br', fontSize=9,  fontName='Helvetica-Bold', textColor=TEXT_DARK, leading=13, alignment=TA_RIGHT)
+        hdr_s    = ps('h',  fontSize=9,  fontName='Helvetica-Bold', textColor=WHITE, leading=13)
+        hdr_r    = ps('hr', fontSize=9,  fontName='Helvetica-Bold', textColor=WHITE, leading=13, alignment=TA_RIGHT)
+        muted_s  = ps('m',  fontSize=9,  fontName='Helvetica', textColor=TEXT_MUTED, leading=13)
+        green_r  = ps('gr', fontSize=9,  fontName='Helvetica', textColor=GREEN, leading=13, alignment=TA_RIGHT)
+        red_r    = ps('rr', fontSize=9,  fontName='Helvetica', textColor=RED, leading=13, alignment=TA_RIGHT)
+        amber_r  = ps('ar', fontSize=9,  fontName='Helvetica', textColor=AMBER, leading=13, alignment=TA_RIGHT)
+        blue_r   = ps('blr',fontSize=9,  fontName='Helvetica-Bold', textColor=ACCENT, leading=13, alignment=TA_RIGHT)
+        teal_r   = ps('tr', fontSize=9,  fontName='Helvetica-Bold', textColor=TEAL, leading=13, alignment=TA_RIGHT)
+
+        def kes(val, style=None):
+            return Paragraph(f'KES {val:,.2f}', style or cell_r)
+
+        def pct(num, denom):
+            if denom:
+                return Paragraph(f'{float(num)/float(denom)*100:.1f}%', cell_r)
+            return Paragraph('—', cell_r)
+
+        def make_table(data, col_ratios, extra_styles=None):
+            widths = [usable * r for r in col_ratios]
+            t = Table(data, colWidths=widths, repeatRows=1)
+            cmds = [
+                ('BACKGROUND',     (0, 0), (-1, 0),  PRIMARY),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, ALT_ROW]),
+                ('GRID',           (0, 0), (-1, -1), 0.4, BORDER),
+                ('LINEBELOW',      (0, 0), (-1, 0),  1.2, ACCENT),
+                ('TOPPADDING',     (0, 0), (-1, -1), 7),
+                ('BOTTOMPADDING',  (0, 0), (-1, -1), 7),
+                ('LEFTPADDING',    (0, 0), (-1, -1), 8),
+                ('RIGHTPADDING',   (0, 0), (-1, -1), 8),
+                ('VALIGN',         (0, 0), (-1, -1), 'MIDDLE'),
+            ]
+            if extra_styles:
+                cmds.extend(extra_styles)
+            t.setStyle(TableStyle(cmds))
+            return t
+
+        elements = []
+        period_label = f'Period: {year_filter}' if year_filter else 'All Time'
+        elements.append(Paragraph('Financial Report', title_s))
+        elements.append(Paragraph(
+            f'{period_label} &nbsp;|&nbsp; Generated: {dt.today().strftime("%d %B %Y")}', sub_s
+        ))
+        elements.append(HRFlowable(width='100%', thickness=2, color=ACCENT, spaceAfter=4*mm))
+
+        # ── Income Breakdown ──────────────────────────────────────
+        elements.append(Paragraph('Income Breakdown', sec_s))
+        inc_data = [
+            [Paragraph('<b>STREAM</b>', hdr_s), Paragraph('<b>AMOUNT (KES)</b>', hdr_r), Paragraph('<b>SHARE</b>', hdr_r)],
+            [Paragraph('Member Contributions', cell_s),    kes(total_contrib),        pct(total_contrib, total_income)],
+            [Paragraph('Loan Interest Collected', cell_s), kes(total_interest),        pct(total_interest, total_income)],
+            [Paragraph('Penalties Collected', cell_s),     kes(pen_paid),             pct(pen_paid, total_income)],
+            [Paragraph('Other Income', cell_s),            kes(total_other_income),    pct(total_other_income, total_income)],
+            [Paragraph('<b>TOTAL GROUP INCOME</b>', bold_s), kes(total_income, blue_r), Paragraph('<b>100%</b>', bold_r)],
         ]
+        elements.append(make_table(inc_data, [0.55, 0.28, 0.17],
+            extra_styles=[('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#eff6ff'))]))
 
-        rows = [
-            [Paragraph('<b>Income Stream</b>', ParagraphStyle('H', parent=styles['Normal'],
-                       fontSize=10, fontName='Helvetica-Bold', textColor=colors.white)),
-             Paragraph('<b>Amount (KES)</b>', ParagraphStyle('H2', parent=styles['Normal'],
-                       fontSize=10, fontName='Helvetica-Bold', textColor=colors.white)),
-             Paragraph('<b>% of Total</b>', ParagraphStyle('H3', parent=styles['Normal'],
-                       fontSize=10, fontName='Helvetica-Bold', textColor=colors.white))],
-            [Paragraph('Registration Fees', cell_style),
-             Paragraph(f'{total_reg:,.2f}', cell_style),
-             Paragraph(f'{(total_reg/total_income*100):.1f}%' if total_income else '—', cell_style)],
-            [Paragraph('Member Contributions', cell_style),
-             Paragraph(f'{total_contrib:,.2f}', cell_style),
-             Paragraph(f'{(total_contrib/total_income*100):.1f}%' if total_income else '—', cell_style)],
-            [Paragraph('Loan Interest', cell_style),
-             Paragraph(f'{total_interest:,.2f}', cell_style),
-             Paragraph(f'{(total_interest/total_income*100):.1f}%' if total_income else '—', cell_style)],
-            [Paragraph('Penalties (Paid)', cell_style),
-             Paragraph(f'{total_penalties:,.2f}', cell_style),
-             Paragraph(f'{(total_penalties/total_income*100):.1f}%' if total_income else '—', cell_style)],
-            [Paragraph('<b>TOTAL INCOME</b>', bold_style),
-             Paragraph(f'<b>{total_income:,.2f}</b>', bold_style),
-             Paragraph('<b>100%</b>', bold_style)],
+        # Registration Fee Fund (shown separately)
+        reg_fee_out = Decimal('0')
+        try:
+            from expenses.models import Expense as _Exp
+            from django.db.models import Sum as _Sum
+            reg_fee_out = _Exp.objects.filter(fund_source='registration_fees').aggregate(t=_Sum('amount'))['t'] or Decimal('0')
+        except Exception:
+            pass
+        reg_fee_bal = max(total_reg - reg_fee_out, Decimal('0'))
+        elements.append(Paragraph('Registration Fee Fund (Separate)', sec_s))
+        rfund_data = [
+            [Paragraph('<b>ITEM</b>', hdr_s), Paragraph('<b>AMOUNT (KES)</b>', hdr_r)],
+            [Paragraph('Total Collected', cell_s),  kes(total_reg, green_r)],
+            [Paragraph('Total Spent', cell_s),       kes(reg_fee_out, red_r)],
+            [Paragraph('<b>Available Balance</b>', bold_s), kes(reg_fee_bal, blue_r)],
         ]
+        elements.append(make_table(rfund_data, [0.65, 0.35],
+            extra_styles=[('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f5f3ff'))]))
 
-        usable = A4[0] - 3*cm
-        t = Table(rows, colWidths=[usable*0.5, usable*0.3, usable*0.2])
-        t.setStyle(TableStyle([
-            ('BACKGROUND',    (0, 0), (-1, 0), PRIMARY),
-            ('ROWBACKGROUNDS',(0, 1), (-1, -2), [colors.white, ALT_ROW]),
-            ('BACKGROUND',    (0, -1), (-1, -1), colors.HexColor('#e0f2fe')),
-            ('GRID',          (0, 0), (-1, -1), 0.5, BORDER),
-            ('LINEBELOW',     (0, 0), (-1, 0), 1.5, ACCENT),
-            ('TOPPADDING',    (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('LEFTPADDING',   (0, 0), (-1, -1), 10),
-            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(t)
+        # ── Loans Portfolio ───────────────────────────────────────
+        elements.append(Paragraph('Loans Portfolio', sec_s))
+        loan_data = [
+            [Paragraph('<b>ITEM</b>', hdr_s), Paragraph('<b>AMOUNT (KES)</b>', hdr_r)],
+            [Paragraph('Total Loans Issued', cell_s),                    kes(loans_given, green_r)],
+            [Paragraph(f'Cleared Loans ({cleared_count})', cell_s),      kes(loans_cleared, green_r)],
+            [Paragraph(f'Active Loans Balance ({active_count})', cell_s), kes(active_bal, amber_r)],
+            [Paragraph(f'Late Loans Balance ({late_count})', cell_s),     kes(late_bal, red_r)],
+            [Paragraph('<b>Total Unpaid Balance</b>', bold_s),            kes(unpaid_bal, red_r)],
+        ]
+        elements.append(make_table(loan_data, [0.65, 0.35],
+            extra_styles=[('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#fff1f2'))]))
 
-        doc.build(elements, onFirstPage=footer, onLaterPages=footer)
+        # ── Penalties ─────────────────────────────────────────────
+        elements.append(Paragraph('Penalties', sec_s))
+        pen_data = [
+            [Paragraph('<b>ITEM</b>', hdr_s), Paragraph('<b>AMOUNT (KES)</b>', hdr_r)],
+            [Paragraph('Total Issued', cell_s),       kes(pen_issued)],
+            [Paragraph('Collected (Paid)', cell_s),   kes(pen_paid, green_r)],
+            [Paragraph('Outstanding (Unpaid)', cell_s), kes(pen_unpaid, amber_r)],
+        ]
+        if pen_issued:
+            rate = float(pen_paid) / float(pen_issued) * 100
+            pen_data.append([Paragraph('Collection Rate', cell_s),
+                              Paragraph(f'{rate:.1f}%', cell_r)])
+        elements.append(make_table(pen_data, [0.65, 0.35]))
+
+        # ── Welfare Fund ──────────────────────────────────────────
+        elements.append(Paragraph('Welfare Fund', sec_s))
+        welf_data = [
+            [Paragraph('<b>ITEM</b>', hdr_s), Paragraph('<b>AMOUNT (KES)</b>', hdr_r)],
+            [Paragraph('Total Contributions', cell_s), kes(welfare_contrib, green_r)],
+            [Paragraph('Total Disbursed', cell_s),     kes(welfare_disbursed, red_r)],
+            [Paragraph('<b>Welfare Balance</b>', bold_s), kes(welfare_balance, teal_r)],
+        ]
+        elements.append(make_table(welf_data, [0.65, 0.35],
+            extra_styles=[('BACKGROUND', (0, -1), (-1, -1), GREEN_BG)]))
+
+        # ── Membership ────────────────────────────────────────────
+        elements.append(Paragraph('Membership', sec_s))
+        mem_data = [
+            [Paragraph('<b>ITEM</b>', hdr_s), Paragraph('<b>COUNT</b>', hdr_r)],
+            [Paragraph('Total Members', cell_s),  Paragraph(str(total_members), cell_r)],
+            [Paragraph('Active Members', cell_s), Paragraph(str(active_members), green_r)],
+            [Paragraph('Total Loans', cell_s),    Paragraph(str(len(all_loans)), cell_r)],
+        ]
+        elements.append(make_table(mem_data, [0.65, 0.35]))
+
+        doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
         response.write(buffer.getvalue())
         buffer.close()
         return response
+
+
+
 
 
 

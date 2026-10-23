@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Loan Settings{% endblock %}
+{% block page_title %}Loan Settings{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+
+        <div class="alert alert-info d-flex align-items-start gap-2 mb-4">
+            <i class="bi bi-info-circle-fill mt-1"></i>
+            <div style="font-size:0.875rem;">
+                These settings apply system-wide as defaults.
+                Individual loans can still override the interest rate when being issued or edited.
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-sliders"></i>
+                <span>Loan Configuration</span>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% for s in settings_list %}
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">{{ s.label }}</label>
+
+                        <div class="input-group" style="max-width:280px;">
+                            <input
+                                type="{{ s.input_type|default:'text' }}"
+                                name="{{ s.key }}"
+                                value="{% if s.key == 'default_interest_rate' %}{{ s.value|kes }}{% else %}{{ s.value }}{% endif %}"
+                                class="form-control"
+                                step="{{ s.step|default:'any' }}"
+                                {% if s.min %}min="{{ s.min }}"{% endif %}
+                                {% if s.max %}max="{{ s.max }}"{% endif %}
+                                required
+                            >
+                            {% if s.key == 'default_interest_rate' %}
+                            <span class="input-group-text">%</span>
+                            {% endif %}
+                        </div>
+
+                        {% if s.help_text %}
+                        <div class="form-text mt-1">{{ s.help_text }}</div>
+                        {% endif %}
+
+                        <!-- Live preview for interest rate -->
+                        {% if s.key == 'default_interest_rate' %}
+                        <div id="ratePreview" class="mt-3 p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0;max-width:380px;">
+                            <div class="text-muted small fw-semibold mb-2">Example preview</div>
+                            <div class="d-flex justify-content-between" style="font-size:0.875rem;">
+                                <span class="text-muted">Loan of KES 10,000</span>
+                                <span>Interest: <strong id="previewInterest" style="color:#16a34a;">—</strong></span>
+                            </div>
+                            <div class="d-flex justify-content-between" style="font-size:0.875rem;">
+                                <span class="text-muted">Total repayable</span>
+                                <strong id="previewTotal" style="color:#2563eb;">—</strong>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Save Settings
+                        </button>
+                        <a href="{% url 'loans:list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Current effective rate info -->
+        <div class="card mt-3">
+            <div class="card-body" style="font-size:0.82rem;color:#64748b;">
+                <strong style="color:#334155;">How interest works:</strong>
+                <ul class="mb-0 mt-2 ps-3">
+                    <li>The default rate here pre-fills the interest field when creating a new loan.</li>
+                    <li>Treasurers can override the rate per loan at time of issue.</li>
+                    <li>Admins can also change the rate on any existing loan via the Edit button.</li>
+                    <li>The same rate is used as the monthly late-penalty when a loan is overdue.</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const input = document.querySelector('input[name="default_interest_rate"]');
+    const previewInterest = document.getElementById('previewInterest');
+    const previewTotal    = document.getElementById('previewTotal');
+    const principal = 10000;
+
+    function fmt(n) {
+        return 'KES ' + n.toLocaleString('en-KE', {minimumFractionDigits: 2});
+    }
+
+    function update() {
+        if (!input) return;
+        const pct  = parseFloat(input.value) || 0;
+        const rate = pct / 100;
+        const interest = principal * rate;
+        const total    = principal + interest;
+        if (previewInterest) previewInterest.textContent = fmt(interest);
+        if (previewTotal)    previewTotal.textContent    = fmt(total);
+    }
+
+    if (input) {
+        input.addEventListener('input', update);
+        update();
+    }
+})();
+</script>
+{% endblock %}

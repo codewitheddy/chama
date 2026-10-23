@@ -37,9 +37,11 @@ class WelfareContributionRate(models.Model):
 
     @classmethod
     def rate_for_period(cls, year, month):
-        """Return the rate in effect for the first day of the given month/year."""
-        period_start = datetime.date(year, month, 1)
-        return cls.objects.filter(effective_date__lte=period_start).first()
+        """Return the rate in effect for the given month/year."""
+        import calendar
+        last_day = calendar.monthrange(year, month)[1]
+        period_end = datetime.date(year, month, last_day)
+        return cls.objects.filter(effective_date__lte=period_end).first()
 
 
 class WelfareContribution(PaymentTypeMixin, models.Model):
@@ -60,7 +62,11 @@ class WelfareContribution(PaymentTypeMixin, models.Model):
         ordering = ['-date']
 
     def __str__(self):
-        return f"{self.member.name} — KES {self.amount} ({self.get_month_display()} {self.year})"
+        try:
+            name = self.member.name
+        except Exception:
+            name = f"Member #{self.member_id}"
+        return f"{name} — KES {self.amount} ({self.get_month_display()} {self.year})"
 
 
 class WelfareEvent(models.Model):
@@ -79,7 +85,11 @@ class WelfareEvent(models.Model):
         ordering = ['-date_opened']
 
     def __str__(self):
-        return f"Event #{self.pk} — {self.beneficiary.name} ({self.get_status_display()})"
+        try:
+            name = self.beneficiary.name
+        except Exception:
+            name = f"Member #{self.beneficiary_id}"
+        return f"Event #{self.pk} — {name} ({self.get_status_display()})"
 
     @property
     def disbursement_amount(self):
@@ -95,9 +105,14 @@ class WelfareEvent(models.Model):
         return self.support_contributions.aggregate(t=Sum('amount'))['t'] or Decimal('0')
 
     @property
+    def external_support_total(self):
+        """Sum of all external (non-member) support for this event."""
+        return self.external_support.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+
+    @property
     def event_total(self):
-        """Total support received: fund disbursement + member support contributions."""
-        return self.disbursement_amount + self.support_total
+        """Total support received: fund disbursement + member support + external support."""
+        return self.disbursement_amount + self.support_total + self.external_support_total
 
 
 class WelfareDisbursement(PaymentTypeMixin, models.Model):
@@ -140,7 +155,33 @@ class WelfareSupportContribution(PaymentTypeMixin, models.Model):
         ordering = ['-date']
 
     def __str__(self):
-        return f"{self.contributor.name} → Event #{self.event_id}: KES {self.amount}"
+        try:
+            name = self.contributor.name
+        except Exception:
+            name = f"Member #{self.contributor_id}"
+        return f"{name} → Event #{self.event_id}: KES {self.amount}"
+
+
+class WelfareExternalSupport(PaymentTypeMixin, models.Model):
+    """A voluntary payment from a non-member (external supporter) for a specific event."""
+    event = models.ForeignKey(
+        WelfareEvent, on_delete=models.CASCADE,
+        related_name='external_support',
+    )
+    supporter_name = models.CharField(max_length=200)
+    supporter_phone = models.CharField(max_length=20, blank=True)
+    amount = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    date = models.DateField()
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.supporter_name} (external) → Event #{self.event_id}: KES {self.amount}"
 
 
 def get_welfare_balance():

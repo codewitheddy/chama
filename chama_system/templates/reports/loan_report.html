@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Loan Report{% endblock %}
 {% block page_title %}Loan Report{% endblock %}
 
@@ -27,7 +28,7 @@
                 <div class="icon-box accent-amber"><i class="bi bi-cash-coin"></i></div>
                 <div>
                     <div class="stat-label">Total Issued</div>
-                    <div class="stat-value">KES {{ total_issued|floatformat:2 }}</div>
+                    <div class="stat-value">KES {{ total_issued|kes }}</div>
                 </div>
             </div>
         </div>
@@ -38,7 +39,7 @@
                 <div class="icon-box accent-green"><i class="bi bi-check-circle"></i></div>
                 <div>
                     <div class="stat-label">Total Paid</div>
-                    <div class="stat-value">KES {{ total_paid|floatformat:2 }}</div>
+                    <div class="stat-value">KES {{ total_paid|kes }}</div>
                 </div>
             </div>
         </div>
@@ -49,11 +50,11 @@
                 <div class="icon-box accent-rose"><i class="bi bi-exclamation-circle"></i></div>
                 <div>
                     <div class="stat-label">Outstanding Balance</div>
-                    <div class="stat-value">KES {{ total_balance|floatformat:2 }}</div>
+                    <div class="stat-value">KES {{ total_balance|kes }}</div>
                     <div style="font-size:0.72rem;color:#94a3b8;">
-                        Principal: KES {{ outstanding_principal|floatformat:2 }}
+                        Principal: KES {{ outstanding_principal|kes }}
                         &nbsp;|&nbsp;
-                        Interest: KES {{ outstanding_interest|floatformat:2 }}
+                        Interest: KES {{ outstanding_interest|kes }}
                     </div>
                 </div>
             </div>
@@ -72,7 +73,7 @@
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Member</th>
+                    <th>Borrower</th>
                     <th>Loan Amount</th>
                     <th>Interest</th>
                     <th>Total Payable</th>
@@ -89,15 +90,15 @@
                     <td class="text-muted">{{ forloop.counter }}</td>
                     <td>
                         <a href="{% url 'loans:detail' l.pk %}" class="text-decoration-none fw-semibold">
-                            {{ l.member.name }}
+                            {{ l.borrower_name }}
                         </a>
                     </td>
-                    <td>KES {{ l.loan_amount|floatformat:2 }}</td>
-                    <td style="color:#16a34a;">KES {{ l.interest_amount|floatformat:2 }}</td>
-                    <td class="fw-semibold">KES {{ l.total_payable|floatformat:2 }}</td>
-                    <td style="color:#2563eb;">KES {{ l.amount_paid|floatformat:2 }}</td>
+                    <td>KES {{ l.loan_amount|kes }}</td>
+                    <td style="color:#16a34a;">KES {{ l.interest_amount|kes }}</td>
+                    <td class="fw-semibold">KES {{ l.total_payable|kes }}</td>
+                    <td style="color:#2563eb;">KES {{ l.amount_paid|kes }}</td>
                     <td class="fw-semibold {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
-                        KES {{ l.balance|floatformat:2 }}
+                        KES {{ l.balance|kes }}
                     </td>
                     <td>{{ l.date_taken }}</td>
                     <td>{{ l.due_date|default:"—" }}</td>
@@ -106,8 +107,13 @@
                             <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
                         {% elif l.status == 'late' %}
                             <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
+                        {% elif l.status == 'written_off' %}
+                            <span class="badge" style="background:#f1f5f9;color:#64748b;">Written Off</span>
                         {% else %}
                             <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
+                        {% endif %}
+                        {% if l.is_restructured or l.status == 'restructured' %}
+                            <span class="badge" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;">Restructured</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -124,11 +130,11 @@
             <tfoot class="table-light">
                 <tr>
                     <td colspan="2" class="text-end fw-semibold">Totals</td>
-                    <td class="fw-bold">KES {{ total_issued|floatformat:2 }}</td>
+                    <td class="fw-bold">KES {{ total_issued|kes }}</td>
                     <td></td>
                     <td></td>
-                    <td class="fw-bold" style="color:#2563eb;">KES {{ total_paid|floatformat:2 }}</td>
-                    <td class="fw-bold text-danger">KES {{ total_balance|floatformat:2 }}</td>
+                    <td class="fw-bold" style="color:#2563eb;">KES {{ total_paid|kes }}</td>
+                    <td class="fw-bold text-danger">KES {{ total_balance|kes }}</td>
                     <td colspan="3"></td>
                 </tr>
             </tfoot>

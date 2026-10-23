@@ -1,0 +1,79 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  /* Hide the default action checkbox column */
+  .results tbody td.action-checkbox,
+  .results thead th.action-checkbox {
+    display: none;
+  }
+  
+  /* Style the actions form */
+  form.inline-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 15px 0;
+    margin-bottom: 15px;
+  }
+  
+  /* Style action select dropdown */
+  form.inline-toolbar select[name="action"] {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: white;
+    color: #333;
+    font-weight: 500;
+    font-size: 13px;
+    min-width: 280px;
+    cursor: pointer;
+  }
+  
+  form.inline-toolbar select[name="action"]:focus {
+    outline: none;
+    border-color: #417690;
+    box-shadow: 0 0 5px rgba(65, 118, 144, 0.3);
+  }
+  
+  /* Style the Go button */
+  form.inline-toolbar button {
+    padding: 8px 16px;
+    background-color: #417690;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  form.inline-toolbar button:hover {
+    background-color: #2d4d63;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+  
+  form.inline-toolbar button:active {
+    transform: translateY(1px);
+  }
+  
+  /* Counter styling */
+  form.inline-toolbar .action-counter {
+    margin-left: 10px;
+    color: #666;
+    font-size: 12px;
+  }
+  
+  /* Checkbox styling */
+  .action-checkbox {
+    margin-right: 8px;
+  }
+</style>
+{% endblock %}
+
+{{ block.super }}
+

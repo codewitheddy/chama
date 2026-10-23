@@ -1,0 +1,530 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}{{ account.bank_name }} — {{ account.account_name }}{% endblock %}
+{% block page_title %}{{ account.bank_name }} — {{ account.account_name }}{% endblock %}
+
+{% block content %}
+<!-- Top Context Bar & Action Toolbar -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}" class="text-decoration-none">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'bank_accounts:list' %}" class="text-decoration-none">Bank Accounts</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ account.bank_name }}</li>
+        </ol>
+    </nav>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        {% if request.user.profile.is_treasurer %}
+        <a href="{% url 'bank_accounts:edit' account.pk %}" class="btn btn-sm btn-outline-secondary px-3 py-1.5 shadow-xs d-flex align-items-center gap-1.5" style="border-radius:8px;">
+            <i class="bi bi-pencil"></i>
+            <span>Edit Account</span>
+        </a>
+        {% endif %}
+        {% if request.user.profile.is_admin %}
+        <a href="{% url 'bank_accounts:delete' account.pk %}" class="btn btn-sm btn-outline-danger px-3 py-1.5 shadow-xs d-flex align-items-center gap-1.5" style="border-radius:8px;">
+            <i class="bi bi-trash"></i>
+            <span>Delete</span>
+        </a>
+        {% endif %}
+        <a href="{% url 'bank_accounts:list' %}" class="btn btn-sm btn-outline-secondary px-3 py-1.5 shadow-xs d-flex align-items-center gap-1.5" style="border-radius:8px;">
+            <i class="bi bi-arrow-left"></i>
+            <span>All Accounts</span>
+        </a>
+    </div>
+</div>
+
+<!-- 4-Card KPI Stat Row -->
+<div class="row g-3 mb-4">
+    <!-- Current Balance Card -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+                <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#2563eb,#3b82f6);width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-bank2 fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.75rem;">Current Balance</div>
+                    <div class="fs-5 fw-bold text-dark">KES {{ account.current_balance|kes }}</div>
+                    <div style="font-size:0.75rem;color:#64748b;">
+                        {% if account.last_updated %}Updated {{ account.last_updated }}{% else %}Live balance{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Opening Balance Card -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+                <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#6366f1,#818cf8);width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-key fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.75rem;">Opening Balance</div>
+                    <div class="fs-5 fw-bold text-dark">KES {{ account.opening_balance|kes }}</div>
+                    <div style="font-size:0.75rem;color:#64748b;">Initial capital at registration</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Inflows / Top-Ups Card -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+                <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#16a34a,#22c55e);width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-arrow-down-left fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.75rem;">Total Deposits</div>
+                    <div class="fs-5 fw-bold text-success">+ KES {{ total_topups|kes }}</div>
+                    <div style="font-size:0.75rem;color:#64748b;">Cumulative account inflows</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Outflows / Deductions Card -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+                <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#ef4444,#f87171);width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-arrow-up-right fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.75rem;">Total Withdrawals</div>
+                    <div class="fs-5 fw-bold text-danger">− KES {{ total_deductions|kes }}</div>
+                    <div style="font-size:0.75rem;color:#64748b;">Expense payouts deducted</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Virtual Card, Account Details & Top-Up Form -->
+    <div class="col-lg-4">
+        <!-- Virtual Bank Card Graphic -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;background:#ffffff;">
+            <div class="card-body p-3.5">
+                <div class="p-4 rounded-4 text-white position-relative shadow" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#334155 100%);border:1px solid rgba(255,255,255,0.1);min-height:190px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <!-- Top Row: Chip & Bank Name -->
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:36px;height:26px;background:linear-gradient(135deg,#f59e0b,#fbbf24);border-radius:5px;border:1px solid #d97706;display:flex;align-items:center;justify-content:center;">
+                                <i class="bi bi-cpu text-dark" style="font-size:0.85rem;"></i>
+                            </div>
+                            <i class="bi bi-reception-4 fs-5 opacity-75"></i>
+                        </div>
+                        <div class="text-end">
+                            <span class="fw-bold fs-6 text-uppercase" style="letter-spacing:1px;color:#f8fafc;">
+                                {{ account.bank_name }}
+                            </span>
+                            <div class="small opacity-75" style="font-size:0.7rem;">
+                                {{ account.branch|default:'Main Branch' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Middle: Account Number & Fund Badge -->
+                    <div class="my-2.5">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small text-uppercase" style="font-size:0.65rem;letter-spacing:1px;color:#94a3b8 !important;">Account / Paybill No.</span>
+                            {% if account.fund_type == 'welfare' %}
+                            <span class="badge bg-success text-white border border-white-50 px-2 py-0.5" style="font-size:0.68rem;"><i class="bi bi-heart-pulse-fill me-1"></i>Welfare Account</span>
+                            {% elif account.fund_type == 'registration' %}
+                            <span class="badge bg-secondary text-white border border-white-50 px-2 py-0.5" style="font-size:0.68rem;"><i class="bi bi-receipt me-1"></i>Registration Account</span>
+                            {% else %}
+                            <span class="badge bg-primary text-white border border-white-50 px-2 py-0.5" style="font-size:0.68rem;"><i class="bi bi-bank me-1"></i>General Lending</span>
+                            {% endif %}
+                        </div>
+                        <div class="fw-bold mt-1" style="font-size:1.1rem;letter-spacing:2px;font-family:monospace;color:#ffffff;">
+                            {{ account.account_number|default:'•••• •••• •••• ••••' }}
+                        </div>
+                    </div>
+
+                    <!-- Bottom: Account Title & Live Balance -->
+                    <div class="d-flex justify-content-between align-items-end pt-1">
+                        <div style="max-width:60%;">
+                            <div class="text-muted small text-uppercase" style="font-size:0.65rem;letter-spacing:0.8px;color:#94a3b8 !important;">Account Title</div>
+                            <div class="fw-semibold text-truncate" style="font-size:0.82rem;color:#f1f5f9;" title="{{ account.account_name }}">
+                                {{ account.account_name }}
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small text-uppercase" style="font-size:0.65rem;letter-spacing:0.8px;color:#94a3b8 !important;">Live Balance</div>
+                            <div class="fw-bold" style="font-size:0.95rem;color:#4ade80;">
+                                KES {{ account.current_balance|kes }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Specs Card -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-info-circle fs-5 text-primary"></i>
+                    <strong class="text-dark">Account Specifications</strong>
+                </div>
+                {% if account.is_active %}
+                <span class="badge" style="background:#f0fdf4;color:#16a34a;font-size:0.75rem;padding:4px 8px;border-radius:6px;">
+                    <i class="bi bi-check-circle me-1"></i>Active
+                </span>
+                {% else %}
+                <span class="badge" style="background:#f8fafc;color:#94a3b8;font-size:0.75rem;padding:4px 8px;border-radius:6px;">
+                    Inactive
+                </span>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" style="font-size:0.875rem;">
+                    <div class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-tag me-2 text-primary"></i>Fund Purpose</span>
+                        <span>
+                            {% if account.fund_type == 'welfare' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold"><i class="bi bi-heart-pulse-fill me-1"></i>Welfare Fund (Segregated)</span>
+                            {% elif account.fund_type == 'registration' %}
+                            <span class="badge bg-secondary-subtle text-secondary border fw-bold"><i class="bi bi-receipt me-1"></i>Registration Fee Fund</span>
+                            {% else %}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold"><i class="bi bi-bank me-1"></i>General / Lending Fund</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-bank me-2 text-primary"></i>Bank Name</span>
+                        <strong class="text-dark">{{ account.bank_name }}</strong>
+                    </div>
+                    <div class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-person-badge me-2 text-primary"></i>Account Name</span>
+                        <span class="fw-semibold text-dark">{{ account.account_name }}</span>
+                    </div>
+                    <div class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-credit-card-2-front me-2 text-primary"></i>Account No.</span>
+                        <span class="font-monospace text-dark">{{ account.account_number|default:"—" }}</span>
+                    </div>
+                    <div class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-geo-alt me-2 text-primary"></i>Branch Location</span>
+                        <span class="text-dark">{{ account.branch|default:"—" }}</span>
+                    </div>
+                    <div class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-calendar3 me-2 text-primary"></i>Registration Date</span>
+                        <span class="text-dark">{{ account.created_at|date:"M d, Y" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top-Up Form Card (For Treasurers) -->
+        {% if request.user.profile.is_treasurer %}
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #bbf7d0;background:#ffffff;overflow:hidden;">
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom" style="background:linear-gradient(180deg,#f0fdf4 0%,#ffffff 100%);border-color:#bbf7d0 !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-plus-circle-fill fs-5 text-success"></i>
+                    <strong class="text-dark">Record Top-Up / Deposit</strong>
+                </div>
+                <span class="badge bg-success-subtle text-success px-2.5 py-1" style="font-size:0.75rem;">Inflow</span>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" action="{% url 'bank_accounts:topup' account.pk %}" id="topUpForm" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark small mb-2">
+                            Top-Up Amount (KES) <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-success fw-bold px-3" style="border-color:#86efac;">KES</span>
+                            <input type="number" name="amount" id="topupAmountInput" class="form-control fw-bold text-dark fs-5 py-2 ps-2"
+                                   step="0.01" min="0.01" placeholder="0.00" style="border-color:#86efac;letter-spacing:0.3px;" required>
+                        </div>
+                        <!-- Live Words / Formatted Helper -->
+                        <div id="topupWordsHelper" class="text-muted small mt-2 d-none" style="font-size:0.78rem;font-style:italic;color:#166534 !important;">
+                            <i class="bi bi-info-circle me-1"></i><span id="topupWordsText"></span>
+                        </div>
+
+                        <!-- Quick Increment Chips -->
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-1">
+                            <button type="button" class="btn btn-sm py-1 px-2.5 quick-topup-btn" style="font-size:0.76rem;border-radius:12px;background:#f0fdf4;color:#166534;border:1px solid #86efac;" data-add="1000">+1K</button>
+                            <button type="button" class="btn btn-sm py-1 px-2.5 quick-topup-btn" style="font-size:0.76rem;border-radius:12px;background:#f0fdf4;color:#166534;border:1px solid #86efac;" data-add="5000">+5K</button>
+                            <button type="button" class="btn btn-sm py-1 px-2.5 quick-topup-btn" style="font-size:0.76rem;border-radius:12px;background:#f0fdf4;color:#166534;border:1px solid #86efac;" data-add="10000">+10K</button>
+                            <button type="button" class="btn btn-sm py-1 px-2.5 quick-topup-btn" style="font-size:0.76rem;border-radius:12px;background:#f0fdf4;color:#166534;border:1px solid #86efac;" data-add="25000">+25K</button>
+                            <button type="button" class="btn btn-sm py-1 px-2.5 quick-topup-btn" style="font-size:0.76rem;border-radius:12px;background:#f0fdf4;color:#166534;border:1px solid #86efac;" data-add="50000">+50K</button>
+                            <button type="button" class="btn btn-sm py-1 px-2.5" style="font-size:0.76rem;border-radius:12px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;" id="btnClearTopup">Clear</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-semibold text-dark small mb-0">
+                                Date <span class="text-danger">*</span>
+                            </label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-success" style="font-size:0.78rem;" id="btnSetTopupToday">
+                                    Today
+                                </button>
+                                <span class="text-muted" style="font-size:0.78rem;">·</span>
+                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-secondary" style="font-size:0.78rem;" id="btnSetTopupYesterday">
+                                    Yesterday
+                                </button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-muted border-end-0 px-3" style="border-color:#86efac;"><i class="bi bi-calendar3"></i></span>
+                            <input type="date" name="date" id="topupDateInput" class="form-control border-start-0 ps-2 py-2" style="border-color:#86efac;" value="{% now 'Y-m-d' %}" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark small mb-2">
+                            Notes / Reference <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <textarea name="notes" id="topupNotesInput" class="form-control p-2.5" rows="2" style="border-color:#86efac;"
+                                  placeholder="e.g. Bank interest earned, transfer from member, M-Pesa float sweep"></textarea>
+                        
+                        <!-- Quick Note Chips -->
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-1">
+                            <span class="text-muted small fw-semibold" style="font-size:0.75rem;"><i class="bi bi-tag me-1"></i>Quick tags:</span>
+                            <button type="button" class="btn btn-sm py-1 px-2.5 topup-tag-btn" style="font-size:0.76rem;border-radius:12px;background:#f0fdf4;border:1px solid #86efac;color:#166534;" data-tag="Bank Interest Earned">+ Bank Interest</button>
+                            <button type="button" class="btn btn-sm py-1 px-2.5 topup-tag-btn" style="font-size:0.76rem;border-radius:12px;background:#f0fdf4;border:1px solid #86efac;color:#166534;" data-tag="M-Pesa Float Sweep">+ M-Pesa Sweep</button>
+                            <button type="button" class="btn btn-sm py-1 px-2.5 topup-tag-btn" style="font-size:0.76rem;border-radius:12px;background:#f0fdf4;border:1px solid #86efac;color:#166534;" data-tag="Investment Dividends">+ Dividends</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 py-2.5 shadow-sm d-flex align-items-center justify-content-center gap-2" style="border-radius:8px;font-weight:600;">
+                        <i class="bi bi-plus-circle fs-5"></i>
+                        <span>Record Top-Up Deposit</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column: Transaction Ledger Table -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #e2e8f0;background:#ffffff;overflow:hidden;">
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-clock-history fs-5 text-primary"></i>
+                    <strong class="text-dark">Account Transaction Ledger</strong>
+                </div>
+                <span class="badge bg-primary-subtle text-primary px-3 py-1.5" style="font-size:0.8rem;border-radius:6px;">
+                    {{ entries|length }} Transaction{{ entries|length|pluralize }}
+                </span>
+            </div>
+
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead style="background:#f8fafc;">
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <th class="ps-4 py-3" style="font-size:0.8rem;color:#64748b;">Date</th>
+                                <th class="py-3" style="font-size:0.8rem;color:#64748b;">Transaction Type</th>
+                                <th class="py-3" style="font-size:0.8rem;color:#64748b;">Amount</th>
+                                <th class="py-3" style="font-size:0.8rem;color:#64748b;">Balance After</th>
+                                <th class="py-3" style="font-size:0.8rem;color:#64748b;">Notes / Reference</th>
+                                <th class="text-end pe-4 py-3" style="font-size:0.8rem;color:#64748b;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in entries %}
+                            <tr {% if forloop.first %}style="background:#f0f9ff;"{% endif %}>
+                                <td class="ps-4" style="font-size:0.85rem;color:#334155;">
+                                    <i class="bi bi-calendar-event me-1.5 text-muted"></i>{{ e.recorded_on }}
+                                    {% if forloop.first %}
+                                    <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:0.68rem;">Latest</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if e.transaction_type == 'opening' %}
+                                    <span class="badge d-inline-flex align-items-center gap-1" style="background:#f5f3ff;color:#7c3aed;padding:5px 10px;border-radius:6px;font-size:0.75rem;">
+                                        <i class="bi bi-key"></i> Opening Balance
+                                    </span>
+                                    {% elif e.transaction_type == 'topup' %}
+                                    <span class="badge d-inline-flex align-items-center gap-1" style="background:#f0fdf4;color:#16a34a;padding:5px 10px;border-radius:6px;font-size:0.75rem;">
+                                        <i class="bi bi-arrow-down-left"></i> Top-Up Deposit
+                                    </span>
+                                    {% elif e.transaction_type == 'deduction' %}
+                                    <span class="badge d-inline-flex align-items-center gap-1" style="background:#fff1f2;color:#e11d48;padding:5px 10px;border-radius:6px;font-size:0.75rem;">
+                                        <i class="bi bi-arrow-up-right"></i> Expense Payout
+                                    </span>
+                                    {% elif e.transaction_type == 'adjustment' %}
+                                    <span class="badge d-inline-flex align-items-center gap-1" style="background:#fffbeb;color:#d97706;padding:5px 10px;border-radius:6px;font-size:0.75rem;">
+                                        <i class="bi bi-sliders"></i> Adjustment
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary" style="padding:5px 10px;border-radius:6px;font-size:0.75rem;">
+                                        Snapshot
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if e.topup_amount %}
+                                        {% if e.transaction_type == 'deduction' %}
+                                        <span class="text-danger fw-bold" style="font-size:0.92rem;">− KES {{ e.topup_amount|kes }}</span>
+                                        {% else %}
+                                        <span class="text-success fw-bold" style="font-size:0.92rem;">+ KES {{ e.topup_amount|kes }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-primary" style="font-size:0.95rem;">KES {{ e.balance|kes }}</span>
+                                </td>
+                                <td class="text-muted small" style="max-width:220px;" title="{{ e.notes }}">
+                                    {{ e.notes|default:"—"|truncatechars:50 }}
+                                    {% if e.recorded_by %}
+                                    <div class="text-muted" style="font-size:0.72rem;">by {{ e.recorded_by.username }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    {% if request.user.profile.is_admin %}
+                                    <a href="{% url 'bank_accounts:balance_delete' e.pk %}"
+                                       class="btn btn-sm btn-outline-danger py-1 px-2" title="Delete ledger entry" style="border-radius:6px;">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    <div class="py-4">
+                                        <i class="bi bi-inbox fs-1 text-muted opacity-50 d-block mb-2"></i>
+                                        <h6 class="fw-semibold text-dark mb-1">No Transactions Recorded Yet</h6>
+                                        <p class="text-muted small mb-0">Use the Top-Up form on the left to add initial funds or track bank deposits.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const topupAmountInput = document.getElementById('topupAmountInput');
+    const topupDateInput = document.getElementById('topupDateInput');
+    const topupNotesInput = document.getElementById('topupNotesInput');
+
+    const topupWordsHelper = document.getElementById('topupWordsHelper');
+    const topupWordsText = document.getElementById('topupWordsText');
+
+    // Number to words helper
+    function numberToWordsKsh(num) {
+        if (isNaN(num) || num <= 0) return '';
+        const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+        function convertChunk(n) {
+            let str = '';
+            if (n >= 100) {
+                str += ones[Math.floor(n / 100)] + ' Hundred ';
+                n %= 100;
+            }
+            if (n >= 20) {
+                str += tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+            } else if (n > 0) {
+                str += ones[n];
+            }
+            return str.trim();
+        }
+
+        const intPart = Math.floor(num);
+        if (intPart === 0) return 'Zero Shillings';
+
+        const billions = Math.floor(intPart / 1000000000);
+        const millions = Math.floor((intPart % 1000000000) / 1000000);
+        const thousands = Math.floor((intPart % 1000000) / 1000);
+        const remainder = intPart % 1000;
+
+        let result = '';
+        if (billions) result += convertChunk(billions) + ' Billion ';
+        if (millions) result += convertChunk(millions) + ' Million ';
+        if (thousands) result += convertChunk(thousands) + ' Thousand ';
+        if (remainder) result += convertChunk(remainder);
+
+        return result.trim() + ' Shillings Only';
+    }
+
+    function updateTopupWords() {
+        if (!topupAmountInput) return;
+        const amt = parseFloat(topupAmountInput.value || '0') || 0;
+        if (amt > 0 && topupWordsHelper && topupWordsText) {
+            topupWordsText.textContent = numberToWordsKsh(amt);
+            topupWordsHelper.classList.remove('d-none');
+        } else if (topupWordsHelper) {
+            topupWordsHelper.classList.add('d-none');
+        }
+    }
+
+    topupAmountInput?.addEventListener('input', updateTopupWords);
+
+    // Quick increment chips
+    document.querySelectorAll('.quick-topup-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const add = parseFloat(this.dataset.add) || 0;
+            const current = parseFloat(topupAmountInput?.value || '0') || 0;
+            if (topupAmountInput) {
+                topupAmountInput.value = (current + add).toFixed(2);
+                updateTopupWords();
+                topupAmountInput.focus();
+            }
+        });
+    });
+
+    document.getElementById('btnClearTopup')?.addEventListener('click', function () {
+        if (topupAmountInput) {
+            topupAmountInput.value = '';
+            updateTopupWords();
+            topupAmountInput.focus();
+        }
+    });
+
+    // Date Shortcuts
+    function formatDate(d) {
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    document.getElementById('btnSetTopupToday')?.addEventListener('click', function () {
+        if (topupDateInput) {
+            topupDateInput.value = formatDate(new Date());
+        }
+    });
+
+    document.getElementById('btnSetTopupYesterday')?.addEventListener('click', function () {
+        if (topupDateInput) {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            topupDateInput.value = formatDate(y);
+        }
+    });
+
+    // Note Tag Snippet Buttons
+    document.querySelectorAll('.topup-tag-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const tag = this.dataset.tag;
+            if (topupNotesInput) {
+                const currentVal = topupNotesInput.value.trim();
+                if (currentVal.length > 0) {
+                    topupNotesInput.value = currentVal + ' | ' + tag;
+                } else {
+                    topupNotesInput.value = tag;
+                }
+                topupNotesInput.focus();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{% if form.instance.pk %}Edit{% else %}Add{% endif %} External Support{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Edit{% else %}Add{% endif %} External Support{% endblock %}
+
+{% block extra_css %}
+{% include 'includes/payment_type_css.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-heart me-2"></i>
+                {% if form.instance.pk %}Edit{% else %}Record{% endif %} External Support
+                — {{ event.beneficiary.name }}
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Record support from a <strong>non-member</strong> — a neighbour, friend,
+                    employer, church, or anyone outside the group who is supporting
+                    <strong>{{ event.beneficiary.name }}</strong>.
+                </p>
+                <form method="post" id="externalSupportForm">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Supporter Name <span class="text-danger">*</span>
+                        </label>
+                        {{ form.supporter_name }}
+                        {% if form.supporter_name.errors %}
+                        <div class="text-danger small mt-1">{{ form.supporter_name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Phone Number <span class="text-muted fw-normal">(optional)</span></label>
+                        {{ form.supporter_phone }}
+                        {% if form.supporter_phone.errors %}
+                        <div class="text-danger small mt-1">{{ form.supporter_phone.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% include 'includes/payment_type_fields.html' %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Amount (KES) <span class="text-danger">*</span></label>
+                        {{ form.amount }}
+                        {% if form.amount.errors %}
+                        <div class="text-danger small mt-1">{{ form.amount.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
+                        {{ form.date }}
+                        {% if form.date.errors %}
+                        <div class="text-danger small mt-1">{{ form.date.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Notes <span class="text-muted fw-normal">(optional)</span></label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                        <div class="text-danger small mt-1">{{ form.notes.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="bi bi-check-circle me-1"></i>Save
+                        </button>
+                        <a href="{% url 'welfare:event_detail' event.pk %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'includes/payment_type_js.html' %}
+<script>
+document.getElementById('externalSupportForm').addEventListener('submit', function () {
+    document.getElementById('submitBtn').disabled = true;
+});
+</script>
+{% endblock %}

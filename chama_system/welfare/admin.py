@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     WelfareContributionRate, WelfareContribution, WelfareEvent,
-    WelfareDisbursement, WelfareSupportContribution,
+    WelfareDisbursement, WelfareSupportContribution, WelfareExternalSupport,
 )
 
 
@@ -39,4 +39,11 @@ class WelfareDisbursementAdmin(admin.ModelAdmin):
 class WelfareSupportContributionAdmin(admin.ModelAdmin):
     list_display = ('contributor', 'event', 'amount', 'date')
     search_fields = ('contributor__name', 'event__beneficiary__name')
+    ordering = ('-date',)
+
+
+@admin.register(WelfareExternalSupport)
+class WelfareExternalSupportAdmin(admin.ModelAdmin):
+    list_display = ('supporter_name', 'supporter_phone', 'event', 'amount', 'date')
+    search_fields = ('supporter_name', 'event__beneficiary__name')
     ordering = ('-date',)

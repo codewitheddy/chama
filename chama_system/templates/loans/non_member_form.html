@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Edit Applicant{% else %}Register Non-Member Applicant{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit: {{ object.full_name }}{% else %}Register Non-Member Applicant{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">Applicant Details</div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <!-- Personal Details -->
+                    <h6 class="fw-semibold mb-3 text-primary" style="font-size:0.85rem;letter-spacing:.04em;">PERSONAL DETAILS</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Full Name *</label>
+                            {{ form.full_name }}
+                            {% if form.full_name.errors %}<div class="text-danger small mt-1">{{ form.full_name.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Phone *</label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}<div class="text-danger small mt-1">{{ form.phone.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">ID / Passport Number</label>
+                            {{ form.id_number }}
+                            {% if form.id_number.errors %}<div class="text-danger small mt-1">{{ form.id_number.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Email</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Address</label>
+                        {{ form.address }}
+                        {% if form.address.errors %}<div class="text-danger small mt-1">{{ form.address.errors }}</div>{% endif %}
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">ID Document <span class="text-muted fw-normal">(PDF / JPG / PNG)</span></label>
+                        {{ form.id_document }}
+                        {% if form.id_document.errors %}<div class="text-danger small mt-1">{{ form.id_document.errors }}</div>{% endif %}
+                    </div>
+
+                    <!-- Financial Profile -->
+                    <h6 class="fw-semibold mb-3 text-primary" style="font-size:0.85rem;letter-spacing:.04em;">FINANCIAL PROFILE</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Employer / Business</label>
+                            {{ form.employer }}
+                            {% if form.employer.errors %}<div class="text-danger small mt-1">{{ form.employer.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Monthly Income (KES)</label>
+                            {{ form.monthly_income }}
+                            {% if form.monthly_income.errors %}<div class="text-danger small mt-1">{{ form.monthly_income.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">Reason for Loan</label>
+                        {{ form.reason_for_loan }}
+                        {% if form.reason_for_loan.errors %}<div class="text-danger small mt-1">{{ form.reason_for_loan.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>{% if object %}Save Changes{% else %}Register Applicant{% endif %}
+                        </button>
+                        <a href="{% url 'loans:non_members' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body" style="font-size:0.85rem;color:#64748b;">
+                <h6 class="fw-semibold mb-2" style="color:#334155;">How non-member loans work</h6>
+                <ol class="ps-3 mb-0" style="line-height:1.8;">
+                    <li>Register the applicant here with their personal and financial details.</li>
+                    <li>The admin/treasurer reviews the application and sets a <strong>Qualified</strong> or <strong>Disqualified</strong> status.</li>
+                    <li>Only qualified applicants can receive loans. Use the <strong>Issue Loan</strong> button on their profile, or select them in the loan form.</li>
+                    <li>Loan repayments and late penalties work exactly the same as for members.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

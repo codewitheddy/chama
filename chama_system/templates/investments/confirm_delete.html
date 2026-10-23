@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Delete Investment{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-6 offset-lg-3">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle-fill"></i> Delete Investment
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-danger mb-3">
+                        <strong>Warning:</strong> This action cannot be undone. All related valuations, returns, and withdrawals will also be deleted.
+                    </p>
+
+                    <div class="alert alert-light border">
+                        <h6>Investment to Delete:</h6>
+                        <p>
+                            <strong>{{ object.investment_type.name }}</strong><br>
+                            Initial Amount: KES {{ object.initial_amount|floatformat:2 }}<br>
+                            Date Invested: {{ object.date_invested }}<br>
+                            Status: {{ object.get_status_display }}
+                        </p>
+                    </div>
+
+                    {% if delete_error %}
+                    <div class="alert alert-danger">{{ delete_error }}</div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="delete_reason" class="form-label">Reason for Deletion <span class="text-danger">*</span></label>
+                            <textarea 
+                                name="delete_reason" 
+                                id="delete_reason" 
+                                class="form-control" 
+                                rows="3" 
+                                placeholder="Why are you deleting this investment?" 
+                                required>{{ delete_reason_value }}</textarea>
+                            <small class="text-muted">This helps maintain an audit trail of deletions</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="admin_password" class="form-label">Confirm Your Password <span class="text-danger">*</span></label>
+                            <input 
+                                type="password" 
+                                name="admin_password" 
+                                id="admin_password" 
+                                class="form-control" 
+                                placeholder="Enter your password" 
+                                required>
+                            <small class="text-muted">Required for security confirmation</small>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'investments:detail' object.pk %}" class="btn btn-secondary">
+                                <i class="bi bi-x-lg"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Yes, Delete Investment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

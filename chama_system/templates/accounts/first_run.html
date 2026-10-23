@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block auth_content %}
+<div class="min-vh-100 d-flex" style="background:#f4f6f9;">
+
+    <!-- Left panel -->
+    <div class="d-none d-lg-flex flex-column justify-content-between p-5"
+         style="width:420px;background:#1e2a3a;flex-shrink:0;">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-5">
+                <i class="bi bi-bank2 text-white" style="font-size:1.5rem;"></i>
+                <span style="color:#f1f5f9;font-weight:700;font-size:1.1rem;">Finance Wise TBM</span>
+            </div>
+            <h2 style="color:#f1f5f9;font-weight:700;line-height:1.3;">
+                Welcome to<br>Finance Wise TBM
+            </h2>
+            <p style="color:#94a3b8;margin-top:1rem;font-size:0.9rem;line-height:1.7;">
+                This looks like your first time running the app.
+                Set up your admin account to get started.
+            </p>
+
+            <div class="mt-4 p-3 rounded" style="background:rgba(255,255,255,0.07);">
+                <p style="color:#94a3b8;font-size:0.82rem;margin:0;line-height:1.7;">
+                    <i class="bi bi-shield-check me-1" style="color:#2563eb;"></i>
+                    This screen only appears <strong style="color:#f1f5f9;">once</strong>
+                    — when no accounts exist yet.
+                </p>
+            </div>
+        </div>
+        <div style="color:#475569;font-size:0.78rem;">
+            &copy; {% now "Y" %} Finance Wise TBM
+        </div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="flex-grow-1 d-flex align-items-center justify-content-center p-4">
+        <div style="width:100%;max-width:420px;">
+
+            <!-- Mobile header -->
+            <div class="mb-4 d-lg-none text-center">
+                <i class="bi bi-bank2 text-primary" style="font-size:2rem;"></i>
+                <h5 class="fw-bold mt-2">Finance Wise TBM</h5>
+            </div>
+
+            <div class="mb-4">
+                <span class="badge mb-2" style="background:#eff6ff;color:#2563eb;font-size:0.78rem;">
+                    <i class="bi bi-stars me-1"></i>First-Time Setup
+                </span>
+                <h4 class="fw-bold mb-1" style="color:#1e293b;">Create Admin Account</h4>
+                <p class="text-muted" style="font-size:0.875rem;">
+                    This account will have full admin access. You can add more users later.
+                </p>
+            </div>
+
+            {% if errors %}
+            <div class="alert alert-danger py-2 mb-3" style="font-size:0.875rem;">
+                <i class="bi bi-exclamation-circle me-1"></i>
+                <ul class="mb-0 ps-3">
+                    {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                <!-- Group Name -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:0.875rem;">
+                        Group / Chama Name
+                        <span class="text-muted fw-normal">(optional)</span>
+                    </label>
+                    <input type="text" name="group_name" class="form-control"
+                           placeholder="e.g. Sunshine Table Banking Group"
+                           value="{{ group_name|default:'' }}">
+                    <div class="form-text">Appears on documents and the sidebar. Can be changed later.</div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Username -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:0.875rem;">
+                        Username <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" name="username" class="form-control"
+                           placeholder="e.g. admin"
+                           value="{{ username|default:'' }}" required>
+                </div>
+
+                <!-- Password -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:0.875rem;">
+                        Password <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="password" name="password" id="id_password"
+                               class="form-control" placeholder="Min. 6 characters" required>
+                        <button type="button" class="btn btn-outline-secondary"
+                                onclick="togglePwd('id_password', this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Confirm Password -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold" style="font-size:0.875rem;">
+                        Confirm Password <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="password" name="password2" id="id_password2"
+                               class="form-control" placeholder="Repeat password" required>
+                        <button type="button" class="btn btn-outline-secondary"
+                                onclick="togglePwd('id_password2', this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2">
+                    <i class="bi bi-check-circle me-1"></i>Create Account &amp; Get Started
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePwd(id, btn) {
+    const inp = document.getElementById(id);
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    btn.innerHTML = showing ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+}
+</script>
+{% endblock %}

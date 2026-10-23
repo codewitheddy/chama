@@ -1,80 +1,197 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Year-End {{ withdrawal.financial_year }}{% endblock %}
 {% block page_title %}Year-End {{ withdrawal.financial_year }}{% endblock %}
 
 {% block content %}
 <!-- Summary card -->
-<div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-calendar-check me-2"></i>Year-End {{ withdrawal.financial_year }} Summary</span>
-        <a href="{% url 'yearend:list' %}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>Back
-        </a>
+<div class="card mb-4 shadow-sm border-0" style="border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
+    <div class="card-header bg-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="fw-bold text-dark"><i class="bi bi-calendar-check me-2 text-primary"></i>Year-End {{ withdrawal.financial_year }} Summary</span>
+        <div class="d-flex gap-2">
+            <a href="{% url 'yearend:export_pdf' withdrawal.pk %}"
+               class="btn btn-sm btn-outline-danger shadow-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Export Official PDF Report
+            </a>
+            <a href="{% url 'yearend:list' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to List
+            </a>
+        </div>
     </div>
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-3">
+    <div class="card-body p-4">
+        <div class="row g-4">
+            <div class="col-6 col-md-2">
                 <div class="text-muted small">Financial Year</div>
-                <div class="fw-bold fs-5">{{ withdrawal.financial_year }}</div>
+                <div class="fw-bold fs-4 text-primary">{{ withdrawal.financial_year }}</div>
             </div>
-            <div class="col-md-3">
-                <div class="text-muted small">Date</div>
-                <div>{{ withdrawal.date }}</div>
+            <div class="col-6 col-md-2">
+                <div class="text-muted small">Distribution Date</div>
+                <div class="fw-semibold">{{ withdrawal.date }}</div>
             </div>
-            <div class="col-md-3">
-                <div class="text-muted small">Amount Withdrawn</div>
-                <div class="fw-bold" style="color:#e11d48;">KES {{ withdrawal.amount_withdrawn|floatformat:2 }}</div>
+            <div class="col-6 col-md-2">
+                <div class="text-muted small">Total Payout</div>
+                <div class="fw-bold fs-5" style="color:#e11d48;">KES {{ withdrawal.amount_withdrawn|kes }}</div>
             </div>
-            <div class="col-md-3">
-                <div class="text-muted small">Interest Shared</div>
-                <div class="fw-bold" style="color:#16a34a;">KES {{ withdrawal.interest_shared|floatformat:2 }}</div>
+            <div class="col-6 col-md-2">
+                <div class="text-muted small">Profit Shared</div>
+                <div class="fw-bold fs-5" style="color:#16a34a;">KES {{ withdrawal.interest_shared|kes }}</div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="text-muted small">Retained for Next Year</div>
+                <div class="fw-bold fs-5" style="color:#7c3aed;">KES {{ withdrawal.retained_funds|kes }}</div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="text-muted small">Gross Revenue Pool</div>
+                <div class="fw-bold fs-5 text-dark">KES {{ withdrawal.total_income_evaluated|kes }}</div>
             </div>
             <div class="col-md-6">
-                <div class="text-muted small">Notes</div>
-                <div>{{ withdrawal.notes|default:"—" }}</div>
+                <div class="text-muted small">Notes / Minutes Reference</div>
+                <div class="text-secondary">{{ withdrawal.notes|default:"—" }}</div>
             </div>
             <div class="col-md-3">
                 <div class="text-muted small">Recorded By</div>
-                <div>{{ withdrawal.recorded_by.username }}</div>
+                <div><i class="bi bi-person-circle me-1 text-muted"></i>{{ withdrawal.recorded_by.get_full_name|default:withdrawal.recorded_by.username }}</div>
             </div>
             <div class="col-md-3">
-                <div class="text-muted small">Recorded On</div>
-                <div>{{ withdrawal.created_at|date:"d M Y H:i" }}</div>
+                <div class="text-muted small">Recorded Timestamp</div>
+                <div class="text-muted"><i class="bi bi-clock me-1"></i>{{ withdrawal.created_at|date:"d M Y H:i" }}</div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-3">
+<!-- Revenue Policy & Retained Funds Section -->
+<div class="card mb-4 shadow-sm border-0" style="border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
+    <div class="card-header bg-light py-3 px-4">
+        <i class="bi bi-sliders2 me-2 text-primary"></i><strong>Applied Revenue Stream Distribution & Retained Reserves Policy</strong>
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-3">
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 rounded border {% if withdrawal.include_loan_interest %}border-success bg-light{% else %}border-secondary bg-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold text-dark"><i class="bi bi-graph-up-arrow me-1 text-primary"></i>Loan Interest</span>
+                        {% if withdrawal.include_loan_interest %}
+                        <span class="badge bg-success">Included & Shared</span>
+                        {% else %}
+                        <span class="badge" style="background-color:#7c3aed;">Retained (Accumulating)</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">Interest earned from member loans.</small>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 rounded border {% if withdrawal.include_penalties %}border-success bg-light{% else %}border-secondary bg-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold text-dark"><i class="bi bi-exclamation-octagon me-1 text-warning"></i>Penalties & Fines</span>
+                        {% if withdrawal.include_penalties %}
+                        <span class="badge bg-success">Included & Shared</span>
+                        {% else %}
+                        <span class="badge" style="background-color:#7c3aed;">Retained (Accumulating)</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">Meeting absence, late and default fines.</small>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 rounded border {% if withdrawal.include_other_income %}border-success bg-light{% else %}border-secondary bg-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold text-dark"><i class="bi bi-cash-coin me-1 text-info"></i>Other Income</span>
+                        {% if withdrawal.include_other_income %}
+                        <span class="badge bg-success">Included & Shared</span>
+                        {% else %}
+                        <span class="badge" style="background-color:#7c3aed;">Retained (Accumulating)</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">External grants, bank interest and donations.</small>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 rounded border {% if withdrawal.include_registration_fees %}border-success bg-light{% else %}border-secondary bg-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold text-dark"><i class="bi bi-person-plus me-1 text-indigo" style="color:#6366f1;"></i>Registration Fees</span>
+                        {% if withdrawal.include_registration_fees %}
+                        <span class="badge bg-success">Included & Shared</span>
+                        {% else %}
+                        <span class="badge" style="background-color:#7c3aed;">Retained in Reserve</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">Member entrance fees (core permanent capital).</small>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 rounded border {% if withdrawal.include_investment_returns %}border-success bg-light{% else %}border-secondary bg-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold text-dark"><i class="bi bi-building me-1 text-success"></i>Investment Returns</span>
+                        {% if withdrawal.include_investment_returns %}
+                        <span class="badge bg-success">Included & Shared</span>
+                        {% else %}
+                        <span class="badge" style="background-color:#7c3aed;">Retained (Accumulating)</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">Dividends and returns from group investments.</small>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 rounded border {% if withdrawal.deduct_expenses %}border-danger bg-light{% else %}border-secondary bg-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold text-dark"><i class="bi bi-receipt me-1 text-danger"></i>Group Fund Expenses</span>
+                        {% if withdrawal.deduct_expenses %}
+                        <span class="badge bg-danger">Deducted from Profit</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Not Deducted</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">Operational expenses paid from group funds.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
     <!-- Per-member interest shares -->
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-people me-2"></i>Per-Member Distribution
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0" style="border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
+            <div class="card-header bg-light py-3 px-4 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people-fill me-2 text-primary"></i><strong>Per-Member Profit Distribution</strong></span>
+                <span class="badge bg-success">{{ interest_shares|length }} Members</span>
             </div>
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>#</th><th>Member</th><th class="text-end">Profit Share</th></tr>
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:50px;">#</th>
+                            <th>Member</th>
+                            <th class="text-end" style="color:#16a34a;">Profit Share</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for share in interest_shares %}
                         <tr>
                             <td class="text-muted">{{ forloop.counter }}</td>
-                            <td class="fw-semibold">{{ share.member.name }}</td>
-                            <td class="text-end" style="color:#16a34a;">KES {{ share.amount|floatformat:2 }}</td>
+                            <td>
+                                <div class="fw-semibold text-dark">{{ share.member.name }}</div>
+                                <div class="text-muted" style="font-size:0.75rem;">{{ share.member.phone }}</div>
+                            </td>
+                            <td class="text-end fw-bold" style="color:#16a34a;">KES {{ share.amount|kes }}</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="3" class="text-center text-muted py-3">No interest shares recorded.</td>
+                            <td colspan="3" class="text-center text-muted py-4">No profit shares recorded.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                     {% if interest_shares %}
-                    <tfoot>
-                        <tr class="table-success fw-semibold">
-                            <td colspan="2" class="text-end">Total Profit Shared</td>
-                            <td class="text-end">KES {{ withdrawal.interest_shared|floatformat:2 }}</td>
+                    <tfoot class="table-success fw-semibold">
+                        <tr>
+                            <td colspan="2">Total Profit Shared</td>
+                            <td class="text-end" style="color:#16a34a;">KES {{ withdrawal.interest_shared|kes }}</td>
                         </tr>
                     </tfoot>
                     {% endif %}
@@ -84,15 +201,19 @@
     </div>
 
     <!-- Member statuses -->
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-person-check me-2"></i>Member Status
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0" style="border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
+            <div class="card-header bg-light py-3 px-4">
+                <i class="bi bi-person-check-fill me-2 text-primary"></i><strong>Member Status Transition</strong>
             </div>
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>#</th><th>Member</th><th>Status</th></tr>
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:50px;">#</th>
+                            <th>Member</th>
+                            <th>Status for Next Year</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for ms in member_statuses %}
@@ -101,15 +222,15 @@
                             <td class="fw-semibold">{{ ms.member.name }}</td>
                             <td>
                                 {% if ms.status == 'continuing' %}
-                                <span class="badge bg-success">Continuing</span>
+                                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Continuing</span>
                                 {% else %}
-                                <span class="badge bg-secondary">Exiting</span>
+                                <span class="badge bg-secondary"><i class="bi bi-box-arrow-right me-1"></i>Exiting</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="3" class="text-center text-muted py-3">No member statuses recorded.</td>
+                            <td colspan="3" class="text-center text-muted py-4">No member statuses recorded.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

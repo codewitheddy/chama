@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Delete Payment{% endblock %}
 {% block page_title %}Delete Payment{% endblock %}
 
@@ -13,7 +14,7 @@
                 <div class="alert alert-warning py-2 small mb-3">
                     <i class="bi bi-exclamation-triangle me-1"></i>
                     This will permanently delete the payment of
-                    <strong>KES {{ object.amount|floatformat:2 }}</strong>
+                    <strong>KES {{ object.amount|kes }}</strong>
                     by <strong>{{ object.member.name }}</strong> on {{ object.date }}.
                     The loan balance will be recalculated.
                 </div>

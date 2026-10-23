@@ -1,234 +1,840 @@
 {% extends 'base.html' %}
-{% block title %}{% if object %}Edit Loan{% else %}Issue Loan{% endif %}{% endblock %}
-{% block page_title %}{% if object %}Edit Loan{% else %}Issue New Loan{% endif %}{% endblock %}
+{% load finance_tags %}
+{% block title %}{% if object %}Edit Loan #{{ object.pk }}{% else %}Issue New Loan{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit Loan #{{ object.pk }}{% else %}Issue New Loan{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .loan-card {
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+        background: #ffffff;
+    }
+    .loan-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.85rem;
+        padding-bottom: 0.45rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .loan-section-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        background: #e0e7ff;
+        color: #4338ca;
+        border-radius: 50%;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    .borrower-toggle-btn {
+        flex: 1;
+        padding: 0.55rem 0.9rem;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        transition: all 0.15s ease-in-out;
+    }
+    .preset-pill {
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.28rem 0.65rem;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .preset-pill:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+        border-color: #94a3b8;
+    }
+    .sticky-calculator {
+        position: sticky;
+        top: 1.5rem;
+    }
+    .stat-mini-card {
+        padding: 0.85rem;
+        border-radius: 10px;
+        border: 1px solid #f1f5f9;
+        transition: all 0.15s ease;
+    }
+    .emergency-banner {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+        border: 1.5px solid #fed7aa;
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="row g-4">
 
-    <!-- Left: Loan Form -->
-    <div class="col-lg-6">
+    <!-- Left: Loan Issuance Form -->
+    <div class="col-lg-7">
+        
+        <!-- Treasury Fund Balance Banner -->
         {% if available_fund_balance is not None %}
-        <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
-            <i class="bi bi-info-circle-fill"></i>
-            <div>
-                Available fund balance:
-                <strong>KES {{ available_fund_balance|floatformat:2 }}</strong>
-                — loan amount cannot exceed this.
+        <div class="card border-0 mb-3" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 14px; box-shadow: 0 4px 15px rgba(15, 23, 42, 0.12);">
+            <div class="card-body py-3 px-4 d-flex justify-content-between align-items-center text-white">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 42px; height: 42px; background: rgba(52, 211, 153, 0.2); color: #34d399;">
+                        <i class="bi bi-safe2-fill fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="text-uppercase tracking-wider small" style="font-size: 0.72rem; color: #94a3b8; letter-spacing: 0.05em; font-weight: 600;">
+                            Available Group Fund Balance
+                        </div>
+                        <div class="fs-4 fw-bold" style="color: #34d399;">
+                            KES {{ available_fund_balance|kes }}
+                        </div>
+                    </div>
+                </div>
+                <div class="text-end d-none d-sm-block">
+                    <span class="badge rounded-pill" style="background: rgba(255, 255, 255, 0.15); color: #f8fafc; font-weight: 500; font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                        <i class="bi bi-shield-check me-1"></i>Liquid Treasury
+                    </span>
+                </div>
             </div>
         </div>
         {% endif %}
-        <div class="card">
-            <div class="card-header">Loan Details</div>
-            <div class="card-body">
-                <form method="post" id="loanForm">
+
+        <div class="card loan-card">
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center" style="border-bottom: 1px solid #f1f5f9;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-cash-coin text-primary fs-5"></i>
+                    <h5 class="mb-0 fw-bold" style="color: #0f172a;">{% if object %}Edit Loan Details{% else %}Loan Application &amp; Issuance{% endif %}</h5>
+                </div>
+                <span class="badge bg-light text-secondary border">Step 1 of 1</span>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="post" id="loanForm" novalidate>
                     {% csrf_token %}
                     {% if form.non_field_errors %}
-                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    <div class="alert alert-danger d-flex align-items-center gap-2 mb-4 py-2">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <div>{{ form.non_field_errors }}</div>
+                    </div>
                     {% endif %}
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Member</label>
-                        {{ form.member }}
-                        {% if form.member.errors %}<div class="text-danger small mt-1">{{ form.member.errors }}</div>{% endif %}
-                    </div>
+                    <!-- SECTION 1: BORROWER DETAILS -->
+                    <div class="mb-4">
+                        <div class="loan-section-header">
+                            <span class="loan-section-number">1</span>
+                            <span>Borrower Identification</span>
+                        </div>
 
-                    <!-- Member contribution info (shown after member selected) -->
-                    <div id="memberInfo" style="display:none;" class="mb-3 p-3 rounded" style="background:#f8fafc;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted small">Total Contributions</span>
-                            <span class="fw-semibold" id="memberContrib" style="color:#16a34a;">—</span>
+                        <!-- Borrower Type Toggle (Creation mode only) -->
+                        {% if not object %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">Borrower Category</label>
+                            <div class="d-flex gap-2 p-1 rounded-3" style="background: #f1f5f9; border: 1px solid #e2e8f0;">
+                                <button type="button" class="btn borrower-toggle-btn btn-primary" id="btn-member-type" onclick="setBorrowerType('member')">
+                                    <i class="bi bi-person-check-fill me-1"></i> Chama Member
+                                </button>
+                                <button type="button" class="btn borrower-toggle-btn btn-outline-secondary border-0" id="btn-non-member-type" onclick="setBorrowerType('non_member')">
+                                    <i class="bi bi-person-badge me-1"></i> Non-Member (External)
+                                </button>
+                            </div>
+                            <div style="display: none;">
+                                {{ form.borrower_type }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Member selector -->
+                        <div id="memberSection">
+                            <div class="mb-2">
+                                <label for="id_member" class="form-label fw-semibold small">
+                                    Select Member <span class="text-danger">*</span>
+                                </label>
+                                {{ form.member }}
+                                {% if form.member.errors %}<div class="text-danger small mt-1">{{ form.member.errors }}</div>{% endif %}
+                            </div>
+                            <!-- Member contribution chip -->
+                            <div id="memberInfo" style="display:none;" class="p-2 px-3 rounded-3 mt-2" style="background:#f0fdf4; border: 1px solid #bbf7d0;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small"><i class="bi bi-piggy-bank me-1 text-success"></i>Total Savings Contributions:</span>
+                                    <span class="fw-bold" id="memberContrib" style="color:#16a34a; font-size: 0.95rem;">—</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Non-member selector -->
+                        <div id="nonMemberSection" style="display:none;">
+                            <div class="p-3 rounded-3" style="background:#faf5ff; border:1px solid #e9d5ff;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label for="id_non_member" class="form-label fw-semibold small mb-0" style="color: #7e22ce;">
+                                        <i class="bi bi-person-badge-fill me-1"></i> Qualified Non-Member Applicant <span class="text-danger">*</span>
+                                    </label>
+                                    <a href="{% url 'loans:non_member_add' %}" target="_blank" class="btn btn-sm btn-outline-primary" style="font-size:0.75rem; padding: 0.2rem 0.55rem;">
+                                        <i class="bi bi-plus-circle me-1"></i>Register New
+                                    </a>
+                                </div>
+                                {{ form.non_member }}
+                                {% if form.non_member.errors %}<div class="text-danger small mt-1">{{ form.non_member.errors }}</div>{% endif %}
+                                <div class="form-text mt-1 text-muted" style="font-size:0.78rem;">
+                                    Only applicants marked as <strong>Qualified</strong> by an admin appear in this list.
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Loan Amount (KES)</label>
-                        {{ form.loan_amount }}
-                        {% if form.loan_amount.errors %}<div class="text-danger small mt-1">{{ form.loan_amount.errors }}</div>{% endif %}
-                    </div>
-
-                    <!-- Guarantor required warning + picker -->
-                    <div id="guarantorSection" style="display:none;" class="mb-3">
-                        <div class="alert alert-warning py-2 mb-3" style="font-size:0.875rem;">
-                            <i class="bi bi-exclamation-triangle me-1"></i>
-                            Loan exceeds member's contributions by
-                            <strong id="shortfallAmt">—</strong>.
-                            Guarantors are required.
+                    <!-- SECTION 2: LOAN PRODUCT & TERMS -->
+                    <div class="mb-4">
+                        <div class="loan-section-header">
+                            <span class="loan-section-number">2</span>
+                            <span>Loan Package &amp; Configuration</span>
                         </div>
 
-                        <div class="card" style="border:1px solid #fde68a;">
-                            <div class="card-header d-flex justify-content-between align-items-center"
-                                 style="background:#fffbeb;font-size:0.875rem;">
-                                <span><i class="bi bi-people me-2"></i>Add Guarantors</span>
-                                <span class="text-muted small">
-                                    Shortfall covered: <strong id="coveredAmt" style="color:#16a34a;">KES 0</strong>
-                                    / <strong id="targetAmt">—</strong>
+                        {% if loan_products %}{% if not object %}
+                        <!-- Fast-track Product Picker -->
+                        <div class="mb-3 p-3 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="productSelect" class="form-label fw-semibold small mb-0 text-dark">
+                                    <i class="bi bi-stars me-1 text-primary"></i>Loan Product Preset
+                                </label>
+                                <span class="badge bg-white text-muted border font-monospace" style="font-size: 0.72rem;">Optional</span>
+                            </div>
+                            <select id="productSelect" class="form-select form-select-sm mt-1">
+                                <option value="">— Choose a Loan Product to auto-fill terms —</option>
+                                {% for p in loan_products %}
+                                <option value="{{ p.pk }}"
+                                        data-url="{% url 'loans:product_api' p.pk %}"
+                                        data-emergency="{% if p.is_emergency or p.interest_type == 'emergency' %}true{% else %}false{% endif %}">
+                                    {% if p.is_emergency or p.interest_type == 'emergency' %}🚨 {% endif %}{{ p.name }}
+                                    — {{ p.get_interest_type_display }}{% if p.interest_type != 'emergency' %} ({{ p.interest_rate }}%){% endif %}{% if p.duration_months %}, {{ p.duration_months }} mo{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div style="display:none;">{{ form.product }}</div>
+                            <div id="productDesc" class="form-text mt-2 p-2 rounded bg-white border" style="display:none; color:#475569; font-size:0.8rem;"></div>
+
+                            <!-- Emergency Notice Banner -->
+                            <div id="emergencyNotice" class="emergency-banner mt-2 p-3 d-flex gap-2 align-items-start" style="display:none!important;">
+                                <i class="bi bi-exclamation-triangle-fill mt-1 flex-shrink-0 fs-5" style="color:#d97706;"></i>
+                                <div style="font-size:0.84rem; color:#92400e;">
+                                    <strong>Emergency Loan Activated:</strong>
+                                    Interest rate is permanently fixed at <strong>0.00% (Interest-Free)</strong> with zero penalty charges.
+                                    The repayment duration can be customized below per group agreement.
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}{% endif %}
+
+                        <!-- Principal Loan Amount with Presets -->
+                        <div class="mb-3">
+                            <label for="id_loan_amount" class="form-label fw-semibold small">
+                                Principal Amount (KES) <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light fw-bold text-muted">KES</span>
+                                {{ form.loan_amount }}
+                            </div>
+                            {% if form.loan_amount.errors %}<div class="text-danger small mt-1">{{ form.loan_amount.errors }}</div>{% endif %}
+                            
+                            <!-- Quick amount presets -->
+                            <div class="d-flex flex-wrap gap-1 mt-2 align-items-center">
+                                <span class="text-muted small me-1" style="font-size:0.75rem;">Quick Amounts:</span>
+                                <button type="button" class="preset-pill" onclick="setQuickAmount(5000)">5,000</button>
+                                <button type="button" class="preset-pill" onclick="setQuickAmount(10000)">10,000</button>
+                                <button type="button" class="preset-pill" onclick="setQuickAmount(20000)">20,000</button>
+                                <button type="button" class="preset-pill" onclick="setQuickAmount(50000)">50,000</button>
+                                <button type="button" class="preset-pill" onclick="setQuickAmount(100000)">100,000</button>
+                                {% if available_fund_balance %}
+                                <button type="button" class="preset-pill text-success border-success" onclick="setQuickAmount({{ available_fund_balance }})">Max Liquid</button>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Loan Type, Interest Rate, and Duration in 3-column grid -->
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label for="id_loan_type" class="form-label fw-semibold small d-flex align-items-center justify-content-between">
+                                    <span>Loan Type</span>
+                                    <span id="emergencyLockIcon" class="badge bg-warning text-dark font-monospace" style="display:none;font-size:0.68rem;">
+                                        <i class="bi bi-shield-lock-fill"></i> 0% Emergency
+                                    </span>
+                                </label>
+                                {{ form.loan_type }}
+                                {% if form.loan_type.errors %}<div class="text-danger small mt-1">{{ form.loan_type.errors }}</div>{% endif %}
+                                <div class="form-text" id="loanTypeHint" style="font-size:0.75rem;">
+                                    <span id="hintFlat">Flat: one-off interest on principal.</span>
+                                    <span id="hintReducing" style="display:none;">Reducing: interest on balance.</span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="id_interest_rate_pct" class="form-label fw-semibold small d-flex align-items-center justify-content-between">
+                                    <span>Interest Rate (%) <span id="rateLabel" class="text-muted fw-normal" style="font-size:0.72rem;">(per loan)</span></span>
+                                    <span id="emergencyLockIcon2" class="badge bg-warning text-dark font-monospace" style="display:none;font-size:0.68rem;">
+                                        <i class="bi bi-lock-fill"></i> 0%
+                                    </span>
+                                </label>
+                                {{ form.interest_rate }}
+                                {% if form.interest_rate.errors %}<div class="text-danger small mt-1">{{ form.interest_rate.errors }}</div>{% endif %}
+                                <div class="form-text" style="font-size:0.75rem;">System default: {{ default_rate_pct }}%</div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label for="id_duration_months" class="form-label fw-semibold small">
+                                    Duration
+                                </label>
+                                {{ form.duration_months }}
+                                {% if form.duration_months.errors %}<div class="text-danger small mt-1">{{ form.duration_months.errors }}</div>{% endif %}
+                                <div class="form-text" style="font-size:0.75rem;">Months</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Guarantor Section (Dynamic based on contribution shortfall) -->
+                    <div id="guarantorSection" style="display:none;" class="mb-4">
+                        <div class="alert alert-warning py-2 mb-2 d-flex align-items-center gap-2" style="font-size:0.85rem; border-radius: 8px;">
+                            <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0 text-warning"></i>
+                            <div>
+                                Loan amount exceeds borrower's savings by <strong id="shortfallAmt">—</strong>.
+                                Guarantors are required to secure the shortfall before proceeding.
+                            </div>
+                        </div>
+
+                        <div id="guarantorOverCoveredAlert" class="alert alert-danger py-2 mb-2 align-items-center gap-2" style="display:none; font-size:0.85rem; border-radius: 8px;">
+                            <i class="bi bi-exclamation-octagon-fill fs-5 flex-shrink-0 text-danger"></i>
+                            <div id="guarantorOverCoveredText">
+                                <strong>Excess Guarantee:</strong> Total guaranteed amount cannot exceed the requested loan target.
+                            </div>
+                        </div>
+
+                        <div class="card" style="border:1.5px solid #fde68a; border-radius: 10px;">
+                            <div class="card-header d-flex justify-content-between align-items-center py-2 px-3" style="background:#fffbeb; font-size:0.85rem;">
+                                <span class="fw-bold text-dark"><i class="bi bi-people-fill me-2 text-warning"></i>Guarantor Coverage Allocation</span>
+                                <span class="small">
+                                    Covered: <strong id="coveredAmt" style="color:#16a34a;">KES 0.00</strong> / Target: <strong id="targetAmt">—</strong>
                                 </span>
                             </div>
-                            <div class="card-body p-2">
-                                <div class="progress mb-2" style="height:6px;">
-                                    <div id="coverageBar" class="progress-bar bg-warning" style="width:0%;"></div>
+                            <div class="card-body p-3">
+                                <div class="progress mb-3" style="height:8px; border-radius: 4px; background:#f1f5f9;">
+                                    <div id="coverageBar" class="progress-bar bg-warning" style="width:0%; transition: width 0.3s ease;"></div>
                                 </div>
                                 <div id="guarantorRows"></div>
                                 <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addGuarantorBtn">
-                                    <i class="bi bi-plus me-1"></i>Add Guarantor
+                                    <i class="bi bi-person-plus me-1"></i>Add Guarantor
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Repayment Period</label>
-                        {{ form.duration_months }}
-                        {% if form.duration_months.errors %}<div class="text-danger small mt-1">{{ form.duration_months.errors }}</div>{% endif %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Date Taken</label>
-                        {{ form.date_taken }}
-                        {% if form.date_taken.errors %}<div class="text-danger small mt-1">{{ form.date_taken.errors }}</div>{% endif %}
-                    </div>
-
-                    {% if object %}
-                    <!-- Edit-only fields: visible when adjusting an existing loan -->
-                    <div class="card mb-3" style="border:1px solid #fde68a;background:#fffbeb;">
-                        <div class="card-header py-2" style="background:#fef3c7;font-size:0.82rem;font-weight:600;">
-                            <i class="bi bi-pencil-square me-1"></i>Adjustment Fields
-                            <span class="text-muted fw-normal ms-1">(edit only)</span>
+                    <!-- SECTION 3: DISBURSEMENT & FUNDING SOURCE -->
+                    <div class="mb-4">
+                        <div class="loan-section-header">
+                            <span class="loan-section-number">3</span>
+                            <span>Disbursement &amp; Funding Source</span>
                         </div>
-                        <div class="card-body pb-2">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold small">Due Date</label>
-                                {{ form.due_date }}
-                                {% if form.due_date.errors %}<div class="text-danger small mt-1">{{ form.due_date.errors }}</div>{% endif %}
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_date_taken" class="form-label fw-semibold small">
+                                    Disbursement Date <span class="text-danger">*</span>
+                                </label>
+                                {{ form.date_taken }}
+                                {% if form.date_taken.errors %}<div class="text-danger small mt-1">{{ form.date_taken.errors }}</div>{% endif %}
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold small">Amount Paid (KES)</label>
-                                {{ form.amount_paid }}
-                                {% if form.amount_paid.errors %}<div class="text-danger small mt-1">{{ form.amount_paid.errors }}</div>{% endif %}
-                                <div class="form-text">Sum of all recorded payments. Adjust only if correcting historical data.</div>
+
+                            <div class="col-md-6">
+                                <label for="id_fund_source" class="form-label fw-semibold small">
+                                    Fund Source <span class="text-danger">*</span>
+                                </label>
+                                {{ form.fund_source }}
+                                {% if form.fund_source.errors %}<div class="text-danger small mt-1">{{ form.fund_source.errors }}</div>{% endif %}
                             </div>
-                            <div class="mb-2">
-                                <label class="form-label fw-semibold small">Status</label>
-                                {{ form.status }}
-                                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors }}</div>{% endif %}
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label fw-semibold small">Overdue Months (Penalty Applied)</label>
-                                <div class="input-group">
-                                    {{ form.late_penalty_months }}
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="autoCalcBtn" title="Auto-calculate from due date">
-                                        <i class="bi bi-arrow-clockwise me-1"></i>Auto
-                                    </button>
+                        </div>
+
+                        <!-- Dynamic Bank Account row -->
+                        <div id="fundSourceBankRow" class="mt-3 p-3 rounded-3" style="display:none; background:#f8fafc; border:1px solid #e2e8f0;">
+                            <label for="id_fund_source_bank" class="form-label fw-semibold small">
+                                <i class="bi bi-bank2 me-1 text-primary"></i>Source Bank Account
+                            </label>
+                            {{ form.fund_source_bank }}
+                            {% if form.fund_source_bank.errors %}<div class="text-danger small mt-1">{{ form.fund_source_bank.errors }}</div>{% endif %}
+                            <div class="form-text" style="font-size:0.75rem;">Funds will be automatically deducted from this bank account.</div>
+                        </div>
+
+                        <!-- Dynamic Custom Label row -->
+                        <div id="fundSourceLabelRow" class="mt-3 p-3 rounded-3" style="display:none; background:#f8fafc; border:1px solid #e2e8f0;">
+                            <label for="id_fund_source_label" class="form-label fw-semibold small">External Fund Source Description</label>
+                            {{ form.fund_source_label }}
+                            {% if form.fund_source_label.errors %}<div class="text-danger small mt-1">{{ form.fund_source_label.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Edit Adjustment Fields (visible only when editing an existing loan) -->
+                    {% if object %}
+                    <div class="card mb-4" style="border:1.5px solid #fde68a; background:#fffbeb; border-radius: 10px;">
+                        <div class="card-header py-2 px-3" style="background:#fef3c7; font-size:0.85rem; font-weight:700; color: #92400e;">
+                            <i class="bi bi-pencil-square me-1"></i>Historical Adjustment Controls
+                            <span class="badge bg-warning text-dark ms-1">Edit Mode Only</span>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Due Date</label>
+                                    {{ form.due_date }}
+                                    {% if form.due_date.errors %}<div class="text-danger small mt-1">{{ form.due_date.errors }}</div>{% endif %}
                                 </div>
-                                {% if form.late_penalty_months.errors %}<div class="text-danger small mt-1">{{ form.late_penalty_months.errors }}</div>{% endif %}
-                                <div class="form-text" id="penaltyHint">
-                                    Each month adds <strong>10% of principal</strong> to the total payable.
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Amount Paid (KES)</label>
+                                    {{ form.amount_paid }}
+                                    {% if form.amount_paid.errors %}<div class="text-danger small mt-1">{{ form.amount_paid.errors }}</div>{% endif %}
                                 </div>
-                                <div id="overdueCalcInfo" class="mt-1" style="display:none;font-size:0.8rem;"></div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Loan Status</label>
+                                    {{ form.status }}
+                                    {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Overdue Months (Penalties)</label>
+                                    <div class="input-group">
+                                        {{ form.late_penalty_months }}
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="autoCalcBtn" title="Auto-calculate from due date">
+                                            <i class="bi bi-arrow-clockwise me-1"></i>Auto
+                                        </button>
+                                    </div>
+                                    {% if form.late_penalty_months.errors %}<div class="text-danger small mt-1">{{ form.late_penalty_months.errors }}</div>{% endif %}
+                                    <div id="overdueCalcInfo" class="mt-1" style="display:none;font-size:0.8rem;"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     {% endif %}
 
+                    <!-- SECTION 4: NOTES & SUBMIT -->
                     <div class="mb-4">
-                        <label class="form-label fw-semibold small">Notes <span class="text-muted fw-normal">(optional)</span></label>
+                        <label for="id_notes" class="form-label fw-semibold small">
+                            Notes / Remarks <span class="text-muted fw-normal">(Optional)</span>
+                        </label>
                         {{ form.notes }}
                     </div>
 
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle me-1"></i>Save Loan
+                    <div class="d-flex gap-2 pt-2 border-top">
+                        <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold shadow-sm">
+                            <i class="bi bi-check2-circle me-1 fs-6"></i>
+                            {% if object %}Update Loan{% else %}Issue Loan{% endif %}
                         </button>
-                        <a href="{% url 'loans:list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{% url 'loans:list' %}" class="btn btn-outline-secondary px-3 py-2">
+                            Cancel
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Right: Interest Preview -->
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-calculator me-2"></i>Interest Preview</div>
-            <div class="card-body">
-                <div class="row g-3 mb-3" id="calcSummary" style="display:none!important;">
-                    <div class="col-4">
-                        <div class="p-3 rounded" style="background:#f8fafc;">
-                            <div class="text-muted" style="font-size:0.75rem;">Principal</div>
-                            <div class="fw-bold fs-5" style="color:#334155;" id="calcPrincipal">—</div>
-                        </div>
+    <!-- Right: Sticky Live Loan Calculator & Summary -->
+    <div class="col-lg-5">
+        <div class="sticky-calculator">
+            <div class="card loan-card mb-3">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center" style="border-bottom: 1px solid #f1f5f9;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-calculator-fill text-indigo" style="color: #4f46e5;"></i>
+                        <h6 class="mb-0 fw-bold" style="color: #0f172a;">Real-Time Financial Preview</h6>
                     </div>
-                    <div class="col-4">
-                        <div class="p-3 rounded" style="background:#f0fdf4;">
-                            <div class="text-muted" style="font-size:0.75rem;">Interest (10%)</div>
-                            <div class="fw-bold fs-5" style="color:#16a34a;" id="calcInterest">—</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-3 rounded" style="background:#eff6ff;">
-                            <div class="text-muted" style="font-size:0.75rem;">Total Payable</div>
-                            <div class="fw-bold fs-5" style="color:#2563eb;" id="calcTotal">—</div>
-                        </div>
-                    </div>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.72rem;">Live Recalculation</span>
                 </div>
-                <div id="calcPlaceholder" class="text-muted text-center py-3" style="font-size:0.875rem;">
-                    <i class="bi bi-info-circle me-1"></i>Enter loan amount to preview interest.
+
+                <div class="card-body p-4">
+                    
+                    <!-- Flat Rate & Emergency Summary -->
+                    <div id="flatSummary" style="display:none;">
+                        <!-- Hero Total Card -->
+                        <div class="p-3 rounded-3 mb-3 text-center" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe;">
+                            <div class="text-uppercase tracking-wider small fw-bold" style="font-size: 0.7rem; color: #1e40af; letter-spacing: 0.05em;">
+                                Total Amount Payable
+                            </div>
+                            <div class="fs-2 fw-bold text-primary mt-1" id="calcTotal">KES 0.00</div>
+                            <div class="small text-muted" style="font-size: 0.76rem;">Principal + Interest combined</div>
+                        </div>
+
+                        <!-- Key Metrics Grid -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="stat-mini-card" style="background: #f8fafc;">
+                                    <div class="text-muted small" style="font-size: 0.72rem;">Principal Amount</div>
+                                    <div class="fw-bold fs-6 mt-1" style="color: #334155;" id="calcPrincipal">—</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-mini-card" style="background: #f0fdf4; border-color: #bbf7d0;">
+                                    <div class="text-muted small" style="font-size: 0.72rem;">Total Interest (<span id="rateDisplay">0</span>%)</div>
+                                    <div class="fw-bold fs-6 mt-1" style="color: #16a34a;" id="calcInterest">—</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reducing Balance Summary -->
+                    <div id="reducingSummary" style="display:none;">
+                        <!-- Hero Monthly Card -->
+                        <div class="p-3 rounded-3 mb-3 text-center" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;">
+                            <div class="text-uppercase tracking-wider small fw-bold" style="font-size: 0.7rem; color: #166534; letter-spacing: 0.05em;">
+                                Monthly Repayment Instalment
+                            </div>
+                            <div class="fs-2 fw-bold" style="color: #15803d;" id="calcMonthly">KES 0.00</div>
+                            <div class="small text-muted" style="font-size: 0.76rem;">Estimated monthly obligation</div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="stat-mini-card" style="background: #f0fdf4;">
+                                    <div class="text-muted small" style="font-size: 0.72rem;">Total Interest</div>
+                                    <div class="fw-bold fs-6 mt-1" style="color: #16a34a;" id="calcInterestR">—</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-mini-card" style="background: #eff6ff;">
+                                    <div class="text-muted small" style="font-size: 0.72rem;">Total Payable</div>
+                                    <div class="fw-bold fs-6 mt-1" style="color: #2563eb;" id="calcTotalR">—</div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="stat-mini-card" style="background: #fff7ed; border-color: #fed7aa;">
+                                    <div class="text-muted small" style="font-size: 0.72rem;">Monthly Interest Rate</div>
+                                    <div class="fw-bold fs-6 mt-1" style="color: #c2410c;" id="calcRateR">—</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule Table -->
+                        <div id="scheduleBox" style="display:none; max-height:220px; overflow-y:auto; border-radius:8px; border:1px solid #e2e8f0;" class="mb-2">
+                            <table class="table table-sm table-striped table-hover mb-0" style="font-size:0.75rem;">
+                                <thead class="table-light sticky-top">
+                                    <tr><th>#</th><th>Instalment</th><th>Interest</th><th>Principal</th><th>Balance</th></tr>
+                                </thead>
+                                <tbody id="scheduleBody"></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="toggleSchedule" style="display:none;">
+                            <i class="bi bi-calendar3-range me-1"></i>Show Amortization Schedule
+                        </button>
+                    </div>
+
+                    <!-- Placeholder before input -->
+                    <div id="calcPlaceholder" class="text-center py-4 px-2" style="background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1;">
+                        <i class="bi bi-calculator text-muted fs-1 mb-2 d-block"></i>
+                        <div class="fw-semibold text-dark" style="font-size: 0.88rem;">Ready for Calculation</div>
+                        <div class="text-muted small mt-1">Enter loan amount and parameters to view real-time interest and repayment preview.</div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="card mt-3">
-            <div class="card-body" style="font-size:0.82rem;color:#64748b;">
-                <strong style="color:#334155;">Interest Rules:</strong>
-                <ul class="mb-0 mt-1 ps-3">
-                    <li>Flat <strong id="rateDisplay">10%</strong> one-off interest on principal</li>
-                    <li>e.g. Borrow KES 2,000 → repay KES 2,200</li>
-                    <li>A member cannot borrow while a previous loan is active.</li>
-                    <li>Guarantors required if loan exceeds member's contributions.</li>
-                </ul>
+            <!-- Loan Policy Card -->
+            <div class="card loan-card">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-info-circle-fill text-primary"></i>
+                        <span class="fw-bold small text-dark">Loan Policy &amp; Rules Checklist</span>
+                    </div>
+                    <ul class="list-unstyled mb-0" style="font-size:0.78rem; color:#64748b;">
+                        <li class="mb-1 d-flex align-items-start gap-2">
+                            <i class="bi bi-check2 text-success mt-0.5"></i>
+                            <span id="rateRulesFlat"><strong>Flat Rate:</strong> Interest charged once on full principal across the loan lifecycle.</span>
+                            <span id="rateRulesReducing" style="display:none;"><strong>Reducing Balance:</strong> Equal installments with interest calculated on remaining balance.</span>
+                        </li>
+                        <li class="mb-1 d-flex align-items-start gap-2">
+                            <i class="bi bi-check2 text-success mt-0.5"></i>
+                            <span>Borrower cannot have another active or overdue loan during new issuance.</span>
+                        </li>
+                        <li class="mb-1 d-flex align-items-start gap-2">
+                            <i class="bi bi-check2 text-success mt-0.5"></i>
+                            <span>Guarantors are mandatory whenever loan amount exceeds borrower's total savings.</span>
+                        </li>
+                        <li class="d-flex align-items-start gap-2">
+                            <i class="bi bi-check2 text-success mt-0.5"></i>
+                            <span>Emergency loans are 100% interest-free (0.00%) with no hidden administrative fees.</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// ── Quick Amount Preset Helper ────────────────────────────────────
+function setQuickAmount(amt) {
+    const amountInput = document.getElementById('id_loan_amount');
+    if (amountInput) {
+        amountInput.value = parseFloat(amt).toFixed(2);
+        amountInput.dispatchEvent(new Event('input'));
+    }
+}
+
+// ── Fund Source Toggle ────────────────────────────────────────────
+function updateFundSourceUI() {
+    const sel = document.getElementById('id_fund_source');
+    const bankRow  = document.getElementById('fundSourceBankRow');
+    const labelRow = document.getElementById('fundSourceLabelRow');
+    if (!sel) return;
+    if (bankRow)  bankRow.style.display  = sel.value === 'bank_account' ? 'block' : 'none';
+    if (labelRow) labelRow.style.display = sel.value === 'other'        ? 'block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', function () {
+    const fundSel = document.getElementById('id_fund_source');
+    if (fundSel) {
+        fundSel.addEventListener('change', updateFundSourceUI);
+        updateFundSourceUI(); // init on load
+    }
+});
+
+// ── Borrower Type Toggle ──────────────────────────────────────────
+function setBorrowerType(type) {
+    const memberSection    = document.getElementById('memberSection');
+    const nonMemberSection = document.getElementById('nonMemberSection');
+    const borrowerTypeInput = document.getElementById('id_borrower_type');
+    const btnMember        = document.getElementById('btn-member-type');
+    const btnNonMember     = document.getElementById('btn-non-member-type');
+    const guarantorSection = document.getElementById('guarantorSection');
+
+    if (!memberSection || !nonMemberSection) return;
+
+    if (type === 'non_member') {
+        memberSection.style.display    = 'none';
+        nonMemberSection.style.display = 'block';
+        if (borrowerTypeInput) borrowerTypeInput.value = 'non_member';
+        if (btnMember)    { btnMember.className    = 'btn borrower-toggle-btn btn-outline-secondary border-0'; }
+        if (btnNonMember) { btnNonMember.className  = 'btn borrower-toggle-btn btn-primary'; }
+        if (guarantorSection) guarantorSection.style.display = 'none';
+    } else {
+        memberSection.style.display    = 'block';
+        nonMemberSection.style.display = 'none';
+        if (borrowerTypeInput) borrowerTypeInput.value = 'member';
+        if (btnMember)    { btnMember.className    = 'btn borrower-toggle-btn btn-primary'; }
+        if (btnNonMember) { btnNonMember.className  = 'btn borrower-toggle-btn btn-outline-secondary border-0'; }
+        if (typeof checkGuarantorNeeded === 'function') checkGuarantorNeeded();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const borrowerTypeInput = document.getElementById('id_borrower_type');
+    const currentType = borrowerTypeInput ? borrowerTypeInput.value : 'member';
+    setBorrowerType(currentType);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const nonMemberId = urlParams.get('non_member');
+    if (nonMemberId) {
+        setBorrowerType('non_member');
+        const nonMemberSelect = document.getElementById('id_non_member');
+        if (nonMemberSelect) {
+            nonMemberSelect.value = nonMemberId;
+        }
+    }
+});
+</script>
+
+<script>
 const memberSelect  = document.getElementById('id_member');
 const amountInput   = document.getElementById('id_loan_amount');
 const durationInput = document.getElementById('id_duration_months');
+const rateInput     = document.getElementById('id_interest_rate_pct');
+const loanTypeInput = document.getElementById('id_loan_type');
 
-let memberContribTotal = 0;
-let eligibleGuarantors = [];
-let currentShortfall = 0;
+let memberContribTotal = 0, eligibleGuarantors = [], currentShortfall = 0;
 
-function fmt(n) {
-    return 'KES ' + parseFloat(n).toLocaleString('en-KE', {minimumFractionDigits: 2});
+function fmt(n) { return 'KES ' + parseFloat(n).toLocaleString('en-KE', {minimumFractionDigits:2}); }
+function getRate() {
+    if (getLoanType() === 'emergency') return 0;
+    if (!rateInput) return 0;
+    const v = parseFloat(rateInput.value);
+    return isNaN(v) ? 0 : v;
+}
+function getLoanType() { return loanTypeInput ? loanTypeInput.value : 'flat'; }
+
+const defaultSystemRate = {{ default_rate_pct|default:10 }};
+
+function updateLoanTypeUI() {
+    const v = getLoanType();
+    const isEmergency = v === 'emergency';
+    const isReducing = v === 'reducing' || v === 'reducing_principal';
+
+    toggleEmergencyFields(isEmergency);
+    if (isEmergency) {
+        if (rateInput) rateInput.value = '0.00';
+        const emergencyNotice = document.getElementById('emergencyNotice');
+        if (emergencyNotice) emergencyNotice.style.display = 'flex';
+    } else {
+        if (rateInput && (rateInput.value === '0.00' || rateInput.value === '0' || !rateInput.value)) {
+            rateInput.value = defaultSystemRate.toFixed(2);
+        }
+        const emergencyNotice = document.getElementById('emergencyNotice');
+        if (emergencyNotice) emergencyNotice.style.display = 'none';
+    }
+
+    ['hintFlat','rateRulesFlat'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=(isReducing || isEmergency)?'none':'';});
+    ['hintReducing','rateRulesReducing'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=isReducing?'':'none';});
+    const rl=document.getElementById('rateLabel');
+    if(rl) rl.textContent = isEmergency ? '(0% emergency)' : (v==='flat' ? '(per loan)' : '(per month)');
+    fetchCalc();
 }
 
-// ── Interest calculator ──────────────────────────────────────────
 function fetchCalc() {
-    const amount = amountInput.value;
-    const months = durationInput.value;
-    if (!amount || parseFloat(amount) <= 0) return;
-    fetch(`{% url 'loans:calculator' %}?amount=${amount}&months=${months}`)
-        .then(r => r.json())
-        .then(data => {
+    const amount = amountInput ? amountInput.value : '';
+    const months = durationInput ? durationInput.value : 1;
+    const rate = getRate(), loanType = getLoanType();
+    const placeholder = document.getElementById('calcPlaceholder');
+    const flatBox = document.getElementById('flatSummary');
+    const redBox  = document.getElementById('reducingSummary');
+    if (!amount || parseFloat(amount) <= 0) {
+        if (placeholder) placeholder.style.display = 'block';
+        if (flatBox) flatBox.style.display = 'none';
+        if (redBox)  redBox.style.display  = 'none';
+        return;
+    }
+    fetch(`{% url 'loans:calculator' %}?amount=${amount}&months=${months}&rate=${rate}&loan_type=${loanType}`)
+        .then(r => r.json()).then(data => {
             if (data.error) return;
-            document.getElementById('calcPrincipal').textContent = fmt(amount);
-            document.getElementById('calcInterest').textContent  = fmt(data.total_interest);
-            document.getElementById('calcTotal').textContent     = fmt(data.total_payable);
-            document.getElementById('calcSummary').style.display = 'flex';
-            document.getElementById('calcPlaceholder').style.display = 'none';
-            const rateEl = document.getElementById('rateDisplay');
-            if (rateEl) rateEl.textContent = data.rate_percent + '%';
+            if (placeholder) placeholder.style.display = 'none';
+            if (data.loan_type === 'reducing' || data.loan_type === 'reducing_principal') {
+                if (flatBox) flatBox.style.display = 'none';
+                if (redBox)  redBox.style.display  = 'block';
+                const isEqPrincipal = data.loan_type === 'reducing_principal';
+                const m = document.getElementById('calcMonthly');
+                if(m) m.textContent = isEqPrincipal
+                    ? fmt(data.first_installment) + ' (1st)'
+                    : fmt(data.monthly_installment);
+                const i = document.getElementById('calcInterestR');  if(i)  i.textContent  = fmt(data.total_interest);
+                const t = document.getElementById('calcTotalR');     if(t)  t.textContent  = fmt(data.total_payable);
+                const rr= document.getElementById('calcRateR');      if(rr) rr.textContent = parseFloat(data.rate_percent).toFixed(2).replace(/\.?0+$/,'') + '%/mo';
+                if (data.schedule && data.schedule.length) {
+                    const tbody = document.getElementById('scheduleBody');
+                    if (tbody) tbody.innerHTML = data.schedule.map(row =>
+                        `<tr><td>${row.month}</td><td>${fmt(row.installment)}</td>` +
+                        `<td style="color:#16a34a;">${fmt(row.interest)}</td>` +
+                        `<td>${fmt(row.principal)}</td>` +
+                        `<td style="color:#2563eb;">${fmt(row.balance)}</td></tr>`
+                    ).join('');
+                    const tb = document.getElementById('toggleSchedule'); if(tb) tb.style.display='block';
+                }
+            } else {
+                if (redBox)  redBox.style.display  = 'none';
+                if (flatBox) flatBox.style.display  = 'block';
+                const p  = document.getElementById('calcPrincipal'); if(p)  p.textContent  = fmt(amount);
+                const ci = document.getElementById('calcInterest');  if(ci) ci.textContent  = fmt(data.total_interest);
+                const ct = document.getElementById('calcTotal');     if(ct) ct.textContent  = fmt(data.total_payable);
+                const rd = document.getElementById('rateDisplay');   if(rd) rd.textContent  = parseFloat(data.rate_percent).toFixed(2).replace(/\.?0+$/,'');
+            }
         });
 }
 
-// ── Member contribution check ────────────────────────────────────
+// ── Product auto-fill with emergency loan handling ────────────────
+function toggleEmergencyFields(isEmergency) {
+    if (rateInput) {
+        rateInput.readOnly = isEmergency;
+        rateInput.style.opacity = isEmergency ? '0.6' : '1';
+        if (isEmergency) {
+            rateInput.value = '0.00';
+        }
+    }
+    const lockIcon1 = document.getElementById('emergencyLockIcon');
+    const lockIcon2 = document.getElementById('emergencyLockIcon2');
+    if (lockIcon1) lockIcon1.style.display = isEmergency ? 'inline-block' : 'none';
+    if (lockIcon2) lockIcon2.style.display = isEmergency ? 'inline-block' : 'none';
+    
+    const loanTypeHint = document.getElementById('loanTypeHint');
+    if (loanTypeHint) {
+        loanTypeHint.style.display = isEmergency ? 'none' : 'block';
+    }
+}
+
+const productSelect = document.getElementById('productSelect');
+if (productSelect) {
+    productSelect.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        const emergencyNotice = document.getElementById('emergencyNotice');
+        const isEmergency = opt && opt.dataset.emergency === 'true';
+        
+        const formProductField = document.getElementById('id_product');
+        if (formProductField) {
+            formProductField.value = this.value;
+        }
+        
+        if (emergencyNotice) {
+            emergencyNotice.style.display = isEmergency ? 'flex' : 'none';
+        }
+        toggleEmergencyFields(isEmergency);
+        
+        if (!opt || !opt.value) return;
+        const url = opt.dataset.url;
+        fetch(url).then(r => r.json()).then(data => {
+            if (data.error) return;
+            const typeMap = {flat:'flat', reducing_emi:'reducing', reducing_principal:'reducing_principal', emergency:'emergency'};
+            const isEmerg = isEmergency || data.is_emergency || data.interest_type === 'emergency' || data.loan_type === 'emergency';
+            const loanTypeVal = isEmerg ? 'emergency' : (data.loan_type || typeMap[data.interest_type] || 'flat');
+            
+            if (emergencyNotice) {
+                emergencyNotice.style.display = isEmerg ? 'flex' : 'none';
+            }
+            toggleEmergencyFields(isEmerg);
+
+            if (loanTypeInput) {
+                loanTypeInput.value = loanTypeVal;
+                loanTypeInput.dispatchEvent(new Event('change'));
+            }
+            if (rateInput) {
+                rateInput.value = isEmerg ? '0.00' : data.interest_rate.toFixed(2);
+                rateInput.dispatchEvent(new Event('input'));
+            }
+            if (durationInput && data.duration_months > 0) {
+                durationInput.value = data.duration_months;
+                durationInput.dispatchEvent(new Event('change'));
+            }
+            if (amountInput) {
+                if (data.min_amount > 0 && !amountInput.value)
+                    amountInput.value = data.min_amount;
+                if (data.min_amount > 0) amountInput.min = data.min_amount;
+                if (data.max_amount > 0) amountInput.max = data.max_amount;
+            }
+            const descBox = document.getElementById('productDesc');
+            if (descBox) {
+                const parts = [];
+                if (data.description) parts.push(data.description);
+                if (data.min_amount > 0 || data.max_amount > 0) {
+                    const minStr = data.min_amount > 0 ? 'KES ' + data.min_amount.toLocaleString() : 'no min';
+                    const maxStr = data.max_amount > 0 ? 'KES ' + data.max_amount.toLocaleString() : 'no max';
+                    parts.push(`Amount range: ${minStr} – ${maxStr}`);
+                }
+                descBox.textContent = parts.join(' · ');
+                descBox.style.display = parts.length ? 'block' : 'none';
+            }
+            fetchCalc();
+        });
+    });
+}
+
+const toggleBtn = document.getElementById('toggleSchedule');
+if (toggleBtn) toggleBtn.addEventListener('click', function() {
+    const box = document.getElementById('scheduleBox');
+    const showing = box.style.display !== 'none';
+    box.style.display = showing ? 'none' : 'block';
+    this.innerHTML = showing
+        ? '<i class="bi bi-calendar3-range me-1"></i>Show Amortization Schedule'
+        : '<i class="bi bi-chevron-up me-1"></i>Hide Amortization Schedule';
+});
+
 function checkGuarantorNeeded() {
+    if (!memberSelect) return;
     const memberId = memberSelect.value;
-    const amount   = parseFloat(amountInput.value) || 0;
+    const amount   = parseFloat(amountInput ? amountInput.value : 0) || 0;
     if (!memberId) return;
 
     fetch(`{% url 'loans:member_check' %}?member_id=${memberId}&amount=${amount}`)
@@ -239,19 +845,22 @@ function checkGuarantorNeeded() {
             eligibleGuarantors = data.guarantors;
             currentShortfall   = data.shortfall;
 
-            document.getElementById('memberInfo').style.display = 'block';
-            document.getElementById('memberContrib').textContent = fmt(memberContribTotal);
+            const memberInfoEl = document.getElementById('memberInfo');
+            if (memberInfoEl) memberInfoEl.style.display = 'block';
+            const memberContribEl = document.getElementById('memberContrib');
+            if (memberContribEl) memberContribEl.textContent = fmt(memberContribTotal);
 
             const section = document.getElementById('guarantorSection');
             if (data.needs_guarantor) {
-                document.getElementById('shortfallAmt').textContent = fmt(data.shortfall);
-                // coverage target = shortfall, not full loan
-                document.getElementById('targetAmt').textContent = fmt(data.shortfall);
-                section.style.display = 'block';
+                const shortfallEl = document.getElementById('shortfallAmt');
+                if (shortfallEl) shortfallEl.textContent = fmt(data.shortfall);
+                const targetEl = document.getElementById('targetAmt');
+                if (targetEl) targetEl.textContent = fmt(data.shortfall);
+                if (section) section.style.display = 'block';
                 rebuildGuarantorSelects();
                 updateCoverage();
             } else {
-                section.style.display = 'none';
+                if (section) section.style.display = 'none';
             }
         });
 }
@@ -268,11 +877,10 @@ function rebuildGuarantorSelects() {
                 sel.innerHTML += `<option value="${g.id}"
                     data-max="${g.max_guarantee}"
                     ${String(g.id) === currentVal ? 'selected' : ''}>
-                    ${g.name} (max KES ${g.max_guarantee.toLocaleString()})
+                    ${g.name} (savings KES ${g.max_guarantee.toLocaleString()})
                 </option>`;
             }
         });
-        // re-apply max on the amount input for the currently selected guarantor
         applyMaxToRow(row);
     });
 }
@@ -281,33 +889,86 @@ function applyMaxToRow(row) {
     const sel = row.querySelector('select');
     const inp = row.querySelector('input[type=number]');
     const warn = row.querySelector('.guarantor-warn');
-    const selectedOpt = sel.options[sel.selectedIndex];
-    if (selectedOpt && selectedOpt.dataset.max !== undefined) {
-        const max = parseFloat(selectedOpt.dataset.max);
-        inp.max = max;
-        inp.placeholder = `Max KES ${max.toLocaleString()}`;
-        // clamp existing value
-        if (parseFloat(inp.value) > max) {
-            inp.value = max;
-            updateCoverage();
+    const selectedOpt = sel ? sel.options[sel.selectedIndex] : null;
+    const target = currentShortfall || 0;
+
+    if (selectedOpt && selectedOpt.dataset.max !== undefined && selectedOpt.value) {
+        const maxContrib = parseFloat(selectedOpt.dataset.max) || 0;
+        const maxAllowed = Math.min(maxContrib, target);
+        inp.max = maxAllowed;
+        inp.placeholder = `Max KES ${maxAllowed.toLocaleString()}`;
+        if (parseFloat(inp.value) > maxAllowed) {
+            inp.value = maxAllowed;
+            if (warn) {
+                warn.textContent = `Capped at KES ${maxAllowed.toLocaleString()}`;
+                warn.style.display = 'block';
+            }
+        } else if (warn) {
+            warn.style.display = 'none';
         }
-        if (warn) warn.style.display = 'none';
     } else {
         inp.removeAttribute('max');
         inp.placeholder = 'Amount';
+        if (warn) warn.style.display = 'none';
     }
+    updateCoverage();
 }
 
 function validateGuarantorAmount(inp) {
     const row = inp.closest('.guarantor-row');
     const warn = row.querySelector('.guarantor-warn');
-    const max = parseFloat(inp.max);
-    if (!isNaN(max) && parseFloat(inp.value) > max) {
-        inp.value = max;
-        if (warn) { warn.textContent = `Capped at KES ${max.toLocaleString()} (their contributions)`; warn.style.display = 'block'; }
+    const sel = row.querySelector('select');
+    const selectedOpt = sel ? sel.options[sel.selectedIndex] : null;
+    const target = currentShortfall || 0;
+    const gMax = (selectedOpt && selectedOpt.dataset.max !== undefined && selectedOpt.value)
+        ? parseFloat(selectedOpt.dataset.max) : Infinity;
+
+    let val = parseFloat(inp.value);
+    if (isNaN(val) || val < 0) {
+        if (warn) warn.style.display = 'none';
+        updateCoverage();
+        return;
+    }
+
+    // 1. Calculate sum of other guarantor rows
+    let otherCovered = 0;
+    document.querySelectorAll('.guarantor-row input[type=number]').forEach(otherInp => {
+        if (otherInp !== inp) {
+            otherCovered += parseFloat(otherInp.value) || 0;
+        }
+    });
+
+    // 2. Check savings limit
+    if (val > gMax) {
+        inp.value = gMax;
+        val = gMax;
+        if (warn) {
+            warn.textContent = `Capped at KES ${gMax.toLocaleString()} (guarantor's total savings)`;
+            warn.style.display = 'block';
+        }
+    }
+    // 3. Check single guarantee vs target
+    else if (val > target) {
+        inp.value = target;
+        val = target;
+        if (warn) {
+            warn.textContent = `Cannot guarantee more than required target of KES ${target.toLocaleString()}`;
+            warn.style.display = 'block';
+        }
+    }
+    // 4. Check total guarantee across all guarantors vs target
+    else if ((val + otherCovered) > target) {
+        const remainingNeeded = Math.max(0, target - otherCovered);
+        inp.value = remainingNeeded > 0 ? remainingNeeded : '';
+        val = remainingNeeded;
+        if (warn) {
+            warn.textContent = `Capped to KES ${remainingNeeded.toLocaleString()} to match remaining target shortfall of KES ${target.toLocaleString()}`;
+            warn.style.display = 'block';
+        }
     } else {
         if (warn) warn.style.display = 'none';
     }
+
     updateCoverage();
 }
 
@@ -325,7 +986,7 @@ function addGuarantorRow() {
                 <option value="">— Select Guarantor —</option>
                 ${eligibleGuarantors.map(g =>
                     `<option value="${g.id}" data-max="${g.max_guarantee}">
-                        ${g.name} (max KES ${g.max_guarantee.toLocaleString()})
+                        ${g.name} (savings KES ${g.max_guarantee.toLocaleString()})
                     </option>`
                 ).join('')}
             </select>
@@ -348,34 +1009,81 @@ function addGuarantorRow() {
 }
 
 function updateCoverage() {
-    // coverage is measured against the shortfall, not the full loan
     const target = currentShortfall || 0;
     let covered = 0;
     document.querySelectorAll('.guarantor-row input[type=number]').forEach(inp => {
         covered += parseFloat(inp.value) || 0;
     });
-    const pct = target > 0 ? Math.min((covered / target) * 100, 100) : 0;
-    document.getElementById('coveredAmt').textContent = fmt(covered);
-    const bar = document.getElementById('coverageBar');
-    bar.style.width = pct + '%';
-    bar.className = 'progress-bar ' + (pct >= 100 ? 'bg-success' : pct >= 50 ? 'bg-warning' : 'bg-danger');
 
-    // block form submit if shortfall not covered
+    const coveredEl = document.getElementById('coveredAmt');
+    const bar = document.getElementById('coverageBar');
+    const overAlert = document.getElementById('guarantorOverCoveredAlert');
+    const overText = document.getElementById('guarantorOverCoveredText');
     const submitBtn = document.querySelector('#loanForm button[type=submit]');
     const section = document.getElementById('guarantorSection');
-    if (section.style.display !== 'none' && covered < target) {
-        submitBtn.disabled = true;
-        submitBtn.title = `Guarantors must cover the full shortfall of ${fmt(target)}`;
+
+    if (covered > target && target > 0) {
+        // OVER-COVERED ERROR STATE
+        if (coveredEl) {
+            coveredEl.innerHTML = `<span style="color:#dc2626;">KES ${covered.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</span> <span class="badge bg-danger ms-1">Over-allocated (+KES ${(covered - target).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})})</span>`;
+        }
+        if (bar) {
+            bar.style.width = '100%';
+            bar.className = 'progress-bar bg-danger';
+        }
+        if (overAlert && overText) {
+            overAlert.style.display = 'flex';
+            overText.innerHTML = `<strong>Excess Guarantee:</strong> Total guaranteed amount (KES ${covered.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}) exceeds requested shortfall (KES ${target.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}). Guarantor coverage cannot exceed the requested loan target.`;
+        }
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.title = `Guarantor coverage cannot exceed target of KES ${target.toLocaleString()}`;
+        }
+    } else if (covered === target && target > 0) {
+        // EXACT FULL COVERAGE SUCCESS STATE
+        if (coveredEl) {
+            coveredEl.innerHTML = `<span style="color:#16a34a;">KES ${covered.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</span> <span class="badge bg-success ms-1">100% Fully Covered</span>`;
+        }
+        if (bar) {
+            bar.style.width = '100%';
+            bar.className = 'progress-bar bg-success';
+        }
+        if (overAlert) overAlert.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.title = '';
+        }
     } else {
-        submitBtn.disabled = false;
-        submitBtn.title = '';
+        // UNDER-COVERED STATE
+        const pct = target > 0 ? (covered / target) * 100 : 0;
+        if (coveredEl) {
+            coveredEl.innerHTML = `<span style="color:#d97706;">KES ${covered.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>`;
+        }
+        if (bar) {
+            bar.style.width = pct + '%';
+            bar.className = 'progress-bar ' + (pct >= 50 ? 'bg-warning' : 'bg-danger');
+        }
+        if (overAlert) overAlert.style.display = 'none';
+        if (section && section.style.display !== 'none') {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.title = `Guarantors must cover the full shortfall of ${fmt(target)}`;
+            }
+        } else if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.title = '';
+        }
     }
 }
 
-document.getElementById('addGuarantorBtn').addEventListener('click', addGuarantorRow);
-memberSelect.addEventListener('change', checkGuarantorNeeded);
-amountInput.addEventListener('input', () => { fetchCalc(); checkGuarantorNeeded(); });
-durationInput.addEventListener('change', fetchCalc);
+const addBtn = document.getElementById('addGuarantorBtn');
+if (addBtn) addBtn.addEventListener('click', addGuarantorRow);
+if (memberSelect) memberSelect.addEventListener('change', checkGuarantorNeeded);
+if (amountInput) amountInput.addEventListener('input', () => { fetchCalc(); checkGuarantorNeeded(); });
+if (durationInput) durationInput.addEventListener('change', fetchCalc);
+if (rateInput) rateInput.addEventListener('input', fetchCalc);
+if (loanTypeInput) loanTypeInput.addEventListener('change', updateLoanTypeUI);
+updateLoanTypeUI();
 
 // ── Overdue months auto-calculator (edit mode only) ──────────────
 (function () {
@@ -385,7 +1093,6 @@ durationInput.addEventListener('change', fetchCalc);
     const infoBox      = document.getElementById('overdueCalcInfo');
     if (!dueDateInput || !penaltyInput) return;
 
-    // amountInput may be null on the edit form if the widget id differs — fall back gracefully
     function getPrincipal() {
         const el = document.getElementById('id_loan_amount');
         return el ? (parseFloat(el.value) || 0) : 0;
@@ -417,7 +1124,11 @@ durationInput.addEventListener('change', fetchCalc);
         const amountPaid   = amountPaidEl ? parseFloat(amountPaidEl.value) || 0 : 0;
         const principal    = getPrincipal();
         const penaltyMonths = parseInt(penaltyInput.value) || 0;
-        const interest     = principal * 0.10;
+        const isEmerg = getLoanType() === 'emergency';
+        const rateInp = document.getElementById('id_interest_rate_pct');
+        const rateVal = rateInp ? parseFloat(rateInp.value) : 0;
+        const ratePct = isEmerg ? 0 : (isNaN(rateVal) ? defaultSystemRate : rateVal);
+        const interest     = principal * (ratePct / 100);
         const totalPayable = principal + interest + (interest * penaltyMonths);
 
         if (amountPaid > 0 && totalPayable > 0 && amountPaid >= totalPayable) {
@@ -441,7 +1152,11 @@ durationInput.addEventListener('change', fetchCalc);
             infoBox.style.display = 'none';
             return;
         }
-        const penaltyPerMonth = principal > 0 ? principal * 0.10 : 0;
+        const isEmerg = getLoanType() === 'emergency';
+        const rateInp = document.getElementById('id_interest_rate_pct');
+        const rateVal = rateInp ? parseFloat(rateInp.value) : 0;
+        const ratePct = isEmerg ? 0 : (isNaN(rateVal) ? defaultSystemRate : rateVal);
+        const penaltyPerMonth = principal > 0 ? principal * (ratePct / 100) : 0;
         const totalPenalty    = penaltyPerMonth * months;
         const interest        = penaltyPerMonth;
         const totalPayable    = principal > 0 ? principal + interest + totalPenalty : 0;
@@ -454,7 +1169,7 @@ durationInput.addEventListener('change', fetchCalc);
                 </div>
                 ${principal > 0 ? `
                 <div class="d-flex justify-content-between">
-                    <span class="text-muted">Penalty/month:</span>
+                    <span class="text-muted">Penalty/month (${ratePct}%):</span>
                     <strong>KES ${fmt2(penaltyPerMonth)}</strong>
                 </div>
                 <div class="d-flex justify-content-between">
@@ -490,11 +1205,9 @@ durationInput.addEventListener('change', fetchCalc);
         if (!dateTakenStr || !durationMonths) return null;
         const d = new Date(dateTakenStr);
         if (isNaN(d)) return null;
-        // Add duration months, clamping day to end of target month
         const targetMonth = d.getMonth() + parseInt(durationMonths);
         const year  = d.getFullYear() + Math.floor(targetMonth / 12);
         const month = targetMonth % 12;
-        // Last day of target month
         const lastDay = new Date(year, month + 1, 0).getDate();
         const day = Math.min(d.getDate(), lastDay);
         const due = new Date(year, month, day);
@@ -516,10 +1229,34 @@ durationInput.addEventListener('change', fetchCalc);
 
     // Run on page load after DOM is ready
     document.addEventListener('DOMContentLoaded', () => {
-        // Always recompute due date from date_taken + duration on edit load
-        // so stale stored values get corrected before overdue calc runs
         autoFillDueDate();
+
+        // ── Initialize emergency lock on page load ──────────────────
+        let isEmergency = false;
+        const productSelect = document.getElementById('productSelect') || document.getElementById('id_product');
+        if (productSelect && productSelect.selectedIndex >= 0) {
+            const opt = productSelect.options[productSelect.selectedIndex];
+            isEmergency = opt && opt.dataset && opt.dataset.emergency === 'true';
+        }
+        if (!isEmergency && loanTypeInput) {
+            isEmergency = loanTypeInput.value === 'emergency';
+        }
+        if (isEmergency) {
+            toggleEmergencyFields(true);
+            if (rateInput) rateInput.value = '0.00';
+            const emergencyNotice = document.getElementById('emergencyNotice');
+            if (emergencyNotice) emergencyNotice.style.display = 'flex';
+        }
     });
+
+    const loanForm = document.getElementById('loanForm');
+    if (loanForm) {
+        loanForm.addEventListener('submit', () => {
+            if (rateInput) rateInput.readOnly = false;
+            if (loanTypeInput) loanTypeInput.disabled = false;
+        });
+    }
+
     if (document.readyState !== 'loading') {
         autoFillDueDate();
     }

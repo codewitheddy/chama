@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Bank Accounts{% endblock %}
+{% block page_title %}Bank Accounts{% endblock %}
+
+{% block content %}
+<!-- Stat cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-md-4">
+    <div class="card stat-card shadow-sm border-0" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+      <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+        <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#2563eb,#3b82f6);width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-bank fs-5"></i>
+        </div>
+        <div>
+          <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.75rem;">General Lending Bank</div>
+          <div class="fs-5 fw-bold text-dark">KES {{ general_bank_balance|kes }}</div>
+          <div style="font-size:0.75rem;color:#64748b;">
+            Chama loanable funds
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-4">
+    <div class="card stat-card shadow-sm border-0" style="border-radius:12px;border:1.5px solid #16a34a;background:linear-gradient(135deg,#f0fdf4,#ffffff);">
+      <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+        <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#16a34a,#22c55e);width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-heart-pulse fs-5"></i>
+        </div>
+        <div>
+          <div class="text-success small fw-bold text-uppercase" style="letter-spacing:0.5px;font-size:0.75rem;">Welfare Bank Balance</div>
+          <div class="fs-5 fw-bold text-success">KES {{ welfare_bank_balance|kes }}</div>
+          <div style="font-size:0.75rem;color:#15803d;">
+            Isolated emergency aid
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-4">
+    <div class="card stat-card shadow-sm border-0" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+      <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+        <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#6366f1,#818cf8);width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-collection fs-5"></i>
+        </div>
+        <div>
+          <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.75rem;">Total Across Accounts</div>
+          <div class="fs-5 fw-bold text-dark">KES {{ total_bank_balance|kes }}</div>
+          <div style="font-size:0.75rem;color:#64748b;">{{ active_count }} active account{{ active_count|pluralize }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toolbar -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h6 class="mb-0 text-muted" style="font-size:0.85rem;">
+    {{ accounts|length }} account{{ accounts|length|pluralize }} registered
+  </h6>
+  {% if request.user.profile.is_treasurer %}
+  <a href="{% url 'bank_accounts:add' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-circle me-1"></i>Add Account
+  </a>
+  {% endif %}
+</div>
+
+<!-- Bulk Actions Toolbar -->
+<div id="bulk-actions-toolbar" class="alert alert-info d-none mb-3" role="alert">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <strong><span id="selected-count">0</span> account(s) selected</strong>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" id="bulk-delete-btn" class="btn btn-sm btn-danger" data-action="delete">
+                <i class="bi bi-trash me-1"></i>Delete Accounts
+            </button>
+            <button type="button" id="clear-selection-btn" class="btn btn-sm btn-outline-secondary">
+                Clear Selection
+            </button>
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle" style="font-size:0.9rem;">
+      <thead>
+        <tr>
+          <th style="width:40px;"><input type="checkbox" id="select-all-accounts" title="Select all"></th>
+          <th class="ps-4">Bank</th>
+          <th>Account Name</th>
+          <th>Fund Purpose</th>
+          <th>Account No.</th>
+          <th>Branch</th>
+          <th>Opening Balance</th>
+          <th>Current Balance</th>
+          <th>Last Updated</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for acc in accounts %}
+        <tr>
+          <td><input type="checkbox" class="account-checkbox" value="{{ acc.pk }}" data-name="{{ acc.account_name }}"></td>
+          <td class="ps-4 fw-semibold">{{ acc.bank_name }}</td>
+          <td>{{ acc.account_name }}</td>
+          <td>
+            {% if acc.fund_type == 'welfare' %}
+            <span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;"><i class="bi bi-heart-pulse-fill me-1"></i>Welfare Fund</span>
+            {% elif acc.fund_type == 'registration' %}
+            <span class="badge" style="background:#faf5ff;color:#9333ea;border:1px solid #e9d5ff;"><i class="bi bi-receipt me-1"></i>Registration Fund</span>
+            {% else %}
+            <span class="badge" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;"><i class="bi bi-bank me-1"></i>General / Lending</span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">{{ acc.account_number|default:"—" }}</td>
+          <td class="text-muted small">{{ acc.branch|default:"—" }}</td>
+          <td class="text-muted">KES {{ acc.opening_balance|kes }}</td>
+          <td class="fw-bold" style="color:{% if acc.fund_type == 'welfare' %}#16a34a{% else %}#2563eb{% endif %};">KES {{ acc.current_balance|kes }}</td>
+          <td style="font-size:0.82rem;">{{ acc.last_updated|default:"—" }}</td>
+          <td>
+            {% if acc.is_active %}
+            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Active</span>
+            {% else %}
+            <span class="badge" style="background:#f8fafc;color:#94a3b8;">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{% url 'bank_accounts:detail' acc.pk %}"
+                 class="btn btn-sm btn-outline-secondary" title="View Ledger">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if request.user.profile.is_treasurer %}
+              <a href="{% url 'bank_accounts:detail' acc.pk %}"
+                 class="btn btn-sm btn-success" title="Top-Up / Deposit">
+                <i class="bi bi-plus-circle"></i>
+              </a>
+              <a href="{% url 'bank_accounts:edit' acc.pk %}"
+                 class="btn btn-sm btn-outline-warning" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% endif %}
+              {% if request.user.profile.is_admin %}
+              <a href="{% url 'bank_accounts:delete' acc.pk %}"
+                 class="btn btn-sm btn-outline-danger" title="Delete Account">
+                <i class="bi bi-trash"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="11" class="text-center text-muted py-5">
+            <i class="bi bi-bank fs-3 d-block mb-2"></i>
+            No bank accounts registered yet.
+            {% if request.user.profile.is_treasurer %}
+            <a href="{% url 'bank_accounts:add' %}">Add the first one.</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if accounts %}
+      <tfoot>
+        <tr style="background:#eff6ff;">
+          <td colspan="7" class="ps-4 fw-bold">Total (all active accounts)</td>
+          <td class="fw-bold" style="color:#2563eb;">KES {{ total_bank_balance|kes }}</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all-accounts');
+    const accountCheckboxes = document.querySelectorAll('.account-checkbox');
+    const bulkToolbar = document.getElementById('bulk-actions-toolbar');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+    const clearSelectionBtn = document.getElementById('clear-selection-btn');
+
+    function updateToolbar() {
+        const checkedCount = document.querySelectorAll('.account-checkbox:checked').length;
+        selectedCountSpan.textContent = checkedCount;
+        
+        if (checkedCount > 0) {
+            bulkToolbar.classList.remove('d-none');
+        } else {
+            bulkToolbar.classList.add('d-none');
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+        }
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            accountCheckboxes.forEach(cb => cb.checked = this.checked);
+            updateToolbar();
+        });
+    }
+
+    accountCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateToolbar);
+    });
+
+    if (clearSelectionBtn) {
+        clearSelectionBtn.addEventListener('click', function() {
+            accountCheckboxes.forEach(cb => cb.checked = false);
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+            updateToolbar();
+        });
+    }
+
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', function() {
+            const selected = Array.from(document.querySelectorAll('.account-checkbox:checked'))
+                .map(cb => ({ id: cb.value, name: cb.dataset.name }));
+            
+            if (selected.length === 0) {
+                alert('Please select at least one account.');
+                return;
+            }
+
+            const names = selected.map(m => m.name).join(', ');
+            if (confirm(`Delete ${selected.length} account(s)?\n\n${names}\n\nThis action cannot be undone.`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{% url "bank_accounts:bulk_delete" %}';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'account_ids';
+                input.value = selected.map(m => m.id).join(',');
+                form.appendChild(input);
+                
+                const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfTokenElement) {
+                    form.appendChild(csrfTokenElement.cloneNode());
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

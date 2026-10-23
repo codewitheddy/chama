@@ -6,6 +6,7 @@ app_name = 'meetings'
 urlpatterns = [
     path('', views.MeetingListView.as_view(), name='list'),
     path('add/', views.MeetingCreateView.as_view(), name='add'),
+    path('financial-summary-api/', views.MeetingFinancialSummaryAPIView.as_view(), name='financial_summary_api'),
     path('<int:pk>/', views.MeetingDetailView.as_view(), name='detail'),
     path('<int:pk>/edit/', views.MeetingUpdateView.as_view(), name='edit'),
     path('<int:pk>/edit-minutes/', views.MeetingUpdateMinutesView.as_view(), name='edit_minutes'),

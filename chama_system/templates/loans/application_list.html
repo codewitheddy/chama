@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Loan Applications{% endblock %}
+{% block page_title %}Loan Applications{% endblock %}
+
+{% block content %}
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-4">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Pending</div>
+                <div class="stat-value" style="font-size:1.3rem;color:#d97706;">{{ pending_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Approved</div>
+                <div class="stat-value" style="font-size:1.3rem;color:#16a34a;">{{ approved_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">Rejected</div>
+                <div class="stat-value" style="font-size:1.3rem;color:#e11d48;">{{ rejected_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toolbar -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <form class="d-flex gap-2" method="get">
+            <input type="hidden" name="status" value="{{ current_status }}" id="app-status-input">
+            <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+                   placeholder="Search member…" style="width:200px;">
+            {% if q or current_status %}
+            <a href="{% url 'loans:applications' %}" class="btn btn-sm btn-outline-danger">Clear</a>
+            {% endif %}
+        </form>
+        <div class="d-flex gap-1" id="app-status-btns">
+            <button type="button" class="btn btn-sm {% if not current_status %}btn-primary{% else %}btn-outline-secondary{% endif %}" data-status="">All</button>
+            <button type="button" class="btn btn-sm {% if current_status == 'pending' %}btn-warning{% else %}btn-outline-secondary{% endif %}" data-status="pending">Pending</button>
+            <button type="button" class="btn btn-sm {% if current_status == 'approved' %}btn-success{% else %}btn-outline-secondary{% endif %}" data-status="approved">Approved</button>
+            <button type="button" class="btn btn-sm {% if current_status == 'rejected' %}btn-danger{% else %}btn-outline-secondary{% endif %}" data-status="rejected">Rejected</button>
+        </div>
+    </div>
+    <a href="{% url 'loans:application_new' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle me-1"></i>New Application
+    </a>
+</div>
+
+<!-- Table -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Member</th>
+                    <th>Amount</th>
+                    <th>Duration</th>
+                    <th>Interest (est.)</th>
+                    <th>Reason</th>
+                    <th>Submitted</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in applications %}
+                <tr>
+                    <td class="text-muted" style="font-size:0.8rem;">#{{ app.pk }}</td>
+                    <td class="fw-semibold">{{ app.member.name }}</td>
+                    <td>KES {{ app.loan_amount|kes }}</td>
+                    <td>{{ app.duration_months }} mo.</td>
+                    <td style="color:#16a34a;">KES {{ app.interest_preview|kes }}</td>
+                    <td class="text-muted" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        {{ app.reason|truncatechars:60 }}
+                    </td>
+                    <td class="text-muted" style="font-size:0.82rem;white-space:nowrap;">
+                        {{ app.applied_at|date:"d M Y" }}
+                        {% if app.applied_by %}<br><span style="font-size:0.72rem;">by {{ app.applied_by.username }}</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if app.status == 'pending' %}
+                            <span class="badge" style="background:#fffbeb;color:#d97706;">
+                                <i class="bi bi-hourglass-split me-1"></i>Pending
+                            </span>
+                        {% elif app.status == 'approved' %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">
+                                <i class="bi bi-check-circle me-1"></i>Approved
+                            </span>
+                        {% else %}
+                            <span class="badge" style="background:#fff1f2;color:#e11d48;">
+                                <i class="bi bi-x-circle me-1"></i>Rejected
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'loans:application_detail' app.pk %}"
+                               class="btn btn-sm btn-outline-secondary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if app.status == 'approved' and app.loan %}
+                            <a href="{% url 'loans:detail' app.loan.pk %}"
+                               class="btn btn-sm btn-outline-success" title="View Loan">
+                                <i class="bi bi-credit-card"></i>
+                            </a>
+                            {% endif %}
+                            {% if app.status == 'pending' and user.profile.is_admin %}
+                            <a href="{% url 'loans:application_delete' app.pk %}"
+                               class="btn btn-sm btn-outline-danger" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                        No applications found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white border-top">
+        {% include 'includes/pagination.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('app-status-input');
+    const form  = input.closest('form');
+    document.getElementById('app-status-btns').querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', function () {
+            input.value = this.dataset.status;
+            document.querySelectorAll('#app-status-btns button').forEach(b =>
+                b.className = 'btn btn-sm btn-outline-secondary');
+            const s = this.dataset.status;
+            if (!s)              this.className = 'btn btn-sm btn-primary';
+            else if (s==='pending')  this.className = 'btn btn-sm btn-warning';
+            else if (s==='approved') this.className = 'btn btn-sm btn-success';
+            else if (s==='rejected') this.className = 'btn btn-sm btn-danger';
+            form.submit();
+        });
+    });
+});
+</script>
+{% endblock %}

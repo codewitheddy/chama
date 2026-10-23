@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Bank Reconciliation — Commercial Accounts{% endblock %}
+{% block page_title %}Bank Account Reconciliation{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-7">
+        <!-- Account Switcher & Statement Form Card -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:10px;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="fw-bold text-dark"><i class="bi bi-bank2 me-2 text-primary"></i>Official Bank Statement Reconciliation</span>
+                <!-- Switcher -->
+                <form method="get" class="d-inline-flex gap-2">
+                    <select name="bank_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for b in banks %}
+                        <option value="{{ b.pk }}" {% if selected_bank.pk == b.pk %}selected{% endif %}>{{ b.bank_name }} — {{ b.account_name }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+            <div class="card-body p-4">
+                {% if selected_bank %}
+                <!-- Balances Comparison Box -->
+                <div class="row g-3 p-3 mb-4 rounded-3 bg-light border">
+                    <div class="col-sm-6">
+                        <div class="text-muted small fw-semibold text-uppercase" style="font-size:0.75rem;">System Ledger Balance:</div>
+                        <div class="fs-4 fw-bold text-dark" style="font-family: monospace;">KES {{ ledger_balance|kes }}</div>
+                        <small class="text-muted">As recorded in Chama system</small>
+                    </div>
+                    <div class="col-sm-6 text-sm-end">
+                        <div class="text-muted small fw-semibold text-uppercase" style="font-size:0.75rem;">Statement Ending Balance:</div>
+                        <div id="statementBalDisplay" class="fs-4 fw-bold text-primary" style="font-family: monospace;">KES 0.00</div>
+                        <small class="text-muted">Per official bank document</small>
+                    </div>
+                </div>
+
+                <div id="bankVarianceAlert" class="p-3 mb-4 rounded-3 border d-flex justify-content-between align-items-center bg-light">
+                    <div>
+                        <span class="fw-bold me-2" id="bankVarianceStatus">Awaiting Statement Amount</span>
+                        <span class="small text-muted" id="bankVarianceMessage">Enter official statement balance below</span>
+                    </div>
+                    <div id="bankVarianceAmount" class="fw-bold fs-5" style="font-family: monospace;">KES 0.00</div>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="bank_account" value="{{ selected_bank.pk }}">
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Statement Closing Date: <span class="text-danger">*</span></label>
+                            {{ form.statement_date }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Statement Closing Balance (KES): <span class="text-danger">*</span></label>
+                            {{ form.statement_balance }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Unreconciled Items &amp; Outstanding Differences:</label>
+                        {{ form.unreconciled_items_notes }}
+                        <small class="text-muted">List deposits in transit, unpresented cheques, bank service charges, or interest credited.</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">General Remarks / Notes:</label>
+                        {{ form.notes }}
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'money_movement:dashboard' %}" class="btn btn-outline-secondary">Back to Treasury</a>
+                        <button type="submit" class="btn btn-primary fw-bold px-4">
+                            <i class="bi bi-save me-1"></i>Save Bank Reconciliation
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    No active commercial bank accounts configured. <a href="{% url 'bank_accounts:add' %}">Add a Bank Account</a> first.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Bank Transactions & Past Reconciliations Column -->
+    <div class="col-lg-5">
+        <!-- Past Reconciliations -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:10px;">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Past Statement Reconciliations</h6>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Statement Date</th>
+                            <th>Statement</th>
+                            <th>Variance</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in history %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold small">{{ h.statement_date }}</div>
+                                <div class="text-muted" style="font-size:0.7rem;">By {{ h.reconciled_by.username }}</div>
+                            </td>
+                            <td class="small fw-semibold">KES {{ h.statement_balance|kes }}</td>
+                            <td>
+                                {% if h.status == 'reconciled' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">0.00</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ h.variance|kes }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="small text-muted">{{ h.get_status_display }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted small">
+                                No past reconciliations logged for this bank account.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Ledger Movements -->
+        <div class="card shadow-sm border-0" style="border-radius:10px;">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-list-check me-2 text-secondary"></i>Recent Ledger Entries</h6>
+            </div>
+            <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
+                <table class="table table-hover table-sm align-middle mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th class="text-end">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in recent_transactions %}
+                        <tr>
+                            <td class="small">{{ row.recorded_on }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ row.get_transaction_type_display }}</span></td>
+                            <td class="small fw-semibold {% if row.is_credit %}text-success{% else %}text-danger{% endif %}">
+                                {% if row.is_credit %}+{% else %}-{% endif %}KES {{ row.topup_amount|kes }}
+                            </td>
+                            <td class="text-end small fw-bold">KES {{ row.balance|kes }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-3 text-muted small">No transactions recorded.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if direct_other_incomes %}
+        <!-- Direct External Incomes into this Bank Account -->
+        <div class="card shadow-sm border-0 mt-4" style="border-radius:10px;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-box-arrow-in-down-right me-2 text-primary"></i>Direct Bank Incomes Deposited</h6>
+                <a href="{% url 'other_income:list' %}?bank_account={{ selected_bank.pk }}" class="small text-decoration-none">View All</a>
+            </div>
+            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                <table class="table table-hover table-sm align-middle mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Date / Source</th>
+                            <th>Amount</th>
+                            <th class="text-end">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inc in direct_other_incomes %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold small text-dark">{{ inc.source }}</div>
+                                <div class="text-muted" style="font-size:0.7rem;">
+                                    {{ inc.date }} {% if inc.reference_number %}· Ref: {{ inc.reference_number }}{% endif %}
+                                </div>
+                            </td>
+                            <td class="small fw-bold text-success">+KES {{ inc.amount|kes }}</td>
+                            <td class="text-end">
+                                {% if inc.is_reconciled %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:0.7rem;">Reconciled</span>
+                                {% else %}
+                                <form method="post" action="{% url 'other_income:reconcile_toggle' inc.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-xs btn-outline-warning py-0 px-1.5" style="font-size:0.68rem;" title="Mark this income reconciled with statement">
+                                        Verify
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    const LEDGER_BAL = parseFloat("{{ ledger_balance }}") || 0;
+
+    function recalculateBankRecon() {
+        const stmtInput = document.getElementById('id_statement_balance');
+        const stmtVal = parseFloat(stmtInput?.value) || 0;
+        const display = document.getElementById('statementBalDisplay');
+        const alertBox = document.getElementById('bankVarianceAlert');
+        const statusText = document.getElementById('bankVarianceStatus');
+        const msg = document.getElementById('bankVarianceMessage');
+        const amtDisplay = document.getElementById('bankVarianceAmount');
+
+        display.textContent = 'KES ' + stmtVal.toLocaleString('en-KE', {minimumFractionDigits: 2});
+
+        const variance = stmtVal - LEDGER_BAL;
+        amtDisplay.textContent = 'KES ' + variance.toLocaleString('en-KE', {minimumFractionDigits: 2});
+
+        if (Math.abs(variance) < 0.01) {
+            alertBox.className = 'p-3 mb-4 rounded-3 border d-flex justify-content-between align-items-center bg-success-subtle text-success-emphasis border-success-subtle';
+            statusText.textContent = 'STATEMENT RECONCILED';
+            msg.textContent = 'Official statement matches the Chama ledger balance!';
+        } else {
+            alertBox.className = 'p-3 mb-4 rounded-3 border d-flex justify-content-between align-items-center bg-danger-subtle text-danger-emphasis border-danger-subtle';
+            statusText.textContent = 'UNRECONCILED DIFFERENCE';
+            msg.textContent = 'Difference of KES ' + variance.toFixed(2) + ' between statement and ledger.';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const stmtInput = document.getElementById('id_statement_balance');
+        if (stmtInput) {
+            stmtInput.addEventListener('input', recalculateBankRecon);
+            recalculateBankRecon();
+        }
+    });
+</script>
+{% endblock %}

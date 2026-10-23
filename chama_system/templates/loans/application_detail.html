@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Application #{{ app.pk }}{% endblock %}
+{% block page_title %}Loan Application #{{ app.pk }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timeline-item { position:relative; padding-left:2rem; margin-bottom:1.25rem; }
+    .timeline-item::before {
+        content:''; position:absolute; left:0.45rem; top:0.5rem;
+        bottom:-1.25rem; width:2px; background:#e2e8f0;
+    }
+    .timeline-item:last-child::before { display:none; }
+    .timeline-dot {
+        position:absolute; left:0; top:0.35rem;
+        width:0.9rem; height:0.9rem; border-radius:50%;
+        border:2px solid #e2e8f0; background:#fff;
+    }
+    .timeline-dot.pending  { border-color:#d97706; background:#fffbeb; }
+    .timeline-dot.approved { border-color:#16a34a; background:#f0fdf4; }
+    .timeline-dot.rejected { border-color:#e11d48; background:#fff1f2; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+
+    <!-- Left: Application summary -->
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-text me-2"></i>Application</span>
+                {% if app.status == 'pending' %}
+                    <span class="badge" style="background:#fffbeb;color:#d97706;">
+                        <i class="bi bi-hourglass-split me-1"></i>Pending
+                    </span>
+                {% elif app.status == 'approved' %}
+                    <span class="badge" style="background:#f0fdf4;color:#16a34a;">
+                        <i class="bi bi-check-circle me-1"></i>Approved
+                    </span>
+                {% else %}
+                    <span class="badge" style="background:#fff1f2;color:#e11d48;">
+                        <i class="bi bi-x-circle me-1"></i>Rejected
+                    </span>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-muted ps-3">Member</td><td class="fw-semibold pe-3">{{ app.member.name }}</td></tr>
+                    <tr><td class="text-muted ps-3">Phone</td><td class="pe-3">{{ app.member.phone }}</td></tr>
+                    <tr><td class="text-muted ps-3">Amount</td><td class="fw-semibold pe-3" style="color:#2563eb;">KES {{ app.loan_amount|kes }}</td></tr>
+                    <tr><td class="text-muted ps-3">Duration</td><td class="pe-3">{{ app.duration_months }} month{{ app.duration_months|pluralize }}</td></tr>
+                    <tr><td class="text-muted ps-3">Interest (est.)</td><td class="pe-3" style="color:#16a34a;">KES {{ app.interest_preview|kes }}</td></tr>
+                    <tr><td class="text-muted ps-3">Total (est.)</td><td class="fw-semibold pe-3">KES {{ app.total_payable_preview|kes }}</td></tr>
+                    <tr><td class="text-muted ps-3">Submitted</td><td class="pe-3">{{ app.applied_at|date:"d M Y H:i" }}</td></tr>
+                    {% if app.applied_by %}
+                    <tr><td class="text-muted ps-3">Submitted by</td><td class="pe-3">{{ app.applied_by.username }}</td></tr>
+                    {% endif %}
+                    {% if app.reviewed_at %}
+                    <tr><td class="text-muted ps-3">Reviewed</td><td class="pe-3">{{ app.reviewed_at|date:"d M Y H:i" }}</td></tr>
+                    <tr><td class="text-muted ps-3">Reviewed by</td><td class="pe-3">{{ app.reviewed_by.username|default:"—" }}</td></tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+        <!-- Reason -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-chat-text me-2"></i>Reason</div>
+            <div class="card-body" style="font-size:0.875rem;">{{ app.reason }}</div>
+        </div>
+
+        {% if app.notes %}
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-sticky me-2"></i>Notes</div>
+            <div class="card-body" style="font-size:0.875rem;">{{ app.notes }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Timeline -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clock-history me-2"></i>Timeline</div>
+            <div class="card-body">
+                <div class="timeline-item">
+                    <div class="timeline-dot pending"></div>
+                    <div style="font-size:0.82rem;">
+                        <strong>Application submitted</strong><br>
+                        <span class="text-muted">{{ app.applied_at|date:"d M Y H:i" }}</span>
+                        {% if app.applied_by %} · {{ app.applied_by.username }}{% endif %}
+                    </div>
+                </div>
+                {% if app.status != 'pending' %}
+                <div class="timeline-item">
+                    <div class="timeline-dot {{ app.status }}"></div>
+                    <div style="font-size:0.82rem;">
+                        <strong>{{ app.get_status_display }}</strong><br>
+                        <span class="text-muted">{{ app.reviewed_at|date:"d M Y H:i" }}</span>
+                        {% if app.reviewed_by %} · {{ app.reviewed_by.username }}{% endif %}
+                        {% if app.review_notes %}
+                        <div class="mt-1 p-2 rounded" style="background:#f8fafc;font-size:0.8rem;">
+                            {{ app.review_notes }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                {% if app.loan %}
+                <div class="timeline-item">
+                    <div class="timeline-dot approved"></div>
+                    <div style="font-size:0.82rem;">
+                        <strong>Loan #{{ app.loan.pk }} created</strong><br>
+                        <a href="{% url 'loans:detail' app.loan.pk %}" class="text-decoration-none" style="color:#2563eb;">
+                            View loan →
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Review panel (only for pending) -->
+    <div class="col-md-8">
+        {% if app.status == 'pending' %}
+        <div class="card mb-3" style="border:2px solid #e2e8f0;">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-clipboard-check me-2"></i>Review Application
+            </div>
+            <div class="card-body">
+
+                {% if available_fund_balance is not None %}
+                <div class="alert {% if app.loan_amount > available_fund_balance %}alert-warning{% else %}alert-info{% endif %} d-flex align-items-center gap-2 mb-3 py-2">
+                    <i class="bi bi-safe2"></i>
+                    <div style="font-size:0.875rem;">
+                        Available fund balance: <strong>KES {{ available_fund_balance|kes }}</strong>
+                        {% if app.loan_amount > available_fund_balance %}
+                        — <span class="text-danger fw-semibold">Insufficient for this loan amount.</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <form method="post" id="reviewForm">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <!-- Action toggle -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Decision</label>
+                        <div class="d-flex gap-3">
+                            <label class="d-flex align-items-center gap-2 cursor-pointer">
+                                <input type="radio" name="action" value="approve"
+                                       class="form-check-input action-radio" style="width:1.1rem;height:1.1rem;"
+                                       {% if not form.action.value or form.action.value == 'approve' %}checked{% endif %}>
+                                <span class="fw-semibold" style="color:#16a34a;">
+                                    <i class="bi bi-check-circle me-1"></i>Approve & Issue Loan
+                                </span>
+                            </label>
+                            <label class="d-flex align-items-center gap-2 cursor-pointer">
+                                <input type="radio" name="action" value="reject"
+                                       class="form-check-input action-radio" style="width:1.1rem;height:1.1rem;"
+                                       {% if form.action.value == 'reject' %}checked{% endif %}>
+                                <span class="fw-semibold" style="color:#e11d48;">
+                                    <i class="bi bi-x-circle me-1"></i>Reject
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Date taken (approve only) -->
+                    <div id="approveSect" class="mb-3">
+                        <label class="form-label fw-semibold small">
+                            Date Loan Taken <span class="text-danger">*</span>
+                        </label>
+                        {{ form.date_taken }}
+                        {% if form.date_taken.errors %}
+                        <div class="text-danger small mt-1">{{ form.date_taken.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">The date the loan is officially disbursed.</div>
+                    </div>
+
+                    <!-- Review notes -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">
+                            Review Notes
+                            <span id="notesRequired" class="text-danger" style="display:none;">*</span>
+                            <span id="notesOptional" class="text-muted fw-normal">(optional for approval)</span>
+                        </label>
+                        {{ form.review_notes }}
+                        {% if form.review_notes.errors %}
+                        <div class="text-danger small mt-1">{{ form.review_notes.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="reviewSubmitBtn">
+                            <i class="bi bi-check-circle me-1"></i>Confirm Decision
+                        </button>
+                        <a href="{% url 'loans:applications' %}" class="btn btn-outline-secondary">Back</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Already reviewed -->
+        <div class="card">
+            <div class="card-body text-center py-5">
+                {% if app.status == 'approved' %}
+                <i class="bi bi-check-circle-fill" style="font-size:3rem;color:#16a34a;"></i>
+                <h5 class="mt-3 text-success">Application Approved</h5>
+                <p class="text-muted">Loan #{{ app.loan.pk }} was created on {{ app.reviewed_at|date:"d M Y" }}.</p>
+                <a href="{% url 'loans:detail' app.loan.pk %}" class="btn btn-success">
+                    <i class="bi bi-credit-card me-1"></i>View Loan
+                </a>
+                {% else %}
+                <i class="bi bi-x-circle-fill" style="font-size:3rem;color:#e11d48;"></i>
+                <h5 class="mt-3 text-danger">Application Rejected</h5>
+                {% if app.review_notes %}
+                <p class="text-muted">Reason: {{ app.review_notes }}</p>
+                {% endif %}
+                <a href="{% url 'loans:applications' %}" class="btn btn-outline-secondary">Back to Applications</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const radios     = document.querySelectorAll('.action-radio');
+    const approveSect = document.getElementById('approveSect');
+    const notesReq   = document.getElementById('notesRequired');
+    const notesOpt   = document.getElementById('notesOptional');
+    const submitBtn  = document.getElementById('reviewSubmitBtn');
+
+    function toggle() {
+        const selected = document.querySelector('.action-radio:checked');
+        const isApprove = !selected || selected.value === 'approve';
+        if (approveSect) approveSect.style.display = isApprove ? '' : 'none';
+        if (notesReq)  notesReq.style.display  = isApprove ? 'none' : '';
+        if (notesOpt)  notesOpt.style.display  = isApprove ? '' : 'none';
+        if (submitBtn) {
+            submitBtn.className = isApprove
+                ? 'btn btn-success'
+                : 'btn btn-danger';
+            submitBtn.innerHTML = isApprove
+                ? '<i class="bi bi-check-circle me-1"></i>Approve & Issue Loan'
+                : '<i class="bi bi-x-circle me-1"></i>Confirm Rejection';
+        }
+    }
+
+    radios.forEach(r => r.addEventListener('change', toggle));
+    toggle();
+
+    const form = document.getElementById('reviewForm');
+    if (form) form.addEventListener('submit', function () {
+        if (submitBtn) submitBtn.disabled = true;
+    });
+})();
+</script>
+{% endblock %}

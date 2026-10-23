@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Delete Application{% endblock %}
+{% block page_title %}Delete Loan Application{% endblock %}
+
+{% block extra_css %}
+{% include 'includes/payment_type_css.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card border-danger shadow-sm">
+            <div class="card-header text-danger fw-semibold">
+                <i class="bi bi-trash me-2"></i>Confirm Delete Application
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning py-2 small mb-3">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    This will permanently delete the pending application for
+                    <strong>{{ object.member.name }}</strong>
+                    (KES {{ object.loan_amount|kes }}).
+                    Only pending applications can be deleted.
+                </div>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% include 'includes/delete_auth_fields.html' %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>Yes, Delete
+                        </button>
+                        <a href="{% url 'loans:applications' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

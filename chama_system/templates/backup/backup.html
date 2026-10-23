@@ -1,0 +1,676 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Backup &amp; Restore Management{% endblock %}
+{% block page_title %}Backup &amp; Restore Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Root & Design Tokens ── */
+    :root {
+        --bkp-border: rgba(226, 232, 240, 0.85);
+        --bkp-primary: #2563eb;
+        --bkp-success: #10b981;
+        --bkp-warning: #f59e0b;
+        --bkp-danger: #ef4444;
+        --bkp-purple: #8b5cf6;
+    }
+
+    /* ── Metric Stat Cards ── */
+    .stat-metric-card {
+        background: #ffffff;
+        border: 1px solid var(--bkp-border);
+        border-radius: 1rem;
+        padding: 1.25rem 1.35rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .stat-metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06);
+    }
+    .stat-icon-box {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    /* ── Panels & Cards ── */
+    .bkp-panel {
+        background: #ffffff;
+        border: 1px solid var(--bkp-border);
+        border-radius: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    .bkp-panel-header {
+        padding: 1rem 1.35rem;
+        background: #ffffff;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    /* ── Mode Selection Cards ── */
+    .mode-option-card {
+        border: 2px solid #e2e8f0;
+        border-radius: 0.85rem;
+        padding: 1.15rem 1.25rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #ffffff;
+        position: relative;
+        height: 100%;
+    }
+    .mode-option-card:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+    }
+    .mode-option-card.selected {
+        border-color: var(--bkp-primary);
+        background: #f0f7ff;
+        box-shadow: 0 0 0 1px var(--bkp-primary);
+    }
+    .mode-option-card .form-check-input {
+        position: absolute;
+        top: 1.15rem;
+        right: 1.15rem;
+        margin: 0;
+    }
+
+    /* ── Action Buttons ── */
+    .action-btn-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        transition: all 0.15s ease;
+    }
+    .action-btn-circle:hover {
+        transform: scale(1.08);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- ── 1. Executive Metric Dashboard Strip ── -->
+    <div class="row g-3 mb-4">
+        <!-- Metric 1: Backup Mode & Active Status -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Active Mode</div>
+                        <h4 class="fw-bold mb-0 mt-1" style="color:{% if setting.mode == 'automatic' %}#2563eb{% elif setting.mode == 'scheduled' %}#0284c7{% else %}#475569{% endif %};">
+                            {% if setting.mode == 'automatic' %}
+                                Automatic
+                            {% elif setting.mode == 'scheduled' %}
+                                Scheduled
+                            {% else %}
+                                Manual
+                            {% endif %}
+                        </h4>
+                    </div>
+                    <div class="stat-icon-box" style="{% if setting.mode == 'automatic' %}background:#eff6ff;color:#2563eb;{% elif setting.mode == 'scheduled' %}background:#f0f9ff;color:#0284c7;{% else %}background:#f8fafc;color:#64748b;{% endif %}">
+                        {% if setting.mode == 'automatic' %}
+                            <i class="bi bi-robot"></i>
+                        {% elif setting.mode == 'scheduled' %}
+                            <i class="bi bi-alarm-fill"></i>
+                        {% else %}
+                            <i class="bi bi-hand-index-thumb"></i>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small text-muted mt-2" style="font-size:0.75rem;">
+                    <span>
+                        {% if setting.mode == 'manual' %}
+                            <span class="badge bg-secondary-subtle text-secondary border">On-Demand</span>
+                        {% elif setting.mode == 'automatic' %}
+                            <span class="badge bg-primary-subtle text-primary border">Daily (24h)</span>
+                        {% else %}
+                            <span class="badge bg-info-subtle text-info-emphasis border">Every {{ setting.schedule_interval_hours }}h</span>
+                        {% endif %}
+                    </span>
+                    <span>
+                        {% if next_backup_str %}
+                            <i class="bi bi-hourglass-split me-1 text-primary"></i>Next: {{ next_backup_str }}
+                        {% else %}
+                            <i class="bi bi-pause-circle me-1"></i>Manual Only
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 2: Live Database Engine & Size -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Database Engine</div>
+                        <h4 class="fw-bold text-dark mb-0 mt-1">{{ db_engine }}</h4>
+                    </div>
+                    <div class="stat-icon-box" style="background:#f0fdf4;color:#16a34a;">
+                        <i class="bi bi-database-check"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small text-muted mt-2" style="font-size:0.75rem;">
+                    <span>Size: <strong class="text-success">{% if db_size_mb %}{{ db_size_mb }} MB{% else %}Connected{% endif %}</strong></span>
+                    <span class="badge bg-light text-muted border">Live DB</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 3: Media & Attachments -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Media &amp; Documents</div>
+                        <h4 class="fw-bold mb-0 mt-1" style="color:#7c3aed;">{% if media_size_mb %}{{ media_size_mb }} MB{% else %}0.0 MB{% endif %}</h4>
+                    </div>
+                    <div class="stat-icon-box" style="background:#f5f3ff;color:#7c3aed;">
+                        <i class="bi bi-images"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small text-muted mt-2" style="font-size:0.75rem;">
+                    <span>Member Docs &amp; Photos</span>
+                    <span class="badge bg-light text-muted border">{% if setting.include_media %}Included in ZIP{% else %}Excluded{% endif %}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 4: Stored Backups On Disk -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Local Storage Files</div>
+                        <h4 class="fw-bold text-primary mb-0 mt-1">{{ total_backups_count }} <span class="fs-6 fw-normal text-muted">File{{ total_backups_count|pluralize }}</span></h4>
+                    </div>
+                    <div class="stat-icon-box" style="background:#eff6ff;color:#2563eb;">
+                        <i class="bi bi-archive-fill"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small text-muted mt-2" style="font-size:0.75rem;">
+                    <span>Total Size: <strong>{{ total_backups_size_mb }} MB</strong></span>
+                    <span class="badge bg-light text-muted border">Retention: {% if setting.retention_count %}{{ setting.retention_count }} max{% else %}Unlimited{% endif %}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 2. Confirmation Step (If Restore Staged) ── -->
+    {% if confirm_restore %}
+    <div class="alert alert-danger shadow-sm border-danger d-flex align-items-start gap-3 p-4 mb-4 rounded-3">
+        <i class="bi bi-exclamation-triangle-fill fs-2 text-danger flex-shrink-0 mt-1"></i>
+        <div class="flex-grow-1">
+            <h5 class="fw-bold text-danger mb-2">Confirm System Restoration</h5>
+            <p class="mb-2" style="font-size:0.95rem;">
+                You are about to restore data from backup archive <strong>{{ restore_filename }}</strong> (contains {{ restore_file_count }} component{{ restore_file_count|pluralize }}).
+                <strong class="text-danger d-block mt-1">Warning: This will replace the current active database and media files.</strong>
+            </p>
+            <div class="bg-white p-3 rounded border border-danger-subtle mb-3 small text-muted">
+                <i class="bi bi-shield-check text-success me-1"></i>
+                <strong>Safety Guardrails Active:</strong>
+                <ul class="mb-0 ps-3 mt-1">
+                    <li>An automatic safety snapshot of your current database will be saved to your Documents folder prior to restoration.</li>
+                    <li>Your current administrator account will be automatically preserved so you do not lose login access.</li>
+                    <li>Database schema migrations will run automatically on the restored data.</li>
+                </ul>
+            </div>
+            <div class="d-flex gap-2">
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="restore_confirm">
+                    <button type="submit" class="btn btn-danger px-4 rounded-pill shadow-sm">
+                        <i class="bi bi-check-circle me-1"></i>Yes, Restore This Data
+                    </button>
+                </form>
+                <a href="{% url 'backup:backup' %}" class="btn btn-outline-secondary px-4 rounded-pill">
+                    Cancel Restoration
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── 3. Mode Configuration & Options ── -->
+    <div class="bkp-panel">
+        <div class="bkp-panel-header">
+            <div>
+                <h6 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-sliders me-2 text-primary"></i>Backup Schedule &amp; Storage Configuration
+                </h6>
+                <small class="text-muted">Choose whether backups are performed manually, automatically by the system, or on a customized admin schedule.</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create_local">
+                    <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                        <i class="bi bi-hdd-fill me-1"></i>Save Local Backup Now
+                    </button>
+                </form>
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="download">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
+                        <i class="bi bi-download me-1"></i>Download .ZIP
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <form method="post" id="backup-settings-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_settings">
+
+                <!-- 3 Mode Cards -->
+                <div class="row g-3 mb-4">
+                    <!-- Option 1: Manual -->
+                    <div class="col-12 col-md-4">
+                        <div class="mode-option-card {% if setting.mode == 'manual' %}selected{% endif %}" id="card-mode-manual" onclick="selectBackupMode('manual')">
+                            <input class="form-check-input" type="radio" name="mode" id="mode-manual" value="manual" {% if setting.mode == 'manual' %}checked{% endif %}>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge rounded-pill bg-secondary-subtle text-secondary px-2 py-1"><i class="bi bi-hand-index-thumb me-1"></i>Manual</span>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">Manual Backups</h6>
+                            <p class="text-muted small mb-0" style="font-size:0.8rem;">
+                                Admin initiates backups on-demand via direct download or local snapshot save. No background timers run.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Option 2: Automatic (System Decides) -->
+                    <div class="col-12 col-md-4">
+                        <div class="mode-option-card {% if setting.mode == 'automatic' %}selected{% endif %}" id="card-mode-automatic" onclick="selectBackupMode('automatic')">
+                            <input class="form-check-input" type="radio" name="mode" id="mode-automatic" value="automatic" {% if setting.mode == 'automatic' %}checked{% endif %}>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge rounded-pill bg-primary-subtle text-primary px-2 py-1"><i class="bi bi-robot me-1"></i>Automatic</span>
+                                <span class="badge bg-success-subtle text-success" style="font-size:0.65rem;">System Managed</span>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">Automatic (System Decides)</h6>
+                            <p class="text-muted small mb-0" style="font-size:0.8rem;">
+                                The system manages automated daily backups (24h) to the default system folder and automatically rotates old archives.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Option 3: Scheduled (Custom Duration & Location) -->
+                    <div class="col-12 col-md-4">
+                        <div class="mode-option-card {% if setting.mode == 'scheduled' %}selected{% endif %}" id="card-mode-scheduled" onclick="selectBackupMode('scheduled')">
+                            <input class="form-check-input" type="radio" name="mode" id="mode-scheduled" value="scheduled" {% if setting.mode == 'scheduled' %}checked{% endif %}>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge rounded-pill bg-info-subtle text-info-emphasis px-2 py-1"><i class="bi bi-alarm-fill me-1"></i>Scheduled</span>
+                                <span class="badge bg-primary-subtle text-primary" style="font-size:0.65rem;">Custom</span>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">Scheduled (Custom)</h6>
+                            <p class="text-muted small mb-0" style="font-size:0.8rem;">
+                                Admin customizes the backup interval (e.g. every 6h, 12h, weekly) and specifies an exact storage folder on the machine.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mode Specific Settings Section -->
+                <div class="p-3 rounded-3 mb-4" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                    
+                    <!-- Scheduled Mode Controls -->
+                    <div id="section-scheduled-controls" style="{% if setting.mode != 'scheduled' %}display:none;{% endif %}">
+                        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-gear-fill me-2 text-primary"></i>Scheduled Parameters</h6>
+                        
+                        <div class="row g-3">
+                            <!-- Interval Selection -->
+                            <div class="col-12 col-md-5">
+                                <label class="form-label fw-semibold small">Backup Interval / Frequency</label>
+                                <div class="input-group input-group-sm">
+                                    <select class="form-select" id="interval-select" onchange="handleIntervalSelectChange(this.value)">
+                                        <option value="3" {% if setting.schedule_interval_hours == 3 %}selected{% endif %}>Every 3 Hours</option>
+                                        <option value="6" {% if setting.schedule_interval_hours == 6 %}selected{% endif %}>Every 6 Hours</option>
+                                        <option value="12" {% if setting.schedule_interval_hours == 12 %}selected{% endif %}>Every 12 Hours</option>
+                                        <option value="24" {% if setting.schedule_interval_hours == 24 %}selected{% endif %}>Daily (Every 24 Hours)</option>
+                                        <option value="72" {% if setting.schedule_interval_hours == 72 %}selected{% endif %}>Every 3 Days (72 Hours)</option>
+                                        <option value="168" {% if setting.schedule_interval_hours == 168 %}selected{% endif %}>Weekly (Every 7 Days)</option>
+                                        <option value="custom" {% if setting.schedule_interval_hours not in "3 6 12 24 72 168" %}selected{% endif %}>Custom Hours...</option>
+                                    </select>
+                                    <span class="input-group-text"><i class="bi bi-clock"></i></span>
+                                </div>
+                                <div class="mt-2" id="custom-interval-input-wrap" style="{% if setting.schedule_interval_hours in "3 6 12 24 72 168" %}display:none;{% endif %}">
+                                    <label class="form-label text-muted" style="font-size:0.75rem;">Custom Hours between backups:</label>
+                                    <input type="number" min="1" max="8760" name="schedule_interval_hours" id="schedule_interval_hours" value="{{ setting.schedule_interval_hours }}" class="form-control form-control-sm" placeholder="e.g. 48">
+                                </div>
+                            </div>
+
+                            <!-- Storage Directory Input -->
+                            <div class="col-12 col-md-7">
+                                <label class="form-label fw-semibold small">Custom Storage Location (Directory Path)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" name="custom_location" id="custom_location_input" value="{{ setting.custom_location }}" class="form-control" placeholder="e.g. D:\Backups\FinanceWise or C:\ChamaBackups">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="testDirectoryLocation()" title="Test if path exists and is writable">
+                                        <i class="bi bi-check-circle me-1"></i>Test Path
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="resetToDefaultScheduledDir()" title="Reset to default scheduled folder">
+                                        Default
+                                    </button>
+                                </div>
+                                <div id="dir-validation-feedback" class="mt-1 small" style="display:none;"></div>
+                                <small class="text-muted d-block mt-1" style="font-size:0.72rem;">
+                                    Default fallback: <code>{{ default_sched_dir }}</code>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Automatic Mode Notice -->
+                    <div id="section-automatic-controls" style="{% if setting.mode != 'automatic' %}display:none;{% endif %}">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-2 bg-primary-subtle text-primary">
+                                <i class="bi bi-shield-check fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">System-Managed Automated Backups</h6>
+                                <p class="text-muted small mb-0" style="font-size:0.82rem;">
+                                    The system automatically saves a complete snapshot every <strong>24 hours</strong> to <code>{{ default_auto_dir }}</code> and maintains the latest <strong>15</strong> backup archives.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Mode Notice -->
+                    <div id="section-manual-controls" style="{% if setting.mode != 'manual' %}display:none;{% endif %}">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-2 bg-secondary-subtle text-secondary">
+                                <i class="bi bi-hand-index-thumb fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">Manual Mode Active</h6>
+                                <p class="text-muted small mb-0" style="font-size:0.82rem;">
+                                    Backups are created only when you click <em>Download .ZIP</em> or <em>Save Local Backup Now</em>. No background timers are active.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- General Options (Retention & Media) -->
+                    <hr class="my-3 text-muted opacity-25">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <label class="form-label fw-semibold small mb-1">Max Archives to Keep (Retention)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" min="0" max="500" name="retention_count" value="{{ setting.retention_count }}" class="form-control" placeholder="15">
+                                <span class="input-group-text">files (0 = unlimited)</span>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-5">
+                            <div class="form-check form-switch mt-3 mt-sm-0">
+                                <input class="form-check-input" type="checkbox" name="include_media" id="include_media_toggle" {% if setting.include_media %}checked{% endif %}>
+                                <label class="form-check-label fw-semibold small" for="include_media_toggle">
+                                    Include Member Documents &amp; Photos in Backup Archive
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3 text-md-end">
+                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-4 shadow-sm w-100 w-md-auto">
+                                <i class="bi bi-save me-1"></i>Save Configuration
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- ── 4. Stored Local Backups Explorer Table ── -->
+    <div class="bkp-panel">
+        <div class="bkp-panel-header">
+            <div>
+                <h6 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-folder-check me-2 text-primary"></i>Stored Local Backups
+                </h6>
+                <small class="text-muted">Archives currently saved on system disk in: <code>{{ active_backup_dir }}</code></small>
+            </div>
+            <div>
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create_local">
+                    <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm">
+                        <i class="bi bi-plus-circle me-1"></i>Create New Local Backup
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:0.875rem;">
+                <thead class="table-light" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">
+                    <tr>
+                        <th class="ps-3 py-3">#</th>
+                        <th class="py-3">Archive File Name</th>
+                        <th class="py-3">Type</th>
+                        <th class="py-3">File Size</th>
+                        <th class="py-3">Date Created</th>
+                        <th class="py-3 text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in stored_backups %}
+                    <tr>
+                        <td class="ps-3 py-3 text-muted small">{{ forloop.counter }}</td>
+                        <td class="py-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded p-1 bg-light border text-primary" style="font-size:1.1rem;">
+                                    <i class="bi bi-file-earmark-zip-fill"></i>
+                                </div>
+                                <div>
+                                    <span class="fw-bold text-dark d-block">{{ b.filename }}</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">{{ b.filepath }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3">
+                            <span class="badge rounded-pill px-2 py-1 {{ b.badge_class }}" style="font-size:0.72rem;">
+                                {{ b.trigger_label }}
+                            </span>
+                        </td>
+                        <td class="py-3 fw-semibold text-dark">{{ b.size_mb }} MB</td>
+                        <td class="py-3 text-muted small">
+                            <div>{{ b.modified_str }}</div>
+                        </td>
+                        <td class="py-3 text-end pe-3">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a href="{% url 'backup:download_local' b.filename %}" class="btn btn-xs btn-outline-primary action-btn-circle" title="Download to Browser">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <form method="post" class="d-inline" onsubmit="return confirm('Restore data from {{ b.filename }}? Current database will be safely snapshotted first.');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="restore_local">
+                                    <input type="hidden" name="filename" value="{{ b.filename }}">
+                                    <button type="submit" class="btn btn-xs btn-outline-danger action-btn-circle" title="Restore this Backup">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </button>
+                                </form>
+                                <form method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete backup file {{ b.filename }} from disk?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_local">
+                                    <input type="hidden" name="filename" value="{{ b.filename }}">
+                                    <button type="submit" class="btn btn-xs btn-outline-secondary action-btn-circle" title="Delete Archive">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">
+                            <i class="bi bi-archive fs-1 opacity-25 mb-2 d-block"></i>
+                            <h6 class="fw-bold text-dark mb-1">No Local Backups Found</h6>
+                            <p class="small text-muted mb-3">No backup archives currently reside in <code>{{ active_backup_dir }}</code>.</p>
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="create_local">
+                                <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
+                                    <i class="bi bi-hdd-fill me-1"></i>Create First Local Backup
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── 5. Upload & Restore External Archive ── -->
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="bkp-panel h-100 mb-0">
+                <div class="bkp-panel-header">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-upload me-2 text-danger"></i>Upload External Backup (.zip)</h6>
+                </div>
+                <div class="card-body p-4 d-flex flex-column">
+                    <p class="text-muted small mb-3">
+                        Upload a previously downloaded <code>.zip</code> backup file to restore system records, members, loans, and accounting ledgers.
+                    </p>
+                    <div class="alert alert-warning py-2 mb-3 small" style="font-size:0.8rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        A safety copy of your active database will be saved to your Documents folder automatically before any overwrite.
+                    </div>
+                    <form method="post" enctype="multipart/form-data" class="mt-auto">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="restore_upload">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Select Backup Archive (.zip)</label>
+                            <input type="file" name="backup_file" class="form-control form-control-sm" accept=".zip" required>
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill w-100">
+                            <i class="bi bi-upload me-1"></i>Upload &amp; Review Archive
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="bkp-panel h-100 mb-0">
+                <div class="bkp-panel-header">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-shield-lock me-2 text-success"></i>Backup Best Practices</h6>
+                </div>
+                <div class="card-body p-4">
+                    <ul class="text-muted small ps-3 mb-0" style="font-size:0.82rem; line-height: 1.6;">
+                        <li class="mb-2"><strong>Automatic vs Scheduled:</strong> Use <em>Automatic</em> for zero-configuration daily snapshots, or <em>Scheduled</em> if you need specific hours (e.g. every 6 hours) and a custom drive location (e.g. external USB/hard drive).</li>
+                        <li class="mb-2"><strong>Secondary Storage:</strong> For disaster recovery, periodically copy backup archives to a secondary physical drive or cloud storage.</li>
+                        <li class="mb-2"><strong>Admin Preservation:</strong> Restoring backups automatically preserves your current administrator login credentials across database transitions.</li>
+                        <li><strong>Safe Pruning:</strong> Retention limits keep your disk tidy by keeping only the most recent N copies.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectBackupMode(mode) {
+    // Update radio buttons
+    const radio = document.getElementById('mode-' + mode);
+    if (radio) radio.checked = true;
+
+    // Update card visual styles
+    document.querySelectorAll('.mode-option-card').forEach(c => c.classList.remove('selected'));
+    const card = document.getElementById('card-mode-' + mode);
+    if (card) card.classList.add('selected');
+
+    // Show/hide sections
+    const schedSec = document.getElementById('section-scheduled-controls');
+    const autoSec = document.getElementById('section-automatic-controls');
+    const manSec = document.getElementById('section-manual-controls');
+
+    if (schedSec) schedSec.style.display = (mode === 'scheduled') ? 'block' : 'none';
+    if (autoSec) autoSec.style.display = (mode === 'automatic') ? 'block' : 'none';
+    if (manSec) manSec.style.display = (mode === 'manual') ? 'block' : 'none';
+}
+
+function handleIntervalSelectChange(val) {
+    const customWrap = document.getElementById('custom-interval-input-wrap');
+    const hoursInput = document.getElementById('schedule_interval_hours');
+    if (val === 'custom') {
+        if (customWrap) customWrap.style.display = 'block';
+    } else {
+        if (customWrap) customWrap.style.display = 'none';
+        if (hoursInput) hoursInput.value = val;
+    }
+}
+
+function resetToDefaultScheduledDir() {
+    const input = document.getElementById('custom_location_input');
+    if (input) {
+        input.value = "{{ default_sched_dir|escapejs }}";
+        testDirectoryLocation();
+    }
+}
+
+function testDirectoryLocation() {
+    const input = document.getElementById('custom_location_input');
+    const feedback = document.getElementById('dir-validation-feedback');
+    if (!input || !feedback) return;
+
+    const pathVal = input.value.trim();
+    if (!pathVal) {
+        feedback.style.display = 'block';
+        feedback.className = 'mt-1 small text-warning';
+        feedback.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Path is empty. The default scheduled directory will be used.';
+        return;
+    }
+
+    feedback.style.display = 'block';
+    feedback.className = 'mt-1 small text-muted';
+    feedback.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Testing directory access...';
+
+    const formData = new FormData();
+    formData.append('path', pathVal);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch("{% url 'backup:validate_directory' %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.valid) {
+            feedback.className = 'mt-1 small text-success fw-semibold';
+            feedback.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>${data.message} (${data.normalized_path})`;
+        } else {
+            feedback.className = 'mt-1 small text-danger fw-semibold';
+            feedback.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i>${data.message}`;
+        }
+    })
+    .catch(err => {
+        feedback.className = 'mt-1 small text-danger';
+        feedback.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>Error testing location: ${err}`;
+    });
+}
+</script>
+{% endblock %}

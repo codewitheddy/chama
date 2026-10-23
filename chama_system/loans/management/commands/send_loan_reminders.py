@@ -1,4 +1,4 @@
-﻿from datetime import timedelta
+from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from loans.models import Loan
@@ -20,12 +20,12 @@ class Command(BaseCommand):
             status='active',
             due_date__gte=today,
             due_date__lte=upcoming_cutoff,
-        ).select_related('member').order_by('due_date')
+        ).select_related('member', 'non_member').order_by('due_date')
 
         # Already late loans
         late = Loan.objects.filter(
             status='late',
-        ).select_related('member').order_by('due_date')
+        ).select_related('member', 'non_member').order_by('due_date')
 
         self.stdout.write(self.style.WARNING(
             f'\\n=== Loans Due in the Next 7 Days ({upcoming.count()}) ==='
@@ -33,7 +33,7 @@ class Command(BaseCommand):
         for loan in upcoming:
             days_left = (loan.due_date - today).days
             self.stdout.write(
-                f'  #{loan.pk} {loan.member.name} | '
+                f'  #{loan.pk} {loan.borrower_name} | '
                 f'Balance: KES {loan.balance:,.2f} | '
                 f'Due: {loan.due_date} ({days_left} day(s) left)'
             )
@@ -44,7 +44,7 @@ class Command(BaseCommand):
         for loan in late:
             overdue_days = (today - loan.due_date).days if loan.due_date else '?'
             self.stdout.write(
-                f'  #{loan.pk} {loan.member.name} | '
+                f'  #{loan.pk} {loan.borrower_name} | '
                 f'Balance: KES {loan.balance:,.2f} | '
                 f'Due: {loan.due_date} ({overdue_days} days overdue) | '
                 f'Penalties applied: {loan.late_penalty_months} month(s)'

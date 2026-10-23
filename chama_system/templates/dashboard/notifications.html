@@ -1,0 +1,986 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Action Center & Notifications{% endblock %}
+{% block page_title %}Action Center & Notifications{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Executive Notifications Styling */
+    .notif-kpi-card {
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        padding: 1.15rem 1.25rem;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .notif-kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+    .notif-kpi-card .icon-box {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    /* Filter Pills */
+    .notif-tab-btn {
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .notif-tab-btn:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+        border-color: #cbd5e1;
+    }
+    .notif-tab-btn.active {
+        background: #1e293b;
+        color: #ffffff;
+        border-color: #1e293b;
+    }
+    .notif-tab-btn .tab-count {
+        font-size: 0.72rem;
+        padding: 2px 7px;
+        border-radius: 9999px;
+        background: rgba(0, 0, 0, 0.08);
+    }
+    .notif-tab-btn.active .tab-count {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+    }
+
+    /* Alert Category Card Section */
+    .alert-panel {
+        border-radius: 12px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        transition: box-shadow 0.2s ease;
+    }
+    .alert-panel:hover {
+        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+    }
+    .alert-panel-header {
+        padding: 0.9rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .alert-panel-title {
+        font-weight: 700;
+        font-size: 0.92rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* Notification Row Item */
+    .notif-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.25rem;
+        border-bottom: 1px solid #f8fafc;
+        transition: background 0.15s ease;
+        gap: 1rem;
+    }
+    .notif-item:last-child {
+        border-bottom: none;
+    }
+    .notif-item:hover {
+        background: #f8fafc;
+    }
+
+    .member-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 9999px;
+        background: #f1f5f9;
+        color: #475569;
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* Action Buttons */
+    .btn-action-pill {
+        font-size: 0.76rem;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        white-space: nowrap;
+        transition: all 0.15s ease;
+    }
+
+    /* Hub & Toolkit styling */
+    .tool-shortcut-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #1e293b;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.84rem;
+        transition: all 0.15s ease;
+    }
+    .tool-shortcut-btn:hover {
+        background: #f8fafc;
+        border-color: #3b82f6;
+        color: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+    }
+    .tool-shortcut-btn .tool-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    /* Progress bar smooth */
+    .progress-compact {
+        height: 8px;
+        border-radius: 9999px;
+        background-color: #e2e8f0;
+        overflow: hidden;
+    }
+
+    /* All Clear State */
+    .all-clear-state {
+        border-radius: 16px;
+        border: 2px dashed #bbf7d0;
+        background: #f0fdf4;
+        padding: 3.5rem 1.5rem;
+        text-align: center;
+    }
+
+    /* Print View Customization */
+    @media print {
+        .no-print, nav, .sidebar, #sidebar, .navbar, .topbar, .btn, .notif-tab-btn, input {
+            display: none !important;
+        }
+        body {
+            background: #ffffff !important;
+            font-size: 11pt;
+            color: #000000;
+        }
+        .notif-kpi-card, .alert-panel {
+            box-shadow: none !important;
+            border: 1px solid #cccccc !important;
+            page-break-inside: avoid;
+        }
+        .alert-panel {
+            display: block !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header & Quick Actions Toolbar -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 no-print">
+    <div>
+        <h4 class="fw-bold text-dark mb-1">
+            <i class="bi bi-bell-fill text-primary me-2"></i>Action Center & Operational Alerts
+        </h4>
+        <p class="text-muted small mb-0">
+            Pending duties, loan maturities, missing contributions, and meeting alerts for <strong>{{ this_month_name }} {{ this_year }}</strong>.
+        </p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <a href="{% url 'contributions:bulk' %}" class="btn btn-sm btn-outline-primary shadow-sm">
+            <i class="bi bi-grid-3x3-gap me-1"></i>Bulk Contributions
+        </a>
+        <a href="{% url 'penalties:list' %}?paid=0" class="btn btn-sm btn-outline-secondary shadow-sm">
+            <i class="bi bi-exclamation-triangle me-1"></i>Penalties Register
+        </a>
+        <button type="button" class="btn btn-sm btn-outline-dark shadow-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>Print Action List
+        </button>
+    </div>
+</div>
+
+<!-- KPI Metric Cards Deck -->
+<div class="row g-3 mb-4">
+    <!-- Card 1: Critical Actions -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="notif-kpi-card shadow-sm">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="font-size:0.72rem; letter-spacing:0.5px;">Critical Attention</span>
+                    <h3 class="fw-bold text-dark mb-0 mt-1">{{ critical_count }}</h3>
+                    <div class="small text-danger fw-semibold mt-1">
+                        {{ late_loans|length }} Late · {{ pending_applications|length }} Approvals
+                    </div>
+                </div>
+                <div class="icon-box bg-danger-subtle text-danger">
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Recoverable Overdue -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="notif-kpi-card shadow-sm">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="font-size:0.72rem; letter-spacing:0.5px;">Overdue Recoverable</span>
+                    <h3 class="fw-bold text-dark mb-0 mt-1">KES {{ late_loans_total|add:unpaid_penalties_total|kes:0 }}</h3>
+                    <div class="small text-warning fw-semibold mt-1">
+                        Loans & Penalties Due
+                    </div>
+                </div>
+                <div class="icon-box bg-warning-subtle text-warning">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Loans Maturing (7 Days) -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="notif-kpi-card shadow-sm">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="font-size:0.72rem; letter-spacing:0.5px;">Maturing in 7 Days</span>
+                    <h3 class="fw-bold text-dark mb-0 mt-1">KES {{ due_soon_total|kes:0 }}</h3>
+                    <div class="small text-primary fw-semibold mt-1">
+                        {{ due_soon|length }} Loan{{ due_soon|length|pluralize }} Maturing
+                    </div>
+                </div>
+                <div class="icon-box bg-primary-subtle text-primary">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Missing Month Collections -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="notif-kpi-card shadow-sm">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="font-size:0.72rem; letter-spacing:0.5px;">Unpaid {{ this_month_name }} Dues</span>
+                    <h3 class="fw-bold text-dark mb-0 mt-1">{{ no_shares|length }} <span style="font-size:0.9rem; font-weight:normal; color:#64748b;">members</span></h3>
+                    <div class="small text-info fw-semibold mt-1">
+                        {{ no_welfare|length }} Missing Welfare
+                    </div>
+                </div>
+                <div class="icon-box bg-info-subtle text-info">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Bar & Search -->
+<div class="card shadow-sm border-0 mb-4 no-print">
+    <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <!-- Filter Pills -->
+            <div class="d-flex align-items-center gap-2 flex-wrap" id="alertFilterGroup">
+                <button type="button" class="notif-tab-btn active" data-target="all">
+                    <i class="bi bi-grid-fill"></i> All Alerts
+                    <span class="tab-count">{{ total_alert_count }}</span>
+                </button>
+                {% if late_loans %}
+                <button type="button" class="notif-tab-btn" data-target="panel-late-loans">
+                    <i class="bi bi-exclamation-circle-fill text-danger"></i> Late Loans
+                    <span class="tab-count">{{ late_loans|length }}</span>
+                </button>
+                {% endif %}
+                {% if due_soon %}
+                <button type="button" class="notif-tab-btn" data-target="panel-due-soon">
+                    <i class="bi bi-clock-fill text-warning"></i> Due Soon
+                    <span class="tab-count">{{ due_soon|length }}</span>
+                </button>
+                {% endif %}
+                {% if pending_applications %}
+                <button type="button" class="notif-tab-btn" data-target="panel-pending-apps">
+                    <i class="bi bi-clipboard-check-fill text-purple" style="color:#7c3aed;"></i> Applications
+                    <span class="tab-count">{{ pending_applications|length }}</span>
+                </button>
+                {% endif %}
+                {% if unpaid_penalties %}
+                <button type="button" class="notif-tab-btn" data-target="panel-unpaid-penalties">
+                    <i class="bi bi-exclamation-triangle-fill text-warning"></i> Penalties
+                    <span class="tab-count">{{ unpaid_penalties|length }}</span>
+                </button>
+                {% endif %}
+                {% if no_shares %}
+                <button type="button" class="notif-tab-btn" data-target="panel-no-shares">
+                    <i class="bi bi-piggy-bank-fill text-info"></i> Missing Shares
+                    <span class="tab-count">{{ no_shares|length }}</span>
+                </button>
+                {% endif %}
+                {% if no_welfare %}
+                <button type="button" class="notif-tab-btn" data-target="panel-no-welfare">
+                    <i class="bi bi-heart-fill text-danger"></i> Missing Welfare
+                    <span class="tab-count">{{ no_welfare|length }}</span>
+                </button>
+                {% endif %}
+                {% if upcoming_meetings %}
+                <button type="button" class="notif-tab-btn" data-target="panel-upcoming-meetings">
+                    <i class="bi bi-calendar-event-fill text-success"></i> Meetings
+                    <span class="tab-count">{{ upcoming_meetings|length }}</span>
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Instant Search Input -->
+            <div class="position-relative" style="min-width: 240px;">
+                <span class="position-absolute top-50 start-0 translate-middle-y ps-3 text-muted">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" id="notifSearchInput" class="form-control form-control-sm ps-5 rounded-pill" placeholder="Filter member name or phone...">
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not total_alert_count and not upcoming_meetings %}
+<!-- All Clear State -->
+<div class="all-clear-state shadow-sm mb-4">
+    <div class="d-inline-flex p-3 rounded-circle bg-success-subtle text-success mb-3" style="font-size: 2.5rem;">
+        <i class="bi bi-shield-check"></i>
+    </div>
+    <h4 class="fw-bold text-dark mb-1">Chama Operations Are 100% Up to Date!</h4>
+    <p class="text-muted small mb-3" style="max-width: 480px; margin: 0 auto;">
+        No late loans, pending loan applications, unpaid penalties, or missing {{ this_month_name }} member contributions found.
+    </p>
+    <a href="{% url 'dashboard:dashboard' %}" class="btn btn-sm btn-primary px-4 shadow-sm">
+        <i class="bi bi-speedometer2 me-1"></i>Return to Dashboard
+    </a>
+</div>
+
+{% else %}
+
+<div class="row g-4 mb-4" id="alertPanelsContainer">
+
+    <!-- 1. Late Loans Panel (Critical - Red) -->
+    {% if late_loans %}
+    <div class="col-lg-6 alert-panel-wrapper" id="panel-late-loans">
+        <div class="alert-panel h-100">
+            <div class="alert-panel-header" style="background: #fff1f2; color: #9f1239;">
+                <div class="alert-panel-title">
+                    <i class="bi bi-exclamation-circle-fill text-danger fs-5"></i>
+                    <span>Overdue & Late Loans</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small fw-semibold" style="color:#9f1239;">Total: KES {{ late_loans_total|kes:0 }}</span>
+                    <span class="badge rounded-pill bg-danger text-white">{{ late_loans|length }}</span>
+                </div>
+            </div>
+            <div class="notif-list" style="max-height: 480px; overflow-y: auto;">
+                {% for l in late_loans %}
+                <div class="notif-item searchable-item" data-search="{{ l.member.name }} {{ l.member.phone }}">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="member-avatar bg-danger-subtle text-danger">
+                            {{ l.member.name|first|upper }}
+                        </div>
+                        <div>
+                            <a href="{% url 'loans:detail' l.pk %}" class="fw-bold text-dark text-decoration-none">
+                                {{ l.member.name }}
+                            </a>
+                            <div class="text-muted small" style="font-size:0.78rem;">
+                                Due: <span class="text-danger fw-semibold">{{ l.due_date|default:"—" }}</span>
+                                {% if l.late_penalty_months %}
+                                • <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:0.68rem;">{{ l.late_penalty_months }} mo penalty</span>
+                                {% endif %}
+                                {% if l.member.phone %}
+                                • <a href="tel:{{ l.member.phone }}" class="text-decoration-none text-muted"><i class="bi bi-telephone me-1"></i>{{ l.member.phone }}</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="text-end me-1">
+                            <span class="d-block fw-bold text-danger" style="font-size:0.9rem;">KES {{ l.balance|kes:0 }}</span>
+                            <span class="text-muted small" style="font-size:0.7rem;">Balance</span>
+                        </div>
+                        <a href="{% url 'payments:add' %}?loan={{ l.pk }}" class="btn-action-pill bg-danger-subtle text-danger border border-danger-subtle">
+                            <i class="bi bi-cash-coin me-1"></i>Pay
+                        </a>
+                        <a href="{% url 'loans:detail' l.pk %}" class="btn-action-pill bg-light text-dark border">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 2. Loans Due Within 7 Days (Amber) -->
+    {% if due_soon %}
+    <div class="col-lg-6 alert-panel-wrapper" id="panel-due-soon">
+        <div class="alert-panel h-100">
+            <div class="alert-panel-header" style="background: #fffbeb; color: #92400e;">
+                <div class="alert-panel-title">
+                    <i class="bi bi-clock-history text-warning fs-5"></i>
+                    <span>Loans Due Within 7 Days</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small fw-semibold" style="color:#92400e;">Total: KES {{ due_soon_total|kes:0 }}</span>
+                    <span class="badge rounded-pill bg-warning text-dark">{{ due_soon|length }}</span>
+                </div>
+            </div>
+            <div class="notif-list" style="max-height: 480px; overflow-y: auto;">
+                {% for l in due_soon %}
+                <div class="notif-item searchable-item" data-search="{{ l.member.name }} {{ l.member.phone }}">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="member-avatar bg-warning-subtle text-warning">
+                            {{ l.member.name|first|upper }}
+                        </div>
+                        <div>
+                            <a href="{% url 'loans:detail' l.pk %}" class="fw-bold text-dark text-decoration-none">
+                                {{ l.member.name }}
+                            </a>
+                            <div class="text-muted small" style="font-size:0.78rem;">
+                                Due on <strong>{{ l.due_date|date:"d M Y" }}</strong> (<span class="text-warning fw-semibold">{{ l.due_date|timeuntil }} left</span>)
+                                {% if l.member.phone %}
+                                • <a href="tel:{{ l.member.phone }}" class="text-decoration-none text-muted"><i class="bi bi-telephone me-1"></i>{{ l.member.phone }}</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="text-end me-1">
+                            <span class="d-block fw-bold text-dark" style="font-size:0.9rem;">KES {{ l.balance|kes:0 }}</span>
+                            <span class="text-muted small" style="font-size:0.7rem;">Balance</span>
+                        </div>
+                        <a href="{% url 'payments:add' %}?loan={{ l.pk }}" class="btn-action-pill bg-warning-subtle text-dark border border-warning-subtle">
+                            <i class="bi bi-cash me-1"></i>Pay
+                        </a>
+                        <a href="{% url 'loans:detail' l.pk %}" class="btn-action-pill bg-light text-dark border">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 3. Pending Loan Applications (Purple) -->
+    {% if pending_applications %}
+    <div class="col-lg-6 alert-panel-wrapper" id="panel-pending-apps">
+        <div class="alert-panel h-100">
+            <div class="alert-panel-header" style="background: #f5f3ff; color: #4c1d95;">
+                <div class="alert-panel-title">
+                    <i class="bi bi-file-earmark-check-fill text-purple fs-5" style="color:#7c3aed;"></i>
+                    <span>Pending Loan Applications</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small fw-semibold" style="color:#4c1d95;">Total: KES {{ pending_apps_total|kes:0 }}</span>
+                    <span class="badge rounded-pill text-white" style="background:#7c3aed;">{{ pending_applications|length }}</span>
+                </div>
+            </div>
+            <div class="notif-list" style="max-height: 480px; overflow-y: auto;">
+                {% for app in pending_applications %}
+                <div class="notif-item searchable-item" data-search="{{ app.member.name }} {{ app.member.phone }}">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="member-avatar" style="background:#ede9fe; color:#7c3aed;">
+                            {{ app.member.name|first|upper }}
+                        </div>
+                        <div>
+                            <a href="{% url 'loans:application_detail' app.pk %}" class="fw-bold text-dark text-decoration-none">
+                                {{ app.member.name }}
+                            </a>
+                            <div class="text-muted small" style="font-size:0.78rem;">
+                                {{ app.duration_months }} Months • Applied {{ app.applied_at|date:"d M Y" }}
+                                {% if app.applied_by %}by {{ app.applied_by.username }}{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="text-end me-1">
+                            <span class="d-block fw-bold text-purple" style="color:#7c3aed; font-size:0.9rem;">KES {{ app.loan_amount|kes:0 }}</span>
+                            <span class="text-muted small" style="font-size:0.7rem;">Requested</span>
+                        </div>
+                        <a href="{% url 'loans:application_detail' app.pk %}" class="btn-action-pill text-white" style="background:#7c3aed;">
+                            <i class="bi bi-clipboard-check me-1"></i>Review
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. Unpaid Penalties Panel (Orange) -->
+    {% if unpaid_penalties %}
+    <div class="col-lg-6 alert-panel-wrapper" id="panel-unpaid-penalties">
+        <div class="alert-panel h-100">
+            <div class="alert-panel-header" style="background: #fff7ed; color: #9a3412;">
+                <div class="alert-panel-title">
+                    <i class="bi bi-exclamation-triangle-fill text-warning fs-5" style="color:#ea580c;"></i>
+                    <span>Unpaid Member Penalties</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small fw-semibold" style="color:#9a3412;">Total: KES {{ unpaid_penalties_total|kes:0 }}</span>
+                    <span class="badge rounded-pill text-white" style="background:#ea580c;">{{ unpaid_penalties|length }}</span>
+                </div>
+            </div>
+            <div class="notif-list" style="max-height: 480px; overflow-y: auto;">
+                {% for p in unpaid_penalties %}
+                <div class="notif-item searchable-item" data-search="{{ p.member.name }} {{ p.reason }}">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="member-avatar bg-warning-subtle text-warning">
+                            {{ p.member.name|first|upper }}
+                        </div>
+                        <div>
+                            <a href="{% url 'penalties:list' %}" class="fw-bold text-dark text-decoration-none">
+                                {{ p.member.name }}
+                            </a>
+                            <div class="text-muted small" style="font-size:0.78rem;">
+                                {{ p.reason|truncatechars:45 }} • Issued {{ p.date }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold text-dark me-1" style="font-size:0.88rem;">KES {{ p.amount|kes:0 }}</span>
+                        <form method="post" action="{% url 'penalties:mark_paid' p.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'dashboard:notifications' %}">
+                            <input type="hidden" name="payment_type" value="cash">
+                            <button type="submit" class="btn-action-pill bg-warning-subtle text-dark border border-warning-subtle" title="Mark as collected">
+                                <i class="bi bi-check-circle me-1"></i>Mark Paid
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="card-footer bg-light-subtle border-top px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-2 text-muted" style="font-size:0.82rem;">
+                    <i class="bi bi-info-circle-fill text-warning fs-6"></i>
+                    <span>Review and manage all pending discipline and lateness penalties</span>
+                </div>
+                <a href="{% url 'penalties:list' %}?paid=0" class="btn btn-sm btn-outline-secondary px-3 py-1 fw-semibold shadow-xs" style="font-size:0.8rem; border-radius:8px;">
+                    <i class="bi bi-list-check me-1"></i>Penalties Register →
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 5. Missing Share Contributions Panel (Cyan) -->
+    {% if no_shares %}
+    <div class="col-lg-6 alert-panel-wrapper" id="panel-no-shares">
+        <div class="alert-panel h-100">
+            <div class="alert-panel-header" style="background: #f0f9ff; color: #075985;">
+                <div class="alert-panel-title">
+                    <i class="bi bi-piggy-bank-fill text-info fs-5"></i>
+                    <span>Missing Shares — {{ this_month_name }} {{ this_year }}</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge rounded-pill bg-info text-white">{{ no_shares|length }} Members</span>
+                </div>
+            </div>
+            <div class="notif-list" style="max-height: 480px; overflow-y: auto;">
+                {% for m in no_shares %}
+                <div class="notif-item searchable-item" data-search="{{ m.name }} {{ m.phone }}">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="member-avatar bg-info-subtle text-info">
+                            {{ m.name|first|upper }}
+                        </div>
+                        <div>
+                            <a href="{% url 'members:detail' m.pk %}" class="fw-bold text-dark text-decoration-none">
+                                {{ m.name }}
+                            </a>
+                            <div class="text-muted small" style="font-size:0.78rem;">
+                                {% if m.phone %}
+                                <a href="tel:{{ m.phone }}" class="text-decoration-none text-muted"><i class="bi bi-telephone me-1"></i>{{ m.phone }}</a>
+                                {% else %}
+                                Active Member
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{% url 'contributions:add' %}?member={{ m.pk }}" class="btn-action-pill bg-info-subtle text-info border border-info-subtle">
+                            <i class="bi bi-plus-lg me-1"></i>Record
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="card-footer bg-light-subtle border-top px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-2 text-muted" style="font-size:0.82rem;">
+                    <i class="bi bi-info-circle-fill text-info fs-6"></i>
+                    <span>Active members without share deposits for <strong>{{ this_month_name }} {{ this_year }}</strong></span>
+                </div>
+                <a href="{% url 'contributions:bulk' %}" class="btn btn-sm btn-outline-primary px-3 py-1 fw-semibold shadow-xs" style="font-size:0.8rem; border-radius:8px;">
+                    <i class="bi bi-grid-3x3-gap me-1"></i>Bulk Entry Sheet →
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 6. Missing Welfare Contributions Panel (Rose) -->
+    {% if no_welfare %}
+    <div class="col-lg-6 alert-panel-wrapper" id="panel-no-welfare">
+        <div class="alert-panel h-100">
+            <div class="alert-panel-header" style="background: #fff1f2; color: #be123c;">
+                <div class="alert-panel-title">
+                    <i class="bi bi-heart-fill text-danger fs-5"></i>
+                    <span>Missing Welfare — {{ this_month_name }} {{ this_year }}</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge rounded-pill bg-danger text-white">{{ no_welfare|length }} Members</span>
+                </div>
+            </div>
+            <div class="notif-list" style="max-height: 480px; overflow-y: auto;">
+                {% for m in no_welfare %}
+                <div class="notif-item searchable-item" data-search="{{ m.name }} {{ m.phone }}">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="member-avatar bg-danger-subtle text-danger">
+                            {{ m.name|first|upper }}
+                        </div>
+                        <div>
+                            <a href="{% url 'members:detail' m.pk %}" class="fw-bold text-dark text-decoration-none">
+                                {{ m.name }}
+                            </a>
+                            <div class="text-muted small" style="font-size:0.78rem;">
+                                {% if m.phone %}
+                                <a href="tel:{{ m.phone }}" class="text-decoration-none text-muted"><i class="bi bi-telephone me-1"></i>{{ m.phone }}</a>
+                                {% else %}
+                                Active Member
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{% url 'welfare:contribution_add' %}?member={{ m.pk }}" class="btn-action-pill bg-danger-subtle text-danger border border-danger-subtle">
+                            <i class="bi bi-plus-lg me-1"></i>Record Welfare
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="card-footer bg-light-subtle border-top px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-2 text-muted" style="font-size:0.82rem;">
+                    <i class="bi bi-info-circle-fill text-danger fs-6"></i>
+                    <span>Active members without welfare contribution for <strong>{{ this_month_name }} {{ this_year }}</strong></span>
+                </div>
+                <a href="{% url 'welfare:contribution_list' %}" class="btn btn-sm btn-outline-danger px-3 py-1 fw-semibold shadow-xs" style="font-size:0.8rem; border-radius:8px;">
+                    <i class="bi bi-heart-pulse me-1"></i>Welfare Register →
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 7. Upcoming Scheduled Meetings (Emerald) -->
+    {% if upcoming_meetings %}
+    <div class="col-lg-6 alert-panel-wrapper" id="panel-upcoming-meetings">
+        <div class="alert-panel h-100">
+            <div class="alert-panel-header" style="background: #f0fdf4; color: #15803d;">
+                <div class="alert-panel-title">
+                    <i class="bi bi-calendar-check-fill text-success fs-5"></i>
+                    <span>Upcoming Chama Meetings</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge rounded-pill bg-success text-white">{{ upcoming_meetings|length }} Scheduled</span>
+                </div>
+            </div>
+            <div class="notif-list" style="max-height: 480px; overflow-y: auto;">
+                {% for mt in upcoming_meetings %}
+                <div class="notif-item searchable-item" data-search="{{ mt.date }} {{ mt.venue }}">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="member-avatar bg-success-subtle text-success">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+                        <div>
+                            <a href="{% url 'meetings:detail' mt.pk %}" class="fw-bold text-dark text-decoration-none">
+                                Meeting on {{ mt.date|date:"D, d M Y" }}
+                            </a>
+                            <div class="text-muted small" style="font-size:0.78rem;">
+                                Venue: <strong>{{ mt.venue|default:"Chama Venue" }}</strong> • Status: {{ mt.get_status_display }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{% url 'meetings:detail' mt.pk %}" class="btn-action-pill bg-success-subtle text-success border border-success-subtle">
+                            <i class="bi bi-door-open me-1"></i>Open Meeting
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endif %}
+
+<!-- ==========================================
+     EXECUTIVE OPERATIONS & PRODUCTIVITY HUB 
+     (Utilizes the bottom space seamlessly)
+     ========================================== -->
+<div class="mt-4 pt-2 no-print">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold text-dark mb-0">
+            <i class="bi bi-lightning-charge-fill text-warning me-2"></i>Chama Operations & Compliance Command Hub
+        </h5>
+        <span class="text-muted small">Real-time tools for executive committee actions</span>
+    </div>
+
+    <div class="row g-4">
+        
+        <!-- Hub Card 1: Monthly Collection Readiness & Health Tracker -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark small">
+                        <i class="bi bi-graph-up-arrow text-primary me-2"></i>{{ this_month_name }} {{ this_year }} Collection Health
+                    </span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size:0.72rem;">Live Pulse</span>
+                </div>
+                <div class="card-body p-3">
+                    
+                    <!-- Share Contributions Progress -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1 small">
+                            <span class="fw-semibold text-dark">Share Deposits</span>
+                            <span class="text-muted">{{ shares_paid_count }}/{{ total_active_members }} Members ({{ shares_compliance_pct }}%)</span>
+                        </div>
+                        <div class="progress-compact mb-1">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ shares_compliance_pct }}%;" aria-valuenow="{{ shares_compliance_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center text-muted" style="font-size:0.75rem;">
+                            <span>Collected: <strong class="text-primary">KES {{ this_month_shares_collected|kes:0 }}</strong></span>
+                            <span>Pending: <strong>{{ no_shares|length }}</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Welfare Fund Progress -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1 small">
+                            <span class="fw-semibold text-dark">Welfare Contributions</span>
+                            <span class="text-muted">{{ welfare_paid_count }}/{{ total_active_members }} Members ({{ welfare_compliance_pct }}%)</span>
+                        </div>
+                        <div class="progress-compact mb-1">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ welfare_compliance_pct }}%;" aria-valuenow="{{ welfare_compliance_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center text-muted" style="font-size:0.75rem;">
+                            <span>Collected: <strong class="text-danger">KES {{ this_month_welfare_collected|kes:0 }}</strong></span>
+                            <span>Pending: <strong>{{ no_welfare|length }}</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="p-2 rounded bg-light border text-muted small" style="font-size:0.78rem;">
+                        <i class="bi bi-info-circle text-primary me-1"></i>Track real-time participation rates to ensure high collection compliance before the monthly deadline.
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Hub Card 2: Quick Operations Launchpad -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark small">
+                        <i class="bi bi-grid-fill text-success me-2"></i>Executive Action Launchpad
+                    </span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:0.72rem;">Fast Entry</span>
+                </div>
+                <div class="card-body p-3">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <a href="{% url 'contributions:bulk' %}" class="tool-shortcut-btn w-100">
+                                <div class="tool-icon bg-primary-subtle text-primary"><i class="bi bi-grid-3x3-gap"></i></div>
+                                <span>Bulk Shares</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'welfare:contribution_list' %}" class="tool-shortcut-btn w-100">
+                                <div class="tool-icon bg-danger-subtle text-danger"><i class="bi bi-heart-pulse"></i></div>
+                                <span>Welfare Log</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'meetings:add' %}" class="tool-shortcut-btn w-100">
+                                <div class="tool-icon bg-success-subtle text-success"><i class="bi bi-calendar-plus"></i></div>
+                                <span>New Meeting</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'loans:add' %}" class="tool-shortcut-btn w-100">
+                                <div class="tool-icon bg-purple-subtle text-purple" style="background:#ede9fe; color:#7c3aed;"><i class="bi bi-credit-card-2-front"></i></div>
+                                <span>Issue Loan</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'penalties:add' %}" class="tool-shortcut-btn w-100">
+                                <div class="tool-icon bg-warning-subtle text-warning"><i class="bi bi-exclamation-octagon"></i></div>
+                                <span>Add Penalty</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'reports:income' %}" class="tool-shortcut-btn w-100">
+                                <div class="tool-icon bg-info-subtle text-info"><i class="bi bi-file-earmark-bar-graph"></i></div>
+                                <span>Reports Hub</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hub Card 3: Member Communication & WhatsApp/SMS Reminder Assistant -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark small">
+                        <i class="bi bi-chat-left-text-fill text-info me-2"></i>Member Reminder Notice Assistant
+                    </span>
+                    <button type="button" class="btn btn-xs btn-outline-primary" id="copyReminderBtn" style="font-size:0.72rem;">
+                        <i class="bi bi-clipboard me-1"></i>Copy Notice
+                    </button>
+                </div>
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                    <div class="p-2 rounded bg-light border font-monospace text-dark mb-2" id="reminderNoticeText" style="font-size:0.76rem; line-height:1.5; max-height:140px; overflow-y:auto; white-space:pre-wrap;">Dear Chama Member, gentle reminder to remit your monthly Share Contributions and Welfare dues for {{ this_month_name }} {{ this_year }}. Also ensure all outstanding loan payments are updated before the upcoming meeting. Thank you for your continued cooperation! — Treasury Team</div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small" style="font-size:0.74rem;">Ready for WhatsApp group & SMS</span>
+                        <a href="https://web.whatsapp.com" target="_blank" class="btn btn-xs btn-outline-success" style="font-size:0.75rem;">
+                            <i class="bi bi-whatsapp me-1"></i>Open WhatsApp
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Interactive Tab Switching Filter
+    const filterButtons = document.querySelectorAll('#alertFilterGroup .notif-tab-btn');
+    const panelWrappers = document.querySelectorAll('.alert-panel-wrapper');
+
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            filterButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            const targetId = this.getAttribute('data-target');
+            if (targetId === 'all') {
+                panelWrappers.forEach(p => p.style.display = '');
+            } else {
+                panelWrappers.forEach(p => {
+                    if (p.id === targetId) {
+                        p.style.display = '';
+                    } else {
+                        p.style.display = 'none';
+                    }
+                });
+            }
+        });
+    });
+
+    // 2. Real-time Member / Row Search
+    const searchInput = document.getElementById('notifSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            const searchableItems = document.querySelectorAll('.searchable-item');
+
+            searchableItems.forEach(item => {
+                const text = item.getAttribute('data-search') || item.innerText || '';
+                if (text.toLowerCase().includes(query)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Hide panel wrappers if all items inside are hidden
+            panelWrappers.forEach(panel => {
+                const visibleItems = panel.querySelectorAll('.searchable-item:not([style*="display: none"])');
+                if (query.length > 0 && visibleItems.length === 0) {
+                    panel.style.display = 'none';
+                } else if (query.length === 0) {
+                    const activeBtn = document.querySelector('#alertFilterGroup .notif-tab-btn.active');
+                    const targetId = activeBtn ? activeBtn.getAttribute('data-target') : 'all';
+                    if (targetId === 'all' || panel.id === targetId) {
+                        panel.style.display = '';
+                    }
+                }
+            });
+        });
+    }
+
+    // 3. Copy Reminder Notice to Clipboard
+    const copyReminderBtn = document.getElementById('copyReminderBtn');
+    const reminderNoticeText = document.getElementById('reminderNoticeText');
+    if (copyReminderBtn && reminderNoticeText) {
+        copyReminderBtn.addEventListener('click', function() {
+            navigator.clipboard.writeText(reminderNoticeText.innerText).then(() => {
+                const originalHtml = copyReminderBtn.innerHTML;
+                copyReminderBtn.innerHTML = '<i class="bi bi-check2 text-success me-1"></i>Copied!';
+                copyReminderBtn.classList.remove('btn-outline-primary');
+                copyReminderBtn.classList.add('btn-success', 'text-white');
+                setTimeout(() => {
+                    copyReminderBtn.innerHTML = originalHtml;
+                    copyReminderBtn.classList.remove('btn-success', 'text-white');
+                    copyReminderBtn.classList.add('btn-outline-primary');
+                }, 2000);
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

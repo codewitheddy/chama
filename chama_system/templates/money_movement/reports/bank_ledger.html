@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Commercial Bank Ledger Statement{% endblock %}
+{% block page_title %}Commercial Bank Ledger{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0 mb-4" style="border-radius:10px;">
+    <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <!-- Account Switcher -->
+        <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+            <label class="fw-semibold small text-muted text-nowrap"><i class="bi bi-bank me-1"></i>Select Bank Account:</label>
+            <select name="bank_id" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 250px;">
+                {% for b in banks %}
+                <option value="{{ b.pk }}" {% if selected_bank.pk == b.pk %}selected{% endif %}>
+                    {{ b.bank_name }} — {{ b.account_name }} ({{ b.account_number|default:"No Acc #" }})
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-printer me-1"></i>Print Ledger
+            </button>
+            <a href="{% url 'money_movement:dashboard' %}" class="btn btn-sm btn-light border">
+                <i class="bi bi-arrow-left me-1"></i>Treasury Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if selected_bank %}
+<!-- Account Details Header Banner -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius:10px; background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); color:#ffffff;">
+    <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle mb-2">Commercial Bank Account</span>
+            <h4 class="fw-bold mb-1">{{ selected_bank.bank_name }} — {{ selected_bank.account_name }}</h4>
+            <div class="text-white-50 small">
+                Account Number: <strong class="text-white">{{ selected_bank.account_number|default:"—" }}</strong> · Branch: {{ selected_bank.branch|default:"Main Branch" }}
+            </div>
+        </div>
+        <div class="text-end">
+            <div class="text-white-50 small text-uppercase fw-semibold" style="font-size:0.75rem;">Current Ledger Balance</div>
+            <div class="fs-2 fw-bold text-white" style="font-family: monospace;">KES {{ current_balance|kes }}</div>
+            <div class="text-white-50" style="font-size:0.75rem;">Total Deposits to Date: KES {{ total_topups|kes }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Ledger Transactions Table -->
+<div class="card shadow-sm border-0" style="border-radius:10px;">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <span class="fw-bold text-dark"><i class="bi bi-journal-text me-2 text-primary"></i>Transaction History &amp; Balance Log</span>
+        <span class="badge bg-light text-dark border">{{ balances.count }} Ledger Entries</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 120px;">Date</th>
+                    <th style="width: 150px;">Transaction Type</th>
+                    <th>Particulars / Reference / Notes</th>
+                    <th class="text-end" style="width: 150px;">Credit / Deposit (KES)</th>
+                    <th class="text-end" style="width: 150px;">Debit / Withdrawal (KES)</th>
+                    <th class="text-end" style="width: 160px;">Resulting Balance (KES)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bal in balances %}
+                <tr>
+                    <td>{{ bal.recorded_on }}</td>
+                    <td>
+                        {% if bal.transaction_type == 'opening' %}
+                        <span class="badge bg-info-subtle text-info border border-info-subtle">Opening Balance</span>
+                        {% elif bal.transaction_type == 'topup' %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Deposit / Top-Up</span>
+                        {% elif bal.transaction_type == 'deduction' %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Withdrawal</span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary border">{{ bal.get_transaction_type_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="small text-dark">
+                        {{ bal.notes|default:"Transaction recorded in system" }}
+                        {% if bal.recorded_by %}
+                        <div class="text-muted" style="font-size:0.7rem;">Recorded by: {{ bal.recorded_by.username }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="text-end font-monospace {% if bal.is_credit %}text-success fw-bold{% else %}text-muted{% endif %}">
+                        {% if bal.is_credit %}+{{ bal.topup_amount|kes }}{% else %}—{% endif %}
+                    </td>
+                    <td class="text-end font-monospace {% if bal.is_debit %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                        {% if bal.is_debit %}-{{ bal.topup_amount|kes }}{% else %}—{% endif %}
+                    </td>
+                    <td class="text-end font-monospace fw-bold text-dark">
+                        KES {{ bal.balance|kes }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        No transactions logged for this bank account yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+                <tr class="fw-bold">
+                    <th colspan="5" class="text-end">Closing Bank Ledger Balance:</th>
+                    <th class="text-end text-primary">KES {{ current_balance|kes }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    No commercial bank accounts found.
+</div>
+{% endif %}
+{% endblock %}

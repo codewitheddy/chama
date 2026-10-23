@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Record Payment{% endblock %}
 {% block page_title %}Record Payment{% endblock %}
 
@@ -60,9 +61,9 @@
         <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
             <i class="bi bi-info-circle-fill"></i>
             <div>
-                Recording payment for <strong>{{ prefilled_loan.member.name }}</strong> —
-                Loan KES {{ prefilled_loan.loan_amount|floatformat:0 }} |
-                Balance: <strong class="text-danger">KES {{ prefilled_loan.balance|floatformat:2 }}</strong>
+                Recording payment for <strong>{{ prefilled_loan.borrower_name }}</strong> —
+                Loan KES {{ prefilled_loan.loan_amount|kes:0 }} |
+                Balance: <strong class="text-danger">KES {{ prefilled_loan.balance|kes }}</strong>
             </div>
         </div>
         {% endif %}

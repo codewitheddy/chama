@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Confirm Bulk Delete{% endblock %}
+{% block page_title %}Confirm Bulk Delete Members{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Confirm Bulk Member Deletion</strong>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger" role="alert">
+                        <strong>This action cannot be undone!</strong> You are about to permanently delete {{ members.count }} member(s) from the system.
+                    </div>
+
+                    <h5 class="mb-3">Members to Delete:</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in members %}
+                                <tr>
+                                    <td>{{ m.name }}</td>
+                                    <td>{{ m.phone }}</td>
+                                    <td>
+                                        {% if m.exit_record %}
+                                            <span class="badge" style="background:#fff1f2;color:#e11d48;">Exited</span>
+                                        {% elif m.is_active %}
+                                            <span class="badge" style="background:#f0fdf4;color:#16a34a;">Active</span>
+                                        {% else %}
+                                            <span class="badge" style="background:#f3f4f6;color:#6b7280;">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if error %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Error:</strong> {{ error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+                        <input type="hidden" name="confirm" value="true">
+                        <input type="hidden" name="member_ids" value="{{ member_ids }}">
+
+                        <div class="mb-3">
+                            <label for="delete_reason" class="form-label"><strong>Reason for Deletion</strong></label>
+                            <textarea name="delete_reason" id="delete_reason" class="form-control" rows="3" 
+                                      placeholder="Enter the reason for deleting these members..." required></textarea>
+                            <small class="text-muted">This reason will be recorded for audit purposes.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="admin_password" class="form-label"><strong>Admin Password</strong></label>
+                            <input type="password" name="admin_password" id="admin_password" class="form-control" 
+                                   placeholder="Enter your admin password to confirm deletion" required>
+                            <small class="text-muted">Your password is required for security confirmation.</small>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'members:list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i>Yes, Delete {{ members.count }} Member(s)
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

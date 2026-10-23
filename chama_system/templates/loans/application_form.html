@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}New Loan Application{% endblock %}
+{% block page_title %}New Loan Application{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+    <!-- Form -->
+    <div class="col-lg-6">
+        {% if available_fund_balance is not None %}
+        <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-info-circle-fill"></i>
+            <div>Available fund balance: <strong>KES {{ available_fund_balance|kes }}</strong></div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header"><i class="bi bi-file-earmark-text me-2"></i>Application Details</div>
+            <div class="card-body">
+                <form method="post" id="appForm">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Member</label>
+                        {{ form.member }}
+                        {% if form.member.errors %}<div class="text-danger small mt-1">{{ form.member.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Loan Amount (KES)</label>
+                        {{ form.loan_amount }}
+                        {% if form.loan_amount.errors %}<div class="text-danger small mt-1">{{ form.loan_amount.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Repayment Period</label>
+                        {{ form.duration_months }}
+                        {% if form.duration_months.errors %}<div class="text-danger small mt-1">{{ form.duration_months.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Reason for Loan <span class="text-danger">*</span></label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}<div class="text-danger small mt-1">{{ form.reason.errors }}</div>{% endif %}
+                        <div class="form-text">Explain why the member needs this loan. This becomes part of the permanent record.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">Additional Notes <span class="text-muted fw-normal">(optional)</span></label>
+                        {{ form.notes }}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="bi bi-send me-1"></i>Submit Application
+                        </button>
+                        <a href="{% url 'loans:applications' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview panel -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-calculator me-2"></i>Interest Preview</div>
+            <div class="card-body">
+                <div id="previewEmpty" class="text-muted text-center py-3" style="font-size:0.875rem;">
+                    <i class="bi bi-info-circle me-1"></i>Enter loan amount to preview.
+                </div>
+                <div id="previewData" style="display:none;">
+                    <div class="row g-3 mb-3">
+                        <div class="col-4">
+                            <div class="p-3 rounded" style="background:#f8fafc;">
+                                <div class="text-muted" style="font-size:0.72rem;">Principal</div>
+                                <div class="fw-bold" style="color:#334155;" id="prevPrincipal">—</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 rounded" style="background:#f0fdf4;">
+                                <div class="text-muted" style="font-size:0.72rem;">Interest (10%)</div>
+                                <div class="fw-bold" style="color:#16a34a;" id="prevInterest">—</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 rounded" style="background:#eff6ff;">
+                                <div class="text-muted" style="font-size:0.72rem;">Total Payable</div>
+                                <div class="fw-bold" style="color:#2563eb;" id="prevTotal">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-info-circle me-2"></i>Workflow</div>
+            <div class="card-body" style="font-size:0.875rem;color:#64748b;">
+                <ol class="mb-0 ps-3">
+                    <li class="mb-1">Submit this application — status: <strong style="color:#d97706;">Pending</strong></li>
+                    <li class="mb-1">Treasurer reviews and approves or rejects</li>
+                    <li class="mb-1">On approval, the loan is created automatically</li>
+                    <li>A full audit trail is kept regardless of outcome</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const amountInput    = document.getElementById('id_app_loan_amount');
+    const durationSelect = document.querySelector('[name=duration_months]');
+
+    function fmt(n) {
+        return 'KES ' + parseFloat(n).toLocaleString('en-KE', {minimumFractionDigits: 2});
+    }
+
+    function fetchPreview() {
+        const amount = amountInput ? amountInput.value : '';
+        const months = durationSelect ? durationSelect.value : 1;
+        if (!amount || parseFloat(amount) <= 0) {
+            document.getElementById('previewEmpty').style.display = '';
+            document.getElementById('previewData').style.display  = 'none';
+            return;
+        }
+        fetch(`{% url 'loans:calculator' %}?amount=${amount}&months=${months}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) return;
+                document.getElementById('prevPrincipal').textContent = fmt(amount);
+                document.getElementById('prevInterest').textContent  = fmt(data.total_interest);
+                document.getElementById('prevTotal').textContent     = fmt(data.total_payable);
+                document.getElementById('previewEmpty').style.display = 'none';
+                document.getElementById('previewData').style.display  = '';
+            });
+    }
+
+    if (amountInput)    amountInput.addEventListener('input', fetchPreview);
+    if (durationSelect) durationSelect.addEventListener('change', fetchPreview);
+
+    document.getElementById('appForm').addEventListener('submit', function () {
+        document.getElementById('submitBtn').disabled = true;
+    });
+})();
+</script>
+{% endblock %}

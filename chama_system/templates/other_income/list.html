@@ -1,0 +1,372 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Other / External Income Tracking{% endblock %}
+{% block page_title %}Other / External Income{% endblock %}
+
+{% block content %}
+<!-- Top Metrics & Affected Accounts Overview -->
+<div class="row g-3 mb-4">
+    <!-- 1. Total Other Income -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+                <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#0d9488,#14b8a6);width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-graph-up-arrow fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.72rem;">Total Other Income</div>
+                    <div class="fs-5 fw-bold text-dark">KES {{ total_other_income|kes }}</div>
+                    <div style="font-size:0.75rem;color:#64748b;">{{ income_count }} recorded receipts</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Bank Transfers (Bank Account) -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+                <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#2563eb,#3b82f6);width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-bank2 fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.72rem;">Direct Bank Transfers</div>
+                    <div class="fs-5 fw-bold text-primary">KES {{ total_bank_transfer|kes }}</div>
+                    <div style="font-size:0.75rem;color:#64748b;">Credited to Bank Accounts</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Cash in Hand -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+                <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#16a34a,#22c55e);width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-cash-stack fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.72rem;">Cash Received</div>
+                    <div class="fs-5 fw-bold text-success">KES {{ total_cash|kes }}</div>
+                    <div style="font-size:0.75rem;color:#64748b;">In Hand with Treasurer</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Reconciliation Status -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
+                <div class="icon-box rounded-3 text-white" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-shield-check fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.72rem;">Reconciliation Status</div>
+                    <div class="fs-5 fw-bold text-dark">
+                        {% if unreconciled_count == 0 %}
+                        <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>All Reconciled</span>
+                        {% else %}
+                        <span class="text-warning">{{ unreconciled_count }} Pending</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size:0.75rem;color:#64748b;">KES {{ total_reconciled|kes }} verified</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reconciliation & Account Routing Guide (Collapsible) -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;">
+    <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+                <div>
+                    <span class="fw-bold text-dark small">How Other Income Affects Accounts &amp; Reconciles:</span>
+                    <span class="text-muted small ms-1">Direct Bank Transfers route to the specified Bank Account; Cash routes to Cash in Hand; M-Pesa routes to the M-Pesa Wallet.</span>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'money_movement:reconcile_bank' %}" class="btn btn-xs btn-outline-primary py-1 px-2.5 small" style="border-radius:6px;font-size:0.78rem;">
+                    <i class="bi bi-bank2 me-1"></i>Bank Reconciliation
+                </a>
+                <a href="{% url 'money_movement:reconcile_cash' %}" class="btn btn-xs btn-outline-success py-1 px-2.5 small" style="border-radius:6px;font-size:0.78rem;">
+                    <i class="bi bi-cash-coin me-1"></i>Cash Reconciliation
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toolbar: Search, Filters, and Add Button -->
+<div class="card shadow-sm border-0 mb-3" style="border-radius:12px;border:1px solid #e2e8f0;">
+    <div class="card-body p-3">
+        <form method="get" class="row g-2 align-items-center" id="oi-filter-form">
+            <!-- Search input -->
+            <div class="col-md-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ q }}" class="form-control border-start-0 ps-0"
+                           placeholder="Search source, ref #, or notes…">
+                </div>
+            </div>
+
+            <!-- Mode of Payment Filter -->
+            <div class="col-sm-6 col-md-2">
+                <select name="payment_method" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Payment Modes</option>
+                    {% for val, label in payment_methods %}
+                    <option value="{{ val }}" {% if selected_payment_method == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Affected Bank Account Filter -->
+            <div class="col-sm-6 col-md-2">
+                <select name="bank_account" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Bank Accounts</option>
+                    {% for b in bank_accounts %}
+                    <option value="{{ b.pk }}" {% if selected_bank_account == b.pk|stringformat:"s" %}selected{% endif %}>{{ b.bank_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Category Filter -->
+            <div class="col-sm-6 col-md-2">
+                <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Streams / Categories</option>
+                    {% for val, label in categories %}
+                    <option value="{{ val }}" {% if selected_category == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Reconciliation Status Filter -->
+            <div class="col-sm-6 col-md-2">
+                <select name="reconciled" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Reconciliation</option>
+                    <option value="yes" {% if selected_reconciled == 'yes' %}selected{% endif %}>Reconciled Only</option>
+                    <option value="no" {% if selected_reconciled == 'no' %}selected{% endif %}>Pending Only</option>
+                </select>
+            </div>
+
+            <!-- Clear & Action Buttons -->
+            <div class="col-md-1 d-flex gap-1 justify-content-end">
+                {% if q or selected_payment_method or selected_bank_account or selected_category or selected_reconciled %}
+                <a href="{% url 'other_income:list' %}" class="btn btn-sm btn-outline-danger w-100" title="Reset Filters" style="border-radius:6px;">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Header Action Row -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="text-muted small">
+        Showing <strong>{{ incomes.count }}</strong> of <strong>{{ income_count }}</strong> income records
+        {% if selected_payment_method or selected_bank_account or selected_reconciled %}
+        (filtered)
+        {% endif %}
+    </div>
+    {% if request.user.profile.is_treasurer %}
+    <a href="{% url 'other_income:add' %}" class="btn btn-primary btn-sm px-3 shadow-sm d-flex align-items-center gap-2" style="border-radius:8px;">
+        <i class="bi bi-plus-circle"></i>
+        <span>Record Other Income</span>
+    </a>
+    {% endif %}
+</div>
+
+<!-- Table Card -->
+<div id="results-container">
+<div class="card shadow-sm border-0" style="border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;background:#ffffff;">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead style="background:#f8fafc;">
+                    <tr style="border-bottom:1px solid #e2e8f0;">
+                        <th class="ps-3 py-3" style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">#</th>
+                        <th class="py-3" style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Source &amp; Stream</th>
+                        <th class="py-3" style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Amount</th>
+                        <th class="py-3" style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Payment Mode &amp; Affected Account</th>
+                        <th class="py-3" style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Date &amp; Ref / Slip</th>
+                        <th class="py-3" style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Reconciliation Status</th>
+                        <th class="text-end pe-3 py-3" style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for income in incomes %}
+                    <tr>
+                        <td class="ps-3 text-muted" style="font-size:0.8rem;">#{{ income.pk }}</td>
+
+                        <!-- 1. Source & Category -->
+                        <td>
+                            <div class="fw-semibold text-dark">{{ income.source }}</div>
+                            <span class="badge px-2 py-0.5 mt-0.5" style="background:#f1f5f9;color:#475569;font-size:0.7rem;font-weight:500;border:1px solid #e2e8f0;">
+                                {{ income.get_category_display }}
+                            </span>
+                            {% if income.description %}
+                            <div class="text-muted small mt-1" style="font-size:0.75rem;" title="{{ income.description }}">
+                                {{ income.description|truncatechars:50 }}
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- 2. Amount -->
+                        <td>
+                            <span class="fw-bold" style="color:#0d9488;font-size:1rem;">KES {{ income.amount|kes }}</span>
+                        </td>
+
+                        <!-- 3. Payment Mode & Affected Account -->
+                        <td>
+                            {% if income.payment_method == 'bank_transfer' %}
+                            <div class="d-flex align-items-center gap-1.5 mb-1">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2" style="font-size:0.75rem;">
+                                    <i class="bi bi-bank2 me-1"></i>Direct Bank Transfer
+                                </span>
+                            </div>
+                            <div class="small fw-semibold text-dark d-flex align-items-center gap-1">
+                                <i class="bi bi-arrow-right-circle-fill text-primary" style="font-size:0.75rem;"></i>
+                                <span>{{ income.affected_account_display }}</span>
+                            </div>
+                            {% elif income.payment_method == 'cheque' %}
+                            <div class="d-flex align-items-center gap-1.5 mb-1">
+                                <span class="badge bg-purple-subtle text-purple border py-1 px-2" style="background:#f3e8ff;color:#7e22ce;border-color:#e9d5ff;font-size:0.75rem;">
+                                    <i class="bi bi-receipt me-1"></i>Cheque Deposit
+                                </span>
+                            </div>
+                            <div class="small fw-semibold text-dark d-flex align-items-center gap-1">
+                                <i class="bi bi-arrow-right-circle-fill text-purple" style="font-size:0.75rem;"></i>
+                                <span>{{ income.affected_account_display }}</span>
+                            </div>
+                            {% elif income.payment_method == 'cash' %}
+                            <div class="d-flex align-items-center gap-1.5 mb-1">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:0.75rem;">
+                                    <i class="bi bi-cash-stack me-1"></i>Cash
+                                </span>
+                            </div>
+                            <div class="small fw-semibold text-dark d-flex align-items-center gap-1">
+                                <i class="bi bi-arrow-right-circle-fill text-success" style="font-size:0.75rem;"></i>
+                                <span>Cash in Hand (Treasurer)</span>
+                            </div>
+                            {% elif income.payment_method == 'mpesa' %}
+                            <div class="d-flex align-items-center gap-1.5 mb-1">
+                                <span class="badge bg-info-subtle text-info border border-info-subtle py-1 px-2" style="font-size:0.75rem;">
+                                    <i class="bi bi-phone me-1"></i>M-Pesa
+                                </span>
+                            </div>
+                            <div class="small fw-semibold text-dark d-flex align-items-center gap-1">
+                                <i class="bi bi-arrow-right-circle-fill text-info" style="font-size:0.75rem;"></i>
+                                <span>M-Pesa Mobile Wallet</span>
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- 4. Date & Reference / Slip -->
+                        <td>
+                            <div style="font-size:0.85rem;color:#334155;">
+                                <i class="bi bi-calendar3 me-1 text-muted"></i>{{ income.date }}
+                            </div>
+                            {% if income.reference_number %}
+                            <div class="text-muted small mt-0.5" style="font-size:0.75rem;font-family:monospace;">
+                                <i class="bi bi-tag me-1"></i>Ref: {{ income.reference_number }}
+                            </div>
+                            {% endif %}
+                            {% if income.receipt_attachment %}
+                            <div class="mt-1">
+                                <a href="{{ income.receipt_attachment.url }}" target="_blank" class="badge bg-light text-primary border text-decoration-none py-1 px-2" style="font-size:0.72rem;">
+                                    <i class="bi bi-paperclip me-1"></i>View Slip / Receipt
+                                </a>
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- 5. Reconciliation Status -->
+                        <td>
+                            {% if income.is_reconciled %}
+                            <div>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:0.75rem;">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Reconciled
+                                </span>
+                            </div>
+                            <div class="text-muted small mt-1" style="font-size:0.72rem;">
+                                Verified on {{ income.reconciled_date|default:income.date }}
+                                {% if income.reconciled_by %}by {{ income.reconciled_by.username }}{% endif %}
+                            </div>
+                            {% if request.user.profile.is_treasurer %}
+                            <form method="post" action="{% url 'other_income:reconcile_toggle' income.pk %}" class="d-inline mt-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-link btn-xs p-0 text-muted text-decoration-none" style="font-size:0.7rem;" title="Mark as pending reconciliation">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Undo reconciliation
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% else %}
+                            <div>
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle py-1 px-2" style="font-size:0.75rem;">
+                                    <i class="bi bi-clock-history me-1"></i>Pending Verification
+                                </span>
+                            </div>
+                            <div class="text-muted small mt-1" style="font-size:0.72rem;">
+                                Awaiting statement check
+                            </div>
+                            {% if request.user.profile.is_treasurer %}
+                            <form method="post" action="{% url 'other_income:reconcile_toggle' income.pk %}" class="d-inline mt-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-xs btn-outline-success py-0.5 px-2 mt-1" style="border-radius:4px;font-size:0.72rem;">
+                                    <i class="bi bi-check2"></i> Mark Reconciled
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% endif %}
+                        </td>
+
+                        <!-- 6. Actions -->
+                        <td class="text-end pe-3">
+                            <div class="d-inline-flex gap-2">
+                                {% if request.user.profile.is_treasurer %}
+                                <a href="{% url 'other_income:edit' income.pk %}" class="btn btn-sm btn-outline-secondary py-1 px-2" title="Edit record" style="border-radius:6px;">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% endif %}
+                                {% if request.user.profile.is_admin %}
+                                <a href="{% url 'other_income:delete' income.pk %}" class="btn btn-sm btn-outline-danger py-1 px-2" title="Delete record" style="border-radius:6px;">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <div class="py-4">
+                                <i class="bi bi-inbox fs-1 text-muted opacity-50 d-block mb-2"></i>
+                                <h6 class="text-dark fw-bold mb-1">No Other Income Records Found</h6>
+                                <p class="text-muted small mb-3">
+                                    {% if q or selected_payment_method or selected_bank_account %}
+                                    No records match your selected filters. Try clearing the filters.
+                                    {% else %}
+                                    Log external revenues such as fixed deposit interest, grants, dividends, or asset sales.
+                                    {% endif %}
+                                </p>
+                                {% if request.user.profile.is_treasurer %}
+                                <a href="{% url 'other_income:add' %}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>Record First Other Income
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% include 'includes/pagination.html' %}
+</div>
+{% endblock %}

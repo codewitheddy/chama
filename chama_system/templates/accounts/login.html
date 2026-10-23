@@ -7,8 +7,13 @@
          style="width:420px;background:#1e2a3a;flex-shrink:0;">
         <div>
             <div class="d-flex align-items-center gap-2 mb-5">
+                {% if group_logo %}
+                <img src="{{ group_logo }}" alt="{{ group_name }}" style="max-height: 40px; max-width: 48px; object-fit: contain; border-radius: 6px; background: rgba(255,255,255,0.08); padding: 2px;" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-block';">
+                <i class="bi bi-bank2 text-white" style="display:none; font-size:1.5rem;"></i>
+                {% else %}
                 <i class="bi bi-bank2 text-white" style="font-size:1.5rem;"></i>
-                <span style="color:#f1f5f9;font-weight:700;font-size:1.1rem;">DC Welfare Group</span>
+                {% endif %}
+                <span style="color:#f1f5f9;font-weight:700;font-size:1.1rem;">{{ group_name }}</span>
             </div>
             <h2 style="color:#f1f5f9;font-weight:700;line-height:1.3;">
                 Manage your<br>table banking<br>with ease.
@@ -18,7 +23,8 @@
             </p>
         </div>
         <div style="color:#475569;font-size:0.78rem;">
-            &copy; {% now "Y" %} DC Welfare Group
+            <div>&copy; {% now "Y" %} {{ group_name }}</div>
+            <div class="mt-1">Powered by <strong style="color:#94a3b8;">Ropenix Investments Limited</strong> ( 018 218 0965 )</div>
         </div>
     </div>
 
@@ -26,8 +32,13 @@
     <div class="flex-grow-1 d-flex align-items-center justify-content-center p-4">
         <div style="width:100%;max-width:380px;">
             <div class="mb-4 d-lg-none text-center">
+                {% if group_logo %}
+                <img src="{{ group_logo }}" alt="{{ group_name }}" style="max-height: 48px; max-width: 60px; object-fit: contain; margin-bottom: 8px;" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-block';">
+                <i class="bi bi-bank2 text-primary" style="display:none; font-size:2rem;"></i>
+                {% else %}
                 <i class="bi bi-bank2 text-primary" style="font-size:2rem;"></i>
-                <h5 class="fw-bold mt-2">DC Welfare Group</h5>
+                {% endif %}
+                <h5 class="fw-bold mt-2">{{ group_name }}</h5>
             </div>
             <h4 class="fw-bold mb-1" style="color:#1e293b;">Welcome back</h4>
             <p class="text-muted mb-4" style="font-size:0.875rem;">Sign in to your account</p>
@@ -57,6 +68,14 @@
                     Sign In
                 </button>
             </form>
+
+            <div class="text-center mt-3">
+                <a href="{% url 'accounts:emergency_reset' %}"
+                   class="text-muted text-decoration-none"
+                   style="font-size:0.8rem;">
+                    <i class="bi bi-key me-1"></i>Forgot password?
+                </a>
+            </div>
         </div>
     </div>
 </div>

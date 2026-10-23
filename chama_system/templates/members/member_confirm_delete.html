@@ -10,12 +10,32 @@
                 <i class="bi bi-trash me-2"></i>Confirm Delete Member
             </div>
             <div class="card-body">
+                {% if has_financial_history %}
+                <div class="alert alert-danger py-2 small mb-3">
+                    <div class="fw-bold mb-1"><i class="bi bi-exclamation-octagon-fill me-1"></i> Warning: Member has existing financial records!</div>
+                    <p class="mb-1">Deleting will permanently erase all associated data:</p>
+                    <ul class="mb-2 ps-3">
+                        {% if contrib_count %}<li>{{ contrib_count }} contribution(s)</li>{% endif %}
+                        {% if loan_count %}<li>{{ loan_count }} loan(s)</li>{% endif %}
+                        {% if payment_count %}<li>{{ payment_count }} loan repayment(s)</li>{% endif %}
+                        {% if penalty_count %}<li>{{ penalty_count }} penalty record(s)</li>{% endif %}
+                        {% if welfare_count %}<li>{{ welfare_count }} welfare contribution(s)</li>{% endif %}
+                    </ul>
+                    <p class="mb-1 text-danger-emphasis">
+                        <strong>Is this member leaving the group?</strong> Hard deletion should only be used for accidental duplicates or invalid entries. To settle a departing member while preserving books, use <strong>Member Exit</strong>.
+                    </p>
+                    <div class="mt-2">
+                        <a href="{% url 'members:exit_preview' object.pk %}" class="btn btn-warning btn-sm fw-semibold">
+                            <i class="bi bi-box-arrow-right me-1"></i>Process Member Exit Instead
+                        </a>
+                    </div>
+                </div>
+                {% else %}
                 <div class="alert alert-warning py-2 small mb-3">
                     <i class="bi bi-exclamation-triangle me-1"></i>
-                    This will permanently delete <strong>{{ object.name }}</strong>
-                    and all their related records (contributions, loans, payments, penalties).
-                    This cannot be undone.
+                    This will permanently delete <strong>{{ object.name }}</strong>. This cannot be undone.
                 </div>
+                {% endif %}
                 <form method="post" novalidate>
                     {% csrf_token %}
                     {% include 'includes/delete_auth_fields.html' %}

@@ -1,0 +1,548 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}{% if object %}Edit Other Income{% else %}Record Other Income{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit Income: {{ object.source }}{% else %}Record Other / External Income{% endif %}{% endblock %}
+
+{% block content %}
+<!-- Top Context Bar & Metrics Ribbon -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}" class="text-decoration-none">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'other_income:list' %}" class="text-decoration-none">Other Income</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{% if object %}Edit Income #{{ object.pk }}{% else %}Record Income{% endif %}</li>
+        </ol>
+    </nav>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        {% if available_fund_balance is not None %}
+        <span class="badge bg-white text-dark border px-3 py-2 shadow-xs d-flex align-items-center gap-2" style="border-radius:8px;font-weight:500;font-size:0.85rem;">
+            <i class="bi bi-wallet2 text-primary"></i>
+            <span>Available Fund: <strong class="text-primary">KES {{ available_fund_balance|kes }}</strong></span>
+        </span>
+        {% endif %}
+        {% if total_other_income is not None %}
+        <span class="badge bg-white text-dark border px-3 py-2 shadow-xs d-flex align-items-center gap-2" style="border-radius:8px;font-weight:500;font-size:0.85rem;">
+            <i class="bi bi-graph-up-arrow text-success"></i>
+            <span>Total External Income: <strong class="text-success">KES {{ total_other_income|kes }}</strong></span>
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4 justify-content-center">
+    <!-- Main Form Column -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;background:#ffffff;">
+            <!-- Header -->
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="icon-box rounded-3 text-white shadow-xs" style="background:linear-gradient(135deg,#0d9488,#14b8a6);width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-cash-coin fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 fw-bold text-dark" style="font-size:1.05rem;">
+                            {% if object %}Edit Other Income Record #{{ object.pk }}{% else %}Record Other / External Income{% endif %}
+                        </h6>
+                        <div class="text-muted small">Specify the source, affected account, mode of payment, and reconciliation details</div>
+                    </div>
+                </div>
+                <span class="badge px-3 py-1.5" style="background:#ccfbf1;color:#0f766e;font-size:0.75rem;font-weight:600;border-radius:6px;">
+                    <i class="bi bi-shield-check me-1"></i>Chama Treasury
+                </span>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" id="otherIncomeForm" novalidate>
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger p-3 mb-4 d-flex align-items-center gap-2" style="border-radius:8px;">
+                        <i class="bi bi-exclamation-octagon-fill fs-5 flex-shrink-0"></i>
+                        <div>{{ form.non_field_errors }}</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Quick Source Preset Chips -->
+                    <div class="mb-4 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-semibold small text-muted text-uppercase mb-0" style="letter-spacing:0.5px;font-size:0.72rem;">
+                                <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Quick Source Presets
+                            </label>
+                            <span class="text-muted small" style="font-size:0.75rem;">Click to pre-fill</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2" id="sourcePills">
+                            <button type="button" class="btn btn-sm source-preset-btn py-1 px-2.5" data-source="KCB Fixed Deposit Interest" data-category="fixed_deposit" data-method="bank_transfer" style="border-radius:20px;font-size:0.8rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;">
+                                🏦 KCB Fixed Deposit
+                            </button>
+                            <button type="button" class="btn btn-sm source-preset-btn py-1 px-2.5" data-source="Central Bank T-Bills (91-Day)" data-category="tbill_bond" data-method="bank_transfer" style="border-radius:20px;font-size:0.8rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;">
+                                📈 Treasury Bills
+                            </button>
+                            <button type="button" class="btn btn-sm source-preset-btn py-1 px-2.5" data-source="CIC Money Market Fund (MMF)" data-category="mmf" data-method="bank_transfer" style="border-radius:20px;font-size:0.8rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;">
+                                💼 Money Market Fund
+                            </button>
+                            <button type="button" class="btn btn-sm source-preset-btn py-1 px-2.5" data-source="Safaricom PLC Share Dividends" data-category="dividends" data-method="bank_transfer" style="border-radius:20px;font-size:0.8rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;">
+                                🏢 Share Dividends
+                            </button>
+                            <button type="button" class="btn btn-sm source-preset-btn py-1 px-2.5" data-source="Community Partner Grant" data-category="grant_donation" data-method="bank_transfer" style="border-radius:20px;font-size:0.8rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;">
+                                🤝 Grant / Donation
+                            </button>
+                            <button type="button" class="btn btn-sm source-preset-btn py-1 px-2.5" data-source="Annual Harambee Fundraiser" data-category="fundraising" data-method="cash" style="border-radius:20px;font-size:0.8rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;">
+                                🎪 Fundraising (Cash)
+                            </button>
+                            <button type="button" class="btn btn-sm source-preset-btn py-1 px-2.5" data-source="Chama Tent &amp; Chairs Rental" data-category="rental" data-method="mpesa" style="border-radius:20px;font-size:0.8rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;">
+                                🎪 Rental (M-Pesa)
+                            </button>
+                            <button type="button" class="btn btn-sm source-preset-btn py-1 px-2.5" data-source="Old Office Chairs Sale" data-category="asset_sale" data-method="cash" style="border-radius:20px;font-size:0.8rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;">
+                                📦 Asset Sale
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 1. Source & Stream Category -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-7">
+                            <label for="{{ form.source.id_for_label }}" class="form-label fw-semibold text-dark small mb-1">
+                                Income Source / Institution <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-bank2"></i></span>
+                                <input type="text" name="source" id="{{ form.source.id_for_label }}"
+                                       value="{{ form.source.value|default:'' }}"
+                                       class="form-control border-start-0 ps-1 {% if form.source.errors %}is-invalid{% endif %}"
+                                       placeholder="e.g. KCB Fixed Deposit, CBK T-Bills, Partner Grant"
+                                       required>
+                            </div>
+                            {% if form.source.errors %}
+                            <div class="text-danger small mt-1">{{ form.source.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-5">
+                            <label for="{{ form.category.id_for_label }}" class="form-label fw-semibold text-dark small mb-1">
+                                Revenue Stream Category <span class="text-danger">*</span>
+                            </label>
+                            {{ form.category }}
+                            {% if form.category.errors %}
+                            <div class="text-danger small mt-1">{{ form.category.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 2. Mode of Payment & Affected Account -->
+                    <div class="p-3 mb-4 rounded-3 border" style="background:#f8fafc;border-color:#e2e8f0;">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <i class="bi bi-signpost-split-fill text-primary"></i>
+                            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing:0.5px;">Mode of Payment &amp; Affected Account</span>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.payment_method.id_for_label }}" class="form-label fw-semibold text-dark small mb-1">
+                                    How Was It Paid? <span class="text-danger">*</span>
+                                </label>
+                                {{ form.payment_method }}
+                                {% if form.payment_method.errors %}
+                                <div class="text-danger small mt-1">{{ form.payment_method.errors.0 }}</div>
+                                {% endif %}
+                                <small class="text-muted d-block mt-1" style="font-size:0.75rem;">Direct Bank Transfer, Cash, M-Pesa, or Cheque</small>
+                            </div>
+
+                            <!-- Target Bank Account (Shown when payment_method == 'bank_transfer' or 'cheque') -->
+                            <div class="col-md-6" id="bankAccountContainer">
+                                <label for="{{ form.bank_account.id_for_label }}" class="form-label fw-semibold text-dark small mb-1">
+                                    Target Bank Account <span class="text-danger">*</span>
+                                </label>
+                                {{ form.bank_account }}
+                                {% if form.bank_account.errors %}
+                                <div class="text-danger small mt-1">{{ form.bank_account.errors.0 }}</div>
+                                {% endif %}
+                                <small class="text-muted d-block mt-1" style="font-size:0.75rem;">Which Chama account received the deposit</small>
+                            </div>
+                        </div>
+
+                        <!-- Affected Account Dynamic Notice -->
+                        <div class="p-2.5 mt-3 rounded-2 d-flex align-items-center gap-2" id="affectedAccountAlert" style="background:#eff6ff;border:1px solid #bfdbfe;font-size:0.82rem;color:#1e40af;">
+                            <i class="bi bi-info-circle-fill flex-shrink-0"></i>
+                            <div id="affectedAccountText">
+                                <strong>Affected Account:</strong> Loading routing details…
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Amount & Date Row -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="{{ form.amount.id_for_label }}" class="form-label fw-semibold text-dark small mb-1">
+                                Amount Received (KES) <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-primary fw-bold">KES</span>
+                                <input type="number" name="amount" id="{{ form.amount.id_for_label }}"
+                                       value="{{ form.amount.value|default:'' }}"
+                                       step="0.01" min="0.01"
+                                       class="form-control fw-bold fs-5 py-2 {% if form.amount.errors %}is-invalid{% endif %}"
+                                       placeholder="0.00"
+                                       required>
+                            </div>
+                            <div id="amountWordsHelper" class="text-muted small mt-1 d-none" style="font-size:0.78rem;font-style:italic;color:#0f766e !important;">
+                                <i class="bi bi-info-circle me-1"></i><span id="amountWordsText"></span>
+                            </div>
+                            {% if form.amount.errors %}
+                            <div class="text-danger small mt-1">{{ form.amount.errors.0 }}</div>
+                            {% endif %}
+
+                            <!-- Quick Amount Chips -->
+                            <div class="d-flex flex-wrap align-items-center gap-1.5 mt-2">
+                                <button type="button" class="btn btn-xs py-0.5 px-2 quick-amount-btn" style="font-size:0.75rem;border-radius:10px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;" data-add="1000">+1K</button>
+                                <button type="button" class="btn btn-xs py-0.5 px-2 quick-amount-btn" style="font-size:0.75rem;border-radius:10px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;" data-add="5000">+5K</button>
+                                <button type="button" class="btn btn-xs py-0.5 px-2 quick-amount-btn" style="font-size:0.75rem;border-radius:10px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;" data-add="10000">+10K</button>
+                                <button type="button" class="btn btn-xs py-0.5 px-2 quick-amount-btn" style="font-size:0.75rem;border-radius:10px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;" data-add="50000">+50K</button>
+                                <button type="button" class="btn btn-xs py-0.5 px-2 quick-amount-btn" style="font-size:0.75rem;border-radius:10px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;" data-add="100000">+100K</button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="{{ form.date.id_for_label }}" class="form-label fw-semibold text-dark small mb-0">
+                                    Date Credited / Received <span class="text-danger">*</span>
+                                </label>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary" style="font-size:0.75rem;" id="btnSetToday">Today</button>
+                                    <span class="text-muted" style="font-size:0.75rem;">·</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-secondary" style="font-size:0.75rem;" id="btnSetYesterday">Yesterday</button>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar3"></i></span>
+                                <input type="date" name="date" id="{{ form.date.id_for_label }}"
+                                       value="{{ form.date.value|date:'Y-m-d'|default:'' }}"
+                                       class="form-control {% if form.date.errors %}is-invalid{% endif %}" required>
+                            </div>
+                            {% if form.date.errors %}
+                            <div class="text-danger small mt-1">{{ form.date.errors.0 }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1" style="font-size:0.75rem;">Date the deposit or cash was actually received</small>
+                        </div>
+                    </div>
+
+                    <!-- 4. Reference Number & Receipt Attachment -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="{{ form.reference_number.id_for_label }}" class="form-label fw-semibold text-dark small mb-1">
+                                Transaction Reference / Slip # <span class="text-muted fw-normal">(recommended)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted"><i class="bi bi-receipt"></i></span>
+                                {{ form.reference_number }}
+                            </div>
+                            {% if form.reference_number.errors %}
+                            <div class="text-danger small mt-1">{{ form.reference_number.errors.0 }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1" style="font-size:0.75rem;">Bank reference, M-Pesa code, cheque #, or receipt #</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.receipt_attachment.id_for_label }}" class="form-label fw-semibold text-dark small mb-1">
+                                Scanned Slip / Statement Document <span class="text-muted fw-normal">(optional)</span>
+                            </label>
+                            {{ form.receipt_attachment }}
+                            {% if form.receipt_attachment.errors %}
+                            <div class="text-danger small mt-1">{{ form.receipt_attachment.errors.0 }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1" style="font-size:0.75rem;">Upload PDF, JPG, or PNG credit advice or receipt</small>
+                        </div>
+                    </div>
+
+                    <!-- 5. Description & Reference Notes -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="{{ form.description.id_for_label }}" class="form-label fw-semibold text-dark small mb-0">
+                                Description / Notes <span class="text-muted fw-normal">(optional)</span>
+                            </label>
+                            <small class="text-muted" id="descCharCount" style="font-size:0.75rem;">0 / 500</small>
+                        </div>
+                        <textarea name="description" id="{{ form.description.id_for_label }}"
+                                  rows="3" maxlength="500"
+                                  class="form-control {% if form.description.errors %}is-invalid{% endif %}"
+                                  placeholder="e.g. 6-month Fixed Deposit maturity interest (11.5% p.a.), Certificate Ref: FD-2026-089, credited via KCB Bank Transfer.">{{ form.description.value|default:'' }}</textarea>
+                        {% if form.description.errors %}
+                        <div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Form Action Buttons -->
+                    <div class="d-flex gap-3 align-items-center pt-3 border-top mt-4">
+                        <button type="submit" class="btn btn-primary px-4 py-2.5 shadow-sm d-flex align-items-center gap-2" id="btnSubmitForm" style="border-radius:8px;font-weight:600;">
+                            <i class="bi bi-check2-circle fs-5"></i>
+                            <span>{% if object %}Update Income Record{% else %}Save &amp; Record Income{% endif %}</span>
+                        </button>
+                        <a href="{% url 'other_income:list' %}" class="btn btn-outline-secondary px-4 py-2.5" style="border-radius:8px;">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side Information & Preview Column -->
+    <div class="col-lg-5">
+        <!-- Live Treasury Impact Preview Card -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #e2e8f0;background:#ffffff;overflow:hidden;">
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-calculator fs-5 text-primary"></i>
+                    <strong class="text-dark">Live Treasury Impact</strong>
+                </div>
+                <span class="badge bg-primary-subtle text-primary px-2.5 py-1" style="font-size:0.75rem;">Real-time</span>
+            </div>
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small">Current Total Available Fund:</span>
+                    <span class="fw-semibold text-dark">KES {{ available_fund_balance|kes }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small">+ New Income Being Added:</span>
+                    <span class="fw-bold text-success" id="previewIncomeAmount">+ KES 0.00</span>
+                </div>
+                <hr class="my-3 border-dashed" style="border-color:#e2e8f0;">
+                <div class="d-flex justify-content-between align-items-center pt-1 mb-3">
+                    <div>
+                        <span class="fw-bold text-dark small d-block">Projected Available Fund:</span>
+                        <small class="text-muted" style="font-size:0.75rem;">After recording this revenue</small>
+                    </div>
+                    <span class="fw-bold fs-5 text-primary" id="previewProjectedBalance">KES {{ available_fund_balance|kes }}</span>
+                </div>
+
+                <div class="p-3 rounded-3 mt-3" style="background:#f0fdf4;border:1px solid #bbf7d0;font-size:0.84rem;color:#166534;">
+                    <div class="d-flex align-items-center gap-2 fw-semibold mb-1">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <span>Zero-Leakage Guarantee:</span>
+                    </div>
+                    <div style="line-height:1.45;">
+                        Funds recorded here immediately flow into the specified destination account (Bank, Cash, or M-Pesa) and become available for table banking lending or investments.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bank Reconciliation Checklist Guide -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center gap-2" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+                <i class="bi bi-clipboard2-check fs-5 text-primary"></i>
+                <strong class="text-dark">How to Reconcile Other Incomes</strong>
+            </div>
+            <div class="card-body p-4" style="font-size:0.875rem;color:#475569;">
+                <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
+                    <li class="d-flex align-items-start gap-2.5">
+                        <span class="badge rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width:24px;height:24px;font-size:0.75rem;">1</span>
+                        <div>
+                            <strong class="text-dark d-block">Direct Bank Transfers:</strong>
+                            <div class="text-muted small">Compare your official monthly bank statement line items with the transaction reference code and mark the entry as <em>Reconciled</em>.</div>
+                        </div>
+                    </li>
+                    <li class="d-flex align-items-start gap-2.5">
+                        <span class="badge rounded-circle bg-success text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width:24px;height:24px;font-size:0.75rem;">2</span>
+                        <div>
+                            <strong class="text-dark d-block">Cash in Hand Receipts:</strong>
+                            <div class="text-muted small">When cash is received, verify during Cash Count Reconciliation that the physical notes match the expected system cash.</div>
+                        </div>
+                    </li>
+                    <li class="d-flex align-items-start gap-2.5">
+                        <span class="badge rounded-circle bg-info text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width:24px;height:24px;font-size:0.75rem;">3</span>
+                        <div>
+                            <strong class="text-dark d-block">M-Pesa Mobile Payments:</strong>
+                            <div class="text-muted small">Cross-check the M-Pesa statement or SMS confirmation code to confirm the funds arrived in the Chama till or wallet.</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const paymentMethodSelect = document.getElementById('id_payment_method');
+    const bankAccountContainer = document.getElementById('bankAccountContainer');
+    const bankAccountSelect = document.getElementById('id_bank_account');
+    const affectedAlert = document.getElementById('affectedAccountAlert');
+    const affectedText = document.getElementById('affectedAccountText');
+
+    const sourceInput = document.getElementById('{{ form.source.id_for_label }}');
+    const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
+    const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+    const dateInput = document.getElementById('{{ form.date.id_for_label }}');
+    const descInput = document.getElementById('{{ form.description.id_for_label }}');
+    const descCounter = document.getElementById('descCharCount');
+
+    const previewIncomeAmt = document.getElementById('previewIncomeAmount');
+    const previewProjected = document.getElementById('previewProjectedBalance');
+    const amountWordsHelper = document.getElementById('amountWordsHelper');
+    const amountWordsText = document.getElementById('amountWordsText');
+    const baseBalance = parseFloat("{{ available_fund_balance|default:'0' }}") || 0;
+
+    // 1. Dynamic Mode of Payment & Affected Account Logic
+    function updatePaymentMethodUI() {
+        const method = paymentMethodSelect ? paymentMethodSelect.value : 'cash';
+
+        if (method === 'bank_transfer' || method === 'cheque') {
+            if (bankAccountContainer) bankAccountContainer.style.display = 'block';
+            if (bankAccountSelect) bankAccountSelect.required = true;
+
+            const selectedBankText = bankAccountSelect && bankAccountSelect.selectedIndex > 0
+                ? bankAccountSelect.options[bankAccountSelect.selectedIndex].text
+                : 'Selected Bank Account';
+
+            affectedAlert.style.background = '#eff6ff';
+            affectedAlert.style.borderColor = '#bfdbfe';
+            affectedAlert.style.color = '#1e40af';
+            affectedText.innerHTML = `<strong>Affected Account:</strong> Credited directly into <strong>${selectedBankText}</strong>. Bank ledger balance will increase automatically.`;
+        } else if (method === 'cash') {
+            if (bankAccountContainer) bankAccountContainer.style.display = 'none';
+            if (bankAccountSelect) {
+                bankAccountSelect.required = false;
+                bankAccountSelect.value = '';
+            }
+
+            affectedAlert.style.background = '#f0fdf4';
+            affectedAlert.style.borderColor = '#bbf7d0';
+            affectedAlert.style.color = '#166534';
+            affectedText.innerHTML = `<strong>Affected Account:</strong> Physical <strong>Cash in Hand (held by Treasurer)</strong> will increase. Verified via Cash Count Reconciliation.`;
+        } else if (method === 'mpesa') {
+            if (bankAccountContainer) bankAccountContainer.style.display = 'none';
+            if (bankAccountSelect) {
+                bankAccountSelect.required = false;
+                bankAccountSelect.value = '';
+            }
+
+            affectedAlert.style.background = '#ecfeff';
+            affectedAlert.style.borderColor = '#a5f3fc';
+            affectedAlert.style.color = '#0e7490';
+            affectedText.innerHTML = `<strong>Affected Account:</strong> Chama <strong>M-Pesa Mobile Wallet / Till</strong> balance will increase. Verified via M-Pesa statement.`;
+        }
+    }
+
+    paymentMethodSelect?.addEventListener('change', updatePaymentMethodUI);
+    bankAccountSelect?.addEventListener('change', updatePaymentMethodUI);
+    updatePaymentMethodUI();
+
+    // 2. Preset Pills
+    document.querySelectorAll('.source-preset-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            if (sourceInput) sourceInput.value = this.dataset.source;
+            if (categorySelect && this.dataset.category) categorySelect.value = this.dataset.category;
+            if (paymentMethodSelect && this.dataset.method) {
+                paymentMethodSelect.value = this.dataset.method;
+                updatePaymentMethodUI();
+            }
+            if (amountInput && !amountInput.value) {
+                amountInput.focus();
+            }
+        });
+    });
+
+    // 3. Quick Dates
+    function formatDate(d) {
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+    if (dateInput && !dateInput.value) {
+        dateInput.value = formatDate(new Date());
+    }
+    document.getElementById('btnSetToday')?.addEventListener('click', () => {
+        if (dateInput) dateInput.value = formatDate(new Date());
+    });
+    document.getElementById('btnSetYesterday')?.addEventListener('click', () => {
+        if (dateInput) {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            dateInput.value = formatDate(y);
+        }
+    });
+
+    // 4. Live Calculations & Number to Words
+    function formatKes(val) {
+        return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function numberToWordsKsh(num) {
+        if (isNaN(num) || num <= 0) return '';
+        const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+        function convertChunk(n) {
+            let str = '';
+            if (n >= 100) {
+                str += ones[Math.floor(n / 100)] + ' Hundred ';
+                n %= 100;
+            }
+            if (n >= 20) {
+                str += tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+            } else if (n > 0) {
+                str += ones[n];
+            }
+            return str.trim();
+        }
+
+        const intPart = Math.floor(num);
+        if (intPart === 0) return 'Zero Shillings';
+
+        const billions = Math.floor(intPart / 1000000000);
+        const millions = Math.floor((intPart % 1000000000) / 1000000);
+        const thousands = Math.floor((intPart % 1000000) / 1000);
+        const remainder = intPart % 1000;
+
+        let result = '';
+        if (billions) result += convertChunk(billions) + ' Billion ';
+        if (millions) result += convertChunk(millions) + ' Million ';
+        if (thousands) result += convertChunk(thousands) + ' Thousand ';
+        if (remainder) result += convertChunk(remainder);
+
+        return result.trim() + ' Shillings Only';
+    }
+
+    function updateLiveImpact() {
+        const amt = parseFloat(amountInput?.value || '0') || 0;
+        if (previewIncomeAmt) {
+            previewIncomeAmt.textContent = `+ KES ${formatKes(amt)}`;
+        }
+        if (previewProjected) {
+            previewProjected.textContent = `KES ${formatKes(baseBalance + amt)}`;
+        }
+        if (amt > 0 && amountWordsHelper && amountWordsText) {
+            amountWordsText.textContent = numberToWordsKsh(amt);
+            amountWordsHelper.classList.remove('d-none');
+        } else if (amountWordsHelper) {
+            amountWordsHelper.classList.add('d-none');
+        }
+    }
+
+    amountInput?.addEventListener('input', updateLiveImpact);
+    updateLiveImpact();
+
+    // Quick Amount buttons
+    document.querySelectorAll('.quick-amount-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const add = parseFloat(this.dataset.add) || 0;
+            const current = parseFloat(amountInput?.value || '0') || 0;
+            if (amountInput) {
+                amountInput.value = (current + add).toFixed(2);
+                updateLiveImpact();
+            }
+        });
+    });
+
+    // Description counter
+    function updateCounter() {
+        if (descInput && descCounter) {
+            descCounter.textContent = `${descInput.value.length} / 500`;
+        }
+    }
+    if (descInput && descCounter) {
+        descInput.addEventListener('input', updateCounter);
+        updateCounter();
+    }
+});
+</script>
+{% endblock %}

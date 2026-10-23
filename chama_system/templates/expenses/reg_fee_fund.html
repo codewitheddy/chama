@@ -1,0 +1,642 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Registration Fee Fund{% endblock %}
+{% block page_title %}Registration Fee Fund{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Metric Cards */
+    .metric-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 1.1rem 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        height: 100%;
+    }
+    .metric-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .metric-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+        flex-shrink: 0;
+    }
+
+    /* Member avatar circle */
+    .member-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #eff6ff;
+        color: #2563eb;
+        font-weight: 700;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* Bulk toolbar */
+    .bulk-toolbar-active {
+        animation: fadeInDown 0.22s ease-out;
+    }
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Table styling */
+    .fund-table th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 12px;
+    }
+    .fund-table td {
+        padding: 9px 12px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.86rem;
+    }
+    .fund-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Top Header Actions -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h5 class="mb-0 fw-bold d-flex align-items-center gap-2">
+            <i class="bi bi-safe text-primary"></i>Registration Fee Fund Dashboard
+        </h5>
+        <div class="text-muted small mt-1">
+            Dedicated capital fund for member registration fees and related administrative expenses.
+        </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <a href="{% url 'members:fee_payment_bulk' %}" class="btn btn-primary btn-sm px-3 shadow-sm">
+            <i class="bi bi-people me-1"></i>Bulk Fee Entry
+        </a>
+        <a href="{% url 'members:fee_payment_add' %}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Record Fee
+        </a>
+        <a href="{% url 'expenses:add' %}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-dash-circle me-1"></i>Record Expense
+        </a>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-download me-1"></i>Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li><h6 class="dropdown-header">Member Registration Fees</h6></li>
+                <li>
+                    <a class="dropdown-item small" href="{% url 'expenses:reg_fee_fund_export' %}?type=members&format=csv&q={{ q }}&status={{ status_filter }}">
+                        <i class="bi bi-filetype-csv text-success me-2"></i>Export Members (CSV)
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item small" href="{% url 'expenses:reg_fee_fund_export' %}?type=members&format=pdf&q={{ q }}&status={{ status_filter }}">
+                        <i class="bi bi-filetype-pdf text-danger me-2"></i>Export Members (PDF)
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li><h6 class="dropdown-header">Spending History</h6></li>
+                <li>
+                    <a class="dropdown-item small" href="{% url 'expenses:reg_fee_fund_export' %}?type=expenses&format=csv">
+                        <i class="bi bi-filetype-csv text-success me-2"></i>Export Expenses (CSV)
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item small" href="{% url 'expenses:reg_fee_fund_export' %}?type=expenses&format=pdf">
+                        <i class="bi bi-filetype-pdf text-danger me-2"></i>Export Expenses (PDF)
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <a href="{% url 'members:fee_rate_list' %}" class="btn btn-outline-secondary btn-sm" title="Configure fee rates">
+            <i class="bi bi-sliders me-1"></i>Rate Settings
+        </a>
+    </div>
+</div>
+
+<!-- 4 Top Metric Cards -->
+<div class="row g-3 mb-4">
+    <!-- Total Collected -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;">Total Collected</div>
+                <div class="metric-icon" style="background:#eff6ff;color:#2563eb;">
+                    <i class="bi bi-person-check-fill"></i>
+                </div>
+            </div>
+            <div class="fs-4 fw-bold text-dark">KES {{ total_collected|kes }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top">
+                <span class="small text-muted">{{ paid_members_count }} of {{ active_members_count }} active paid</span>
+                <span class="badge bg-primary-subtle text-primary fw-semibold">{{ collection_pct }}%</span>
+            </div>
+            <div class="progress mt-2" style="height: 4px;">
+                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ collection_pct }}%;" aria-valuenow="{{ collection_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Spent -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;">Total Spent</div>
+                <div class="metric-icon" style="background:#fff1f2;color:#e11d48;">
+                    <i class="bi bi-wallet2"></i>
+                </div>
+            </div>
+            <div class="fs-4 fw-bold text-danger">KES {{ total_spent|kes }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top">
+                <span class="small text-muted">{{ reg_fee_expenses|length }} expense transaction{{ reg_fee_expenses|length|pluralize }}</span>
+                <a href="{% url 'expenses:add' %}" class="small text-danger text-decoration-none fw-semibold">+ Record</a>
+            </div>
+            <div class="progress mt-2" style="height: 4px;">
+                <div class="progress-bar bg-danger" role="progressbar" style="width: {% if total_collected > 0 %}{{ total_spent|stringformat:'.2f'|default:'0' }}{% else %}0{% endif %}%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Balance -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card" style="border: 2px solid #86efac; background: #f0fdf4;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="text-success small fw-bold text-uppercase" style="letter-spacing:0.5px;">Available Balance</div>
+                <div class="metric-icon" style="background:#dcfce7;color:#16a34a;">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+            </div>
+            <div class="fs-4 fw-bold" style="color:#15803d;">KES {{ available_balance|kes }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-success-subtle">
+                <span class="small text-success fw-medium">Net available to spend</span>
+                <span class="badge bg-success text-white fw-semibold"><i class="bi bi-shield-check me-1"></i>Active Fund</span>
+            </div>
+            <div class="progress mt-2" style="height: 4px; background:#bbf7d0;">
+                <div class="progress-bar bg-success" role="progressbar" style="width: 100%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Rate -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;">Configured Rate</div>
+                <div class="metric-icon" style="background:#faf5ff;color:#9333ea;">
+                    <i class="bi bi-tag-fill"></i>
+                </div>
+            </div>
+            <div class="fs-4 fw-bold text-purple" style="color:#7e22ce;">
+                {% if current_rate %}
+                KES {{ current_rate.amount|kes }}
+                {% else %}
+                <span class="text-muted fs-6">Not set</span>
+                {% endif %}
+            </div>
+            <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top">
+                <span class="small text-muted text-truncate" style="max-width:140px;">
+                    {% if current_rate %}From {{ current_rate.effective_date|date:"d M Y" }}{% else %}Default{% endif %}
+                </span>
+                <a href="{% url 'members:fee_rate_list' %}" class="small text-primary text-decoration-none fw-semibold">Settings →</a>
+            </div>
+            <div class="progress mt-2" style="height: 4px;">
+                <div class="progress-bar" style="width: 100%; background:#9333ea;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Actions Toolbar for Members Table -->
+<div id="fund-bulk-toolbar" class="alert alert-primary d-none mb-3 shadow-sm py-2 px-3 bulk-toolbar-active" role="alert" style="background:#eff6ff; border-color:#bfdbfe; color:#1e40af;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill text-primary fs-5"></i>
+            <div>
+                <strong><span id="fund-selected-count">0</span> member(s) selected</strong>
+                <span class="text-muted ms-2" style="font-size:0.88rem;">(Total Reg. Fees: <span class="fw-semibold text-success">KES <span id="fund-selected-amount">0.00</span></span>)</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <a href="{% url 'members:fee_payment_bulk' %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-people me-1"></i>Bulk Fee Entry
+            </a>
+            <div class="btn-group btn-group-sm">
+                <button type="button" id="bulk-fund-export-csv-btn" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV
+                </button>
+                <button type="button" id="bulk-fund-export-pdf-btn" class="btn btn-outline-danger">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+                </button>
+            </div>
+            <button type="button" id="clear-fund-selection-btn" class="btn btn-sm btn-outline-secondary">
+                Clear Selection
+            </button>
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+
+<!-- Split Main Grid -->
+<div class="row g-3">
+
+    <!-- Left Column: Member Registration Fees -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-people text-primary fs-5"></i>
+                    <span class="fw-bold">Member Registration Fees</span>
+                    <span class="badge bg-light text-secondary border">{{ member_count }}</span>
+                </div>
+                <div class="d-flex gap-1">
+                    <a href="{% url 'members:fee_payment_bulk' %}" class="btn btn-sm btn-primary py-1 px-2" style="font-size:0.8rem;">
+                        <i class="bi bi-people me-1"></i>Bulk Entry
+                    </a>
+                    <a href="{% url 'members:fee_payment_add' %}" class="btn btn-sm btn-outline-success py-1 px-2" style="font-size:0.8rem;">
+                        <i class="bi bi-plus me-1"></i>Record Fee
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filter & Search Bar -->
+            <div class="card-body py-2 px-3 bg-light border-bottom">
+                <form method="get" class="row g-2 align-items-center">
+                    <div class="col-sm-6">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                            <input type="search" name="q" value="{{ q }}" class="form-control"
+                                   placeholder="Search member name or phone…">
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <select name="status" class="form-select form-select-sm">
+                            <option value="">All Statuses</option>
+                            <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Paid (KES > 0)</option>
+                            <option value="unpaid" {% if status_filter == 'unpaid' %}selected{% endif %}>Unpaid (KES 0)</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-2 d-flex gap-1">
+                        <button type="submit" class="btn btn-sm btn-primary w-100">Filter</button>
+                        {% if q or status_filter %}
+                        <a href="{% url 'expenses:reg_fee_fund' %}" class="btn btn-sm btn-outline-secondary" title="Clear Filters">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+                <table class="table fund-table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width:36px;" class="ps-3">
+                                <input type="checkbox" id="select-all-fund-members" class="form-check-input" title="Select all on this page">
+                            </th>
+                            <th>Member</th>
+                            <th>Status</th>
+                            <th>Date Joined</th>
+                            <th class="text-end pe-3">Reg. Fee</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in page_obj %}
+                        <tr id="fund-row-{{ m.pk }}">
+                            <td class="ps-3">
+                                <input type="checkbox" class="fund-member-checkbox form-check-input"
+                                       value="{{ m.pk }}"
+                                       data-name="{{ m.name }}"
+                                       data-amount="{{ m.registration_fee_paid }}">
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="member-avatar">
+                                        {{ m.name|slice:":2"|upper }}
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'members:detail' m.pk %}" class="fw-semibold text-dark text-decoration-none">
+                                            {{ m.name }}
+                                        </a>
+                                        <div class="text-muted" style="font-size:0.75rem;">
+                                            <i class="bi bi-telephone me-1"></i>{{ m.phone }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if m.is_active %}
+                                <span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;font-size:0.7rem;">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary" style="font-size:0.7rem;">Exited</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted small">
+                                {{ m.date_joined|date:"d M Y" }}
+                            </td>
+                            <td class="text-end pe-3">
+                                {% if m.registration_fee_paid > 0 %}
+                                <span class="badge px-2 py-1 fw-bold" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;font-size:0.82rem;">
+                                    KES {{ m.registration_fee_paid|kes }}
+                                </span>
+                                {% else %}
+                                <span class="badge px-2 py-1 text-muted" style="background:#f8fafc;border:1px solid #e2e8f0;font-size:0.82rem;">
+                                    KES 0.00
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-5">
+                                <i class="bi bi-person-x fs-3 d-block mb-2 text-secondary"></i>
+                                {% if q or status_filter %}
+                                No members matching your search criteria.
+                                {% else %}
+                                No members found in the system.
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if not q and not status_filter %}
+                    <tfoot>
+                        <tr style="background:#eff6ff;">
+                            <td colspan="4" class="ps-3 fw-bold text-dark">Total Registered Inflows</td>
+                            <td class="text-end pe-3 fw-bold" style="color:#2563eb; font-size:0.95rem;">
+                                KES {{ total_collected|kes }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="card-footer bg-white border-top py-2 px-3">
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">‹ Previous</a>
+                        </li>
+                        {% endif %}
+                        <li class="page-item disabled">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ member_count }} members)
+                            </span>
+                        </li>
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Next ›</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column: Spending History -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-wallet2 text-danger fs-5"></i>
+                    <span class="fw-bold">Spending History (Outflows)</span>
+                    <span class="badge bg-light text-secondary border">{{ reg_fee_expenses|length }}</span>
+                </div>
+                <a href="{% url 'expenses:add' %}" class="btn btn-sm btn-outline-danger py-1 px-2" style="font-size:0.8rem;">
+                    <i class="bi bi-plus-circle me-1"></i>Record Expense
+                </a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table fund-table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-3">Date</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th class="text-end pe-3">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in reg_fee_expenses %}
+                        <tr>
+                            <td class="ps-3 text-muted small">{{ e.date|date:"d M Y" }}</td>
+                            <td>
+                                <span class="badge" style="background:#faf5ff;color:#7c3aed;border:1px solid #e9d5ff;font-size:0.75rem;">
+                                    {{ e.category.name }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="fw-medium text-dark">{{ e.description|truncatechars:38 }}</div>
+                                {% if e.receipt_number %}
+                                <div class="text-muted small" style="font-size:0.75rem;">
+                                    <i class="bi bi-receipt me-1"></i>{{ e.receipt_number }}
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3 fw-bold text-danger">
+                                KES {{ e.amount|kes }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                <div class="p-3">
+                                    <div class="icon-box mx-auto mb-3" style="width:52px;height:52px;border-radius:12px;background:#fef2f2;color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">
+                                        <i class="bi bi-receipt"></i>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-1">No Expenses Recorded</h6>
+                                    <p class="text-muted small mb-3">No expenses have been paid out of the Registration Fee Fund yet.</p>
+                                    <a href="{% url 'expenses:add' %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-plus-circle me-1"></i>Record First Expense
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if reg_fee_expenses %}
+                    <tfoot>
+                        <tr style="background:#fff1f2;">
+                            <td colspan="3" class="ps-3 fw-bold text-danger">Total Outflows Spent</td>
+                            <td class="text-end pe-3 fw-bold text-danger" style="font-size:0.95rem;">
+                                KES {{ total_spent|kes }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+
+            <div class="card-footer bg-white border-top py-2 px-3 text-muted small d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-info-circle me-1"></i>Expenses funded by member registration fees</span>
+                <span class="fw-semibold text-danger">Spent: KES {{ total_spent|kes }}</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bulkToolbar = document.getElementById('fund-bulk-toolbar');
+    const selectedCountSpan = document.getElementById('fund-selected-count');
+    const selectedAmountSpan = document.getElementById('fund-selected-amount');
+    const masterCheck = document.getElementById('select-all-fund-members');
+    const clearBtn = document.getElementById('clear-fund-selection-btn');
+    const exportCsvBtn = document.getElementById('bulk-fund-export-csv-btn');
+    const exportPdfBtn = document.getElementById('bulk-fund-export-pdf-btn');
+
+    const selectedMap = new Map(); // pk -> { name, amount }
+
+    function formatKes(amount) {
+        return parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function updateToolbar() {
+        const count = selectedMap.size;
+        selectedCountSpan.textContent = count;
+
+        let total = 0;
+        selectedMap.forEach(item => {
+            total += (parseFloat(item.amount) || 0);
+        });
+        selectedAmountSpan.textContent = formatKes(total);
+
+        if (count > 0) {
+            bulkToolbar.classList.remove('d-none');
+        } else {
+            bulkToolbar.classList.add('d-none');
+        }
+
+        const visibleCheckboxes = document.querySelectorAll('.fund-member-checkbox');
+        if (masterCheck && visibleCheckboxes.length > 0) {
+            const allChecked = Array.from(visibleCheckboxes).every(cb => selectedMap.has(cb.value));
+            const someChecked = Array.from(visibleCheckboxes).some(cb => selectedMap.has(cb.value));
+            masterCheck.checked = allChecked;
+            masterCheck.indeterminate = (!allChecked && someChecked);
+        }
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('fund-member-checkbox')) {
+            const id = e.target.value;
+            if (e.target.checked) {
+                selectedMap.set(id, {
+                    name: e.target.dataset.name || '',
+                    amount: e.target.dataset.amount || 0
+                });
+            } else {
+                selectedMap.delete(id);
+            }
+            updateToolbar();
+        }
+
+        if (e.target && e.target.id === 'select-all-fund-members') {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.fund-member-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+                if (isChecked) {
+                    selectedMap.set(cb.value, {
+                        name: cb.dataset.name || '',
+                        amount: cb.dataset.amount || 0
+                    });
+                } else {
+                    selectedMap.delete(cb.value);
+                }
+            });
+            updateToolbar();
+        }
+    });
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            selectedMap.clear();
+            document.querySelectorAll('.fund-member-checkbox').forEach(cb => cb.checked = false);
+            if (masterCheck) {
+                masterCheck.checked = false;
+                masterCheck.indeterminate = false;
+            }
+            updateToolbar();
+        });
+    }
+
+    function triggerExport(format) {
+        const ids = Array.from(selectedMap.keys());
+        if (ids.length === 0) {
+            alert('Please select at least one member to export.');
+            return;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "expenses:reg_fee_fund_export" %}';
+
+        const inputIds = document.createElement('input');
+        inputIds.type = 'hidden';
+        inputIds.name = 'ids';
+        inputIds.value = ids.join(',');
+        form.appendChild(inputIds);
+
+        const inputType = document.createElement('input');
+        inputType.type = 'hidden';
+        inputType.name = 'type';
+        inputType.value = 'members';
+        form.appendChild(inputType);
+
+        const inputFormat = document.createElement('input');
+        inputFormat.type = 'hidden';
+        inputFormat.name = 'format';
+        inputFormat.value = format;
+        form.appendChild(inputFormat);
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfToken) {
+            form.appendChild(csrfToken.cloneNode());
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', function() {
+            triggerExport('csv');
+        });
+    }
+
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', function() {
+            triggerExport('pdf');
+        });
+    }
+});
+</script>
+{% endblock %}

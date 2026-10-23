@@ -61,12 +61,12 @@ class Meeting(models.Model):
         }
 
     def auto_populate_attendance(self):
-        """Pre-populate all current members as 'present'. Call after meeting creation."""
+        """Pre-populate all active members as 'present'. Call after meeting creation."""
         with transaction.atomic():
             existing = set(self.attendance.values_list('member_id', flat=True))
             new_records = [
                 MeetingAttendance(meeting=self, member=m, status='present')
-                for m in Member.objects.exclude(pk__in=existing)
+                for m in Member.objects.filter(is_active=True).exclude(pk__in=existing)
             ]
             if new_records:
                 MeetingAttendance.objects.bulk_create(new_records, ignore_conflicts=True)
@@ -89,7 +89,11 @@ class MeetingAttendance(models.Model):
         ordering = ['member__name']
 
     def __str__(self):
-        return f"{self.member.name} — {self.get_status_display()} @ {self.meeting.date}"
+        try:
+            name = self.member.name
+        except Exception:
+            name = f"Member #{self.member_id}"
+        return f"{name} — {self.get_status_display()} @ {self.meeting.date}"
 
 
 class MeetingPenalty(models.Model):
@@ -133,4 +137,8 @@ class MeetingPenalty(models.Model):
         super().delete(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.member.name} — KES {self.amount} ({self.reason})"
+        try:
+            name = self.member.name
+        except Exception:
+            name = f"Member #{self.member_id}"
+        return f"{name} — KES {self.amount} ({self.reason})"

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Penalties{% endblock %}
 {% block page_title %}Penalties{% endblock %}
 
@@ -13,7 +14,7 @@
         <div class="card stat-card">
             <div class="card-body py-3 px-3">
                 <div class="stat-label">Total Issued</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#e11d48;">KES {{ total_filtered|floatformat:0 }}</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#e11d48;">KES {{ total_filtered|kes:0 }}</div>
             </div>
         </div>
     </div>
@@ -21,7 +22,7 @@
         <div class="card stat-card">
             <div class="card-body py-3 px-3">
                 <div class="stat-label">Paid</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#16a34a;">KES {{ total_paid|floatformat:0 }}</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#16a34a;">KES {{ total_paid|kes:0 }}</div>
             </div>
         </div>
     </div>
@@ -29,7 +30,7 @@
         <div class="card stat-card">
             <div class="card-body py-3 px-3">
                 <div class="stat-label">Outstanding</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#d97706;">KES {{ total_unpaid|floatformat:0 }}</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#d97706;">KES {{ total_unpaid|kes:0 }}</div>
             </div>
         </div>
     </div>
@@ -72,7 +73,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-exclamation-triangle me-2"></i>Penalties</span>
         <span class="fw-semibold" style="font-size:0.85rem;">
-            Showing: KES {{ total_filtered|floatformat:2 }}
+            Showing: KES {{ total_filtered|kes }}
         </span>
     </div>
     <div class="table-responsive">
@@ -83,9 +84,9 @@
             <tbody>
                 {% for p in penalties %}
                 <tr>
-                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td class="text-muted">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                     <td class="fw-semibold">{{ p.member.name }}</td>
-                    <td style="color:#e11d48;">KES {{ p.amount|floatformat:2 }}</td>
+                    <td style="color:#e11d48;">KES {{ p.amount|kes }}</td>
                     <td>{{ p.date }}</td>
                     <td>{{ p.reason }}</td>
                     <td>
@@ -116,7 +117,7 @@
                                     data-bs-target="#markPaidModal"
                                     data-pk="{{ p.pk }}"
                                     data-member="{{ p.member.name|escapejs }}"
-                                    data-amount="{{ p.amount }}"
+                                    data-amount="{{ p.amount|kes }}"
                                     data-next="{{ request.get_full_path|escapejs }}">
                                 <i class="bi bi-cash-coin"></i>
                             </button>
@@ -203,7 +204,7 @@
 <script>
 document.getElementById('markPaidModal').addEventListener('show.bs.modal', function (e) {
     const btn = e.relatedTarget;
-    document.getElementById('markPaidForm').action = `/penalties/${btn.dataset.pk}/mark-paid/`;
+    document.getElementById('markPaidForm').action = `/penalties/${btn.dataset.pk}/pay/`;
     document.getElementById('markPaidNext').value = btn.dataset.next || '';
     document.getElementById('markPaidMember').textContent = btn.dataset.member;
     document.getElementById('markPaidAmount').textContent = 'KES ' + parseFloat(btn.dataset.amount).toLocaleString('en-KE', {minimumFractionDigits: 2});

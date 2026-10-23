@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Welfare Event — {{ event.beneficiary.name }}{% endblock %}
 {% block page_title %}Welfare Event{% endblock %}
 
@@ -12,27 +13,33 @@
         </span>
         <div class="d-flex gap-2 align-items-center">
             {% if event.status == 'open' %}
-            <span class="badge bg-success">Open</span>
+            <span class="badge bg-success"><i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i>Open</span>
             {% if user.profile.role != 'readonly' %}
-            <form method="post" action="{% url 'welfare:event_close' event.pk %}" class="d-inline">
+            <form method="post" action="{% url 'welfare:event_close' event.pk %}" class="d-inline" onsubmit="return confirm('Are you sure you want to close this welfare event?');">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-check2-all me-1"></i>Close Event
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Mark this welfare event as resolved and closed">
+                    <i class="bi bi-check2-circle me-1"></i>Close Event
                 </button>
             </form>
             {% endif %}
             {% else %}
-            <span class="badge bg-secondary">Closed</span>
+            <span class="badge bg-secondary"><i class="bi bi-check2-circle me-1"></i>Closed</span>
+            {% if user.profile.role != 'readonly' %}
+            <form method="post" action="{% url 'welfare:event_reopen' event.pk %}" class="d-inline" onsubmit="return confirm('Are you sure you want to reopen this welfare event?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-success" title="Reopen this welfare event">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reopen Event
+                </button>
+            </form>
+            {% endif %}
             {% endif %}
             {% if user.profile.role != 'readonly' %}
             <a href="{% url 'welfare:event_edit' event.pk %}" class="btn btn-sm btn-outline-warning">
                 <i class="bi bi-pencil me-1"></i>Edit
             </a>
-            {% if user.profile.role != 'readonly' %}
             <a href="{% url 'welfare:event_export' event.pk %}" class="btn btn-sm btn-outline-danger">
                 <i class="bi bi-filetype-pdf me-1"></i>Export PDF
             </a>
-            {% endif %}
             {% endif %}
         </div>
     </div>
@@ -69,7 +76,7 @@
         <div class="row g-3 align-items-center">
             <div class="col-md-3">
                 <div class="text-muted small">Amount</div>
-                <div class="fw-bold fs-5" style="color:#16a34a;">KES {{ disbursement.amount|floatformat:2 }}</div>
+                <div class="fw-bold fs-5" style="color:#16a34a;">KES {{ disbursement.amount|kes }}</div>
             </div>
             <div class="col-md-2">
                 <div class="text-muted small">Date</div>
@@ -100,7 +107,7 @@
         <p class="text-muted mb-0">
             <i class="bi bi-info-circle me-1"></i>No disbursement from the welfare fund has been recorded for this event.
             {% if welfare_balance %}
-            Available balance: <strong>KES {{ welfare_balance|floatformat:2 }}</strong>
+            Available balance: <strong>KES {{ welfare_balance|kes }}</strong>
             {% endif %}
         </p>
         {% endif %}
@@ -127,7 +134,7 @@
                 <tr>
                     <td class="text-muted">{{ forloop.counter }}</td>
                     <td class="fw-semibold">{{ sc.contributor.name }}</td>
-                    <td style="color:#16a34a;">KES {{ sc.amount|floatformat:2 }}</td>
+                    <td style="color:#16a34a;">KES {{ sc.amount|kes }}</td>
                     <td>{% include 'includes/payment_type_badge.html' with obj=sc %}</td>
                     <td>{{ sc.date }}</td>
                     <td>
@@ -147,8 +154,63 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center text-muted py-4">
+                    <td colspan="6" class="text-center text-muted py-4">
                         No member support contributions recorded.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- External (Non-Member) Support -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-person-heart me-2"></i>External Support <span class="text-muted fw-normal" style="font-size:0.8rem;">(Non-Members)</span></span>
+        {% if user.profile.role != 'readonly' and event.status == 'open' %}
+        <a href="{% url 'welfare:external_support_add' event.pk %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Add External Support
+        </a>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr><th>#</th><th>Supporter</th><th>Phone</th><th>Amount</th><th>Method</th><th>Date</th><th>Notes</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for es in external_support %}
+                <tr>
+                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td class="fw-semibold">
+                        {{ es.supporter_name }}
+                        <span class="badge ms-1" style="background:#eff6ff;color:#2563eb;font-size:0.68rem;">External</span>
+                    </td>
+                    <td class="text-muted">{{ es.supporter_phone|default:"—" }}</td>
+                    <td style="color:#16a34a;">KES {{ es.amount|kes }}</td>
+                    <td>{% include 'includes/payment_type_badge.html' with obj=es %}</td>
+                    <td>{{ es.date }}</td>
+                    <td class="text-muted small">{{ es.notes|default:"—" }}</td>
+                    <td>
+                        {% if user.profile.role != 'readonly' %}
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'welfare:external_support_edit' es.pk %}" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% if user.profile.is_admin %}
+                            <a href="{% url 'welfare:external_support_delete' es.pk %}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        No external support recorded yet.
                     </td>
                 </tr>
                 {% endfor %}
@@ -161,17 +223,21 @@
 <div class="card border-success">
     <div class="card-body">
         <div class="row g-2 align-items-center">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="text-muted small">Welfare Fund Disbursement</div>
-                <div class="fw-semibold">KES {{ event.disbursement_amount|floatformat:2 }}</div>
+                <div class="fw-semibold">KES {{ event.disbursement_amount|kes }}</div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="text-muted small">Member Support Total</div>
-                <div class="fw-semibold">KES {{ event.support_total|floatformat:2 }}</div>
+                <div class="fw-semibold">KES {{ event.support_total|kes }}</div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <div class="text-muted small">External Support Total</div>
+                <div class="fw-semibold">KES {{ event.external_support_total|kes }}</div>
+            </div>
+            <div class="col-md-3">
                 <div class="text-muted small">Total Received by {{ event.beneficiary.name }}</div>
-                <div class="fw-bold fs-4" style="color:#16a34a;">KES {{ event_total|floatformat:2 }}</div>
+                <div class="fw-bold fs-4" style="color:#16a34a;">KES {{ event_total|kes }}</div>
             </div>
         </div>
     </div>

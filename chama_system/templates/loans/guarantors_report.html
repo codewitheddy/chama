@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Guarantors Report{% endblock %}
 {% block page_title %}Guarantors Report{% endblock %}
 
@@ -34,18 +35,18 @@
             <tbody>
                 {% for g in guarantors %}
                 <tr>
-                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td class="text-muted">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                     <td>
                         <div class="fw-semibold">{{ g.guarantor.name }}</div>
                         <div class="text-muted" style="font-size:0.75rem;">{{ g.guarantor.phone }}</div>
                     </td>
                     <td>
                         <a href="{% url 'loans:detail' g.loan.pk %}" class="text-decoration-none fw-semibold">
-                            {{ g.loan.member.name }}
+                            {{ g.loan.borrower_name }}
                         </a>
                     </td>
-                    <td>KES {{ g.loan.loan_amount|floatformat:2 }}</td>
-                    <td style="color:#2563eb;">KES {{ g.amount_guaranteed|floatformat:2 }}</td>
+                    <td>KES {{ g.loan.loan_amount|kes }}</td>
+                    <td style="color:#2563eb;">KES {{ g.amount_guaranteed|kes }}</td>
                     <td>
                         {% if g.loan.status == 'cleared' %}
                             <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
@@ -56,7 +57,7 @@
                         {% endif %}
                     </td>
                     <td class="{% if g.loan.balance == 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
-                        KES {{ g.loan.balance|floatformat:2 }}
+                        KES {{ g.loan.balance|kes }}
                     </td>
                     <td class="text-muted small">{{ g.notes|default:"—" }}</td>
                     <td>

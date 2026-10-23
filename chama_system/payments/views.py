@@ -1,4 +1,3 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.views.generic import ListView, CreateView, DeleteView
 from django.views import View
@@ -16,10 +15,14 @@ class PaymentListView(MemberAccessMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = Payment.objects.select_related('member', 'loan__member')
+        qs = Payment.objects.select_related('member', 'loan__member', 'loan__non_member')
         q = self.request.GET.get('q', '').strip()
         if q:
-            qs = qs.filter(member__name__icontains=q)
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(member__name__icontains=q) |
+                Q(loan__non_member__full_name__icontains=q)
+            )
         return qs
 
     def get_context_data(self, **kwargs):
@@ -41,7 +44,8 @@ class PaymentCreateView(TreasurerRequiredMixin, SuccessMessageMixin, CreateView)
         return kwargs
 
     def form_valid(self, form):
-        form.instance.member = form.cleaned_data['loan'].member
+        loan = form.cleaned_data['loan']
+        form.instance.member = loan.member
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -65,13 +69,17 @@ class PaymentDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, DeleteView
 class PaymentExportView(MemberAccessMixin, View):
     def get(self, request):
         format_type = request.GET.get('format', 'csv')
-        qs = Payment.objects.select_related('member', 'loan__member')
+        qs = Payment.objects.select_related('member', 'loan__member', 'loan__non_member')
         q = request.GET.get('q', '').strip()
         if q:
-            qs = qs.filter(member__name__icontains=q)
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(member__name__icontains=q) |
+                Q(loan__non_member__full_name__icontains=q)
+            )
 
         fields = [
-            ('member.name', 'Member'),
+            (lambda obj: obj.member.name if obj.member else (obj.loan.borrower_name if obj.loan else '—'), 'Borrower'),
             ('loan.loan_amount', 'Loan Amount (KES)'),
             ('amount', 'Payment (KES)'),
             (lambda obj: obj.get_payment_type_display(), 'Method'),

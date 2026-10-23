@@ -1,4 +1,6 @@
+from utils.exports import _get_group_name, _get_document_footer, draw_pdf_page_chrome
 import json
+import datetime
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
@@ -7,10 +9,181 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.http import JsonResponse
+from django.utils import timezone
 from .models import Meeting, MeetingAttendance, MeetingPenalty, MeetingPenaltyRule
 from .forms import MeetingForm, MeetingMinutesForm, MeetingPenaltyForm, MeetingPenaltyRuleForm
-from members.models import Member
+from members.models import Member, RegistrationFeePayment
+from contributions.models import Contribution
+from welfare.models import WelfareContribution
+from payments.models import Payment
+from loans.models import Loan
+from penalties.models import Penalty
 from accounts.mixins import TreasurerRequiredMixin, AdminRequiredMixin, MemberAccessMixin, AdminPasswordDeleteMixin
+
+
+def get_meeting_financial_summary(meeting_date=None, meeting=None):
+    """
+    Computes real financial transactions collected for the meeting's monthly cycle
+    and specific meeting date, plus comprehensive cumulative chama fund position.
+    """
+    from django.db.models import Sum, Q, Count
+    from decimal import Decimal
+
+    if meeting and not meeting_date:
+        meeting_date = meeting.date
+    if not meeting_date:
+        meeting_date = timezone.localdate()
+    elif isinstance(meeting_date, str):
+        try:
+            meeting_date = datetime.date.fromisoformat(meeting_date)
+        except Exception:
+            try:
+                meeting_date = datetime.datetime.strptime(meeting_date, '%d/%m/%Y').date()
+            except Exception:
+                meeting_date = timezone.localdate()
+
+    month_val = meeting_date.month
+    year_val = meeting_date.year
+
+    # 1. Share contributions for this meeting cycle / month
+    shares_qs = Contribution.objects.filter(
+        Q(month=month_val, year=year_val) |
+        Q(date=meeting_date) |
+        Q(date__year=year_val, date__month=month_val)
+    )
+    total_shares = shares_qs.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    share_count = shares_qs.count()
+
+    # 2. Welfare contributions for this meeting cycle / month
+    welfare_qs = WelfareContribution.objects.filter(
+        Q(month=month_val, year=year_val) |
+        Q(date=meeting_date) |
+        Q(date__year=year_val, date__month=month_val)
+    )
+    total_welfare = welfare_qs.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    welfare_count = welfare_qs.count()
+
+    # 3. Loan repayments received for this meeting cycle / month
+    payments_qs = Payment.objects.filter(
+        Q(date=meeting_date) |
+        Q(date__year=year_val, date__month=month_val)
+    )
+    total_repayments = payments_qs.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    repayment_count = payments_qs.count()
+
+    # 4. New loans disbursed for this meeting cycle / month
+    loans_qs = Loan.objects.filter(
+        Q(date_taken=meeting_date) |
+        Q(date_taken__year=year_val, date_taken__month=month_val)
+    )
+    total_loans = loans_qs.aggregate(t=Sum('loan_amount'))['t'] or Decimal('0')
+    loan_count = loans_qs.count()
+
+    # 5. Meeting penalties issued
+    if meeting:
+        total_penalties = meeting.penalties.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        penalty_count = meeting.penalties.count()
+    else:
+        penalties_qs = Penalty.objects.filter(
+            Q(date=meeting_date) |
+            Q(date__year=year_val, date__month=month_val)
+        )
+        total_penalties = penalties_qs.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        penalty_count = penalties_qs.count()
+
+    # 6. Registration fees paid for this meeting cycle / month
+    reg_fees_qs = RegistrationFeePayment.objects.filter(
+        Q(payment_date=meeting_date) |
+        Q(payment_date__year=year_val, payment_date__month=month_val)
+    )
+    total_reg_fees = reg_fees_qs.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    reg_fee_count = reg_fees_qs.count()
+
+    total_inflows = total_shares + total_welfare + total_repayments + total_reg_fees + total_penalties
+    net_cash_flow = total_inflows - total_loans
+
+    # 7. Cumulative Chama Fund Positions (All-time to date across all members)
+    cum_shares = Contribution.objects.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    cum_shares_count = Contribution.objects.count()
+    cum_welfare = WelfareContribution.objects.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    cum_welfare_count = WelfareContribution.objects.count()
+    cum_reg_fees = RegistrationFeePayment.objects.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    cum_reg_fees_count = RegistrationFeePayment.objects.count()
+    cum_repayments = Payment.objects.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    cum_repayments_count = Payment.objects.count()
+    cum_loans = Loan.objects.aggregate(t=Sum('loan_amount'))['t'] or Decimal('0')
+    cum_loans_count = Loan.objects.count()
+    cum_penalties = Penalty.objects.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    cum_penalties_count = Penalty.objects.count()
+    cum_total_capital = cum_shares + cum_welfare + cum_reg_fees + cum_penalties
+
+    return {
+        'date': meeting_date.strftime('%Y-%m-%d'),
+        'date_formatted': meeting_date.strftime('%d %b %Y'),
+        'period_name': meeting_date.strftime('%B %Y'),
+        # Session / Period collections
+        'session_shares': float(total_shares),
+        'session_shares_count': share_count,
+        'session_welfare': float(total_welfare),
+        'session_welfare_count': welfare_count,
+        'session_repayments': float(total_repayments),
+        'session_repayments_count': repayment_count,
+        'session_loans': float(total_loans),
+        'session_loans_count': loan_count,
+        'session_penalties': float(total_penalties),
+        'session_penalties_count': penalty_count,
+        'session_reg_fees': float(total_reg_fees),
+        'session_reg_fees_count': reg_fee_count,
+        'session_inflows': float(total_inflows),
+        'session_net_cash_flow': float(net_cash_flow),
+        # Default keys for backward compatibility
+        'total_shares': float(total_shares),
+        'share_count': share_count,
+        'total_welfare': float(total_welfare),
+        'welfare_count': welfare_count,
+        'total_repayments': float(total_repayments),
+        'repayment_count': repayment_count,
+        'total_loans': float(total_loans),
+        'loan_count': loan_count,
+        'total_penalties': float(total_penalties),
+        'penalty_count': penalty_count,
+        'total_reg_fees': float(total_reg_fees),
+        'reg_fee_count': reg_fee_count,
+        'total_inflows': float(total_inflows),
+        'net_cash_flow': float(net_cash_flow),
+        # All-time Cumulative Chama Fund Totals
+        'cumulative_shares': float(cum_shares),
+        'cumulative_shares_count': cum_shares_count,
+        'cumulative_welfare': float(cum_welfare),
+        'cumulative_welfare_count': cum_welfare_count,
+        'cumulative_reg_fees': float(cum_reg_fees),
+        'cumulative_reg_fees_count': cum_reg_fees_count,
+        'cumulative_repayments': float(cum_repayments),
+        'cumulative_repayments_count': cum_repayments_count,
+        'cumulative_loans': float(cum_loans),
+        'cumulative_loans_count': cum_loans_count,
+        'cumulative_penalties': float(cum_penalties),
+        'cumulative_penalties_count': cum_penalties_count,
+        'cumulative_total_capital': float(cum_total_capital),
+    }
+
+
+class MeetingFinancialSummaryAPIView(MemberAccessMixin, View):
+    """API endpoint to fetch real financial totals for any selected meeting date or meeting instance."""
+    def get(self, request, *args, **kwargs):
+        meeting_id = request.GET.get('meeting_id')
+        date_str = request.GET.get('date')
+        meeting = None
+        if meeting_id:
+            try:
+                meeting = Meeting.objects.get(pk=meeting_id)
+                if not date_str:
+                    date_str = str(meeting.date)
+            except Meeting.DoesNotExist:
+                pass
+
+        summary = get_meeting_financial_summary(meeting_date=date_str, meeting=meeting)
+        return JsonResponse({'ok': True, 'data': summary})
 
 
 # ── Meetings ─────────────────────────────────────────────────────
@@ -54,6 +227,13 @@ class MeetingCreateView(TreasurerRequiredMixin, SuccessMessageMixin, CreateView)
     template_name = 'meetings/meeting_form.html'
     success_message = "Meeting created."
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        date_val = timezone.localdate()
+        ctx['financial_summary'] = get_meeting_financial_summary(meeting_date=date_val)
+        ctx['financial_summary_json'] = json.dumps(ctx['financial_summary'])
+        return ctx
+
     def form_valid(self, form):
         response = super().form_valid(form)
         # Pre-populate all members as present so treasurer only marks exceptions
@@ -77,6 +257,13 @@ class MeetingUpdateView(TreasurerRequiredMixin, SuccessMessageMixin, UpdateView)
             return redirect('meetings:detail', pk=meeting.pk)
         return super().dispatch(request, *args, **kwargs)
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        meeting = self.object
+        ctx['financial_summary'] = get_meeting_financial_summary(meeting_date=meeting.date, meeting=meeting)
+        ctx['financial_summary_json'] = json.dumps(ctx['financial_summary'])
+        return ctx
+
     def get_success_url(self):
         return reverse_lazy('meetings:detail', kwargs={'pk': self.object.pk})
 
@@ -88,6 +275,13 @@ class MeetingUpdateMinutesView(TreasurerRequiredMixin, SuccessMessageMixin, Upda
     template_name = 'meetings/meeting_minutes_form.html'
     success_message = "Minutes updated."
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        meeting = self.object
+        ctx['financial_summary'] = get_meeting_financial_summary(meeting_date=meeting.date, meeting=meeting)
+        ctx['financial_summary_json'] = json.dumps(ctx['financial_summary'])
+        return ctx
+
     def get_success_url(self):
         return reverse_lazy('meetings:minutes', kwargs={'pk': self.object.pk})
 
@@ -97,6 +291,11 @@ class MeetingMinutesView(MemberAccessMixin, DetailView):
     model = Meeting
     template_name = 'meetings/meeting_minutes_page.html'
     context_object_name = 'meeting'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['financial_summary'] = get_meeting_financial_summary(meeting_date=self.object.date, meeting=self.object)
+        return ctx
 
 
 class MeetingMinutesPdfView(MemberAccessMixin, View):
@@ -150,29 +349,7 @@ class MeetingMinutesPdfView(MemberAccessMixin, View):
 
         # ── Page header/footer ────────────────────────────────────
         def on_page(canvas, d):
-            canvas.saveState()
-            w, h = A4
-            # Header bar
-            canvas.setFillColor(PRIMARY)
-            canvas.rect(0, h - 28*mm, w, 28*mm, fill=1, stroke=0)
-            canvas.setFillColor(WHITE)
-            canvas.setFont('Helvetica-Bold', 13)
-            canvas.drawString(1.8*cm, h - 13*mm, 'DC Welfare Group')
-            canvas.setFont('Helvetica', 8)
-            canvas.drawString(1.8*cm, h - 21*mm, 'Meeting Minutes')
-            canvas.setFont('Helvetica', 9)
-            canvas.drawRightString(w - 1.8*cm, h - 13*mm, str(meeting.date))
-            canvas.setFont('Helvetica', 8)
-            canvas.drawRightString(w - 1.8*cm, h - 21*mm,
-                                   f'Generated: {timezone.localdate().strftime("%d %B %Y")}')
-            # Footer bar
-            canvas.setFillColor(BORDER)
-            canvas.rect(0, 0, w, 10*mm, fill=1, stroke=0)
-            canvas.setFillColor(TEXT_MUTED)
-            canvas.setFont('Helvetica', 8)
-            canvas.drawString(1.8*cm, 3.5*mm, 'DC Welfare Group — Confidential')
-            canvas.drawRightString(w - 1.8*cm, 3.5*mm, f'Page {d.page}')
-            canvas.restoreState()
+            draw_pdf_page_chrome(canvas, d, subtitle='Meeting Minutes', header_right_line1=f'Meeting: {meeting.date}', header_right_line2=f'Generated: {timezone.localdate().strftime("%d %B %Y")}', margin=1.8*cm)
 
         # ── Paragraph styles ──────────────────────────────────────
         def ps(name, **kw):
@@ -343,12 +520,66 @@ class MeetingMinutesPdfView(MemberAccessMixin, View):
             elements.append(pen_tbl)
             elements.append(Spacer(1, 2*mm))
 
+        # ── Treasury & Financial Summary (System-Verified Ledger) ──
+        fin_summary = get_meeting_financial_summary(meeting_date=meeting.date, meeting=meeting)
+        period_lbl = fin_summary.get('period_name') or 'Current Period'
+        elements.append(Paragraph(f'Official Treasury & Financial Summary ({period_lbl})', section_s))
+
+        fin_data = [
+            [
+                Paragraph('<b>FUND / REVENUE CATEGORY</b>', hdr_s),
+                Paragraph('<b>TX COUNT</b>', hdr_s),
+                Paragraph('<b>AMOUNT (KES)</b>', hdr_s),
+            ],
+            [
+                Paragraph('Share Contributions (Cumulative)', cell_s),
+                Paragraph(str(fin_summary['cumulative_shares_count']), cell_s),
+                Paragraph(f'{fin_summary["cumulative_shares"]:,.2f}', ps('f_sh', fontSize=8, textColor=ACCENT, leading=12, alignment=TA_RIGHT)),
+            ],
+            [
+                Paragraph('Welfare Fund (Cumulative)', cell_s),
+                Paragraph(str(fin_summary['cumulative_welfare_count']), cell_s),
+                Paragraph(f'{fin_summary["cumulative_welfare"]:,.2f}', ps('f_wf', fontSize=8, textColor=RED, leading=12, alignment=TA_RIGHT)),
+            ],
+            [
+                Paragraph('Registration Fee Fund (Cumulative)', cell_s),
+                Paragraph(str(fin_summary['cumulative_reg_fees_count']), cell_s),
+                Paragraph(f'{fin_summary["cumulative_reg_fees"]:,.2f}', ps('f_rf', fontSize=8, textColor=PRIMARY, leading=12, alignment=TA_RIGHT)),
+            ],
+            [
+                Paragraph('Loan Repayments Received', cell_s),
+                Paragraph(str(fin_summary['cumulative_repayments_count']), cell_s),
+                Paragraph(f'{fin_summary["cumulative_repayments"]:,.2f}', ps('f_rp', fontSize=8, textColor=GREEN, leading=12, alignment=TA_RIGHT)),
+            ],
+            [
+                Paragraph('New Loans Disbursed', cell_s),
+                Paragraph(str(fin_summary['cumulative_loans_count']), cell_s),
+                Paragraph(f'{fin_summary["cumulative_loans"]:,.2f}', ps('f_ln', fontSize=8, textColor=AMBER, leading=12, alignment=TA_RIGHT)),
+            ],
+            [
+                Paragraph('<b>Total Chama Cumulative Treasury Balance</b>', bold_s),
+                Paragraph('—', cell_s),
+                Paragraph(f'<b>{fin_summary["cumulative_total_capital"]:,.2f}</b>', ps('f_tot', fontSize=8, fontName='Helvetica-Bold', textColor=GREEN, leading=12, alignment=TA_RIGHT)),
+            ],
+            [
+                Paragraph(f'<b>Meeting Session Inflows ({period_lbl})</b>', bold_s),
+                Paragraph(str(fin_summary['session_shares_count'] + fin_summary['session_welfare_count']), cell_s),
+                Paragraph(f'<b>{fin_summary["session_inflows"]:,.2f}</b>', ps('f_sess', fontSize=8, fontName='Helvetica-Bold', textColor=PRIMARY, leading=12, alignment=TA_RIGHT)),
+            ],
+        ]
+        fin_tbl = make_table(fin_data, [0.55, 0.20, 0.25], extra_styles=[
+            ('BACKGROUND', (0, 6), (-1, 6), GREEN_BG),
+            ('BACKGROUND', (0, 7), (-1, 7), BLUE_BG),
+        ])
+        elements.append(fin_tbl)
+        elements.append(Spacer(1, 2*mm))
+
         # ── Minutes content ───────────────────────────────────────
         elements.append(HRFlowable(
             width='100%', thickness=1, color=BORDER,
             spaceBefore=4*mm, spaceAfter=4*mm
         ))
-        elements.append(Paragraph('Minutes', section_s))
+        elements.append(Paragraph('Minutes & Proceedings', section_s))
 
         if meeting.minutes:
             soup = BeautifulSoup(meeting.minutes, 'html.parser')
@@ -452,6 +683,36 @@ class MeetingMinutesDocxView(MemberAccessMixin, View):
         doc.add_paragraph(f'Attendance: {meeting.attendance.count()} members')
         doc.add_paragraph('')
 
+        # Official System-Verified Treasury & Financial Summary (Immutable Database Ledger)
+        fin_summary = get_meeting_financial_summary(meeting_date=meeting.date, meeting=meeting)
+        period_lbl = fin_summary.get('period_name') or 'Current Period'
+        doc.add_heading(f'Official Treasury & Financial Summary ({period_lbl})', level=2)
+
+        fin_table = doc.add_table(rows=1, cols=3)
+        hdr_cells = fin_table.rows[0].cells
+        hdr_cells[0].text = 'Fund / Revenue Category'
+        hdr_cells[1].text = 'Transaction Count / Volume'
+        hdr_cells[2].text = 'Amount (KES)'
+
+        fin_rows = [
+            ('Share Contributions Collected (Cumulative)', str(fin_summary['cumulative_shares_count']), f"KES {fin_summary['cumulative_shares']:,.2f}"),
+            ('Welfare Contributions Collected (Cumulative)', str(fin_summary['cumulative_welfare_count']), f"KES {fin_summary['cumulative_welfare']:,.2f}"),
+            ('Registration Fee Fund Collected (Cumulative)', str(fin_summary['cumulative_reg_fees_count']), f"KES {fin_summary['cumulative_reg_fees']:,.2f}"),
+            ('Loan Repayments Collected (Cumulative)', str(fin_summary['cumulative_repayments_count']), f"KES {fin_summary['cumulative_repayments']:,.2f}"),
+            ('New Loans Disbursed (Cumulative)', str(fin_summary['cumulative_loans_count']), f"KES {fin_summary['cumulative_loans']:,.2f}"),
+            ('Total Chama Cumulative Treasury Balance', '—', f"KES {fin_summary['cumulative_total_capital']:,.2f}"),
+            (f'Meeting Session Inflows ({period_lbl})', str(fin_summary['session_shares_count'] + fin_summary['session_welfare_count']), f"KES {fin_summary['session_inflows']:,.2f}"),
+        ]
+
+        for cat, cnt, amt in fin_rows:
+            row_cells = fin_table.add_row().cells
+            row_cells[0].text = cat
+            row_cells[1].text = cnt
+            row_cells[2].text = amt
+
+        doc.add_paragraph('')
+        doc.add_heading('Minutes & Proceedings', level=2)
+
         # Parse HTML minutes
         if meeting.minutes:
             soup = BeautifulSoup(meeting.minutes, 'html.parser')
@@ -473,6 +734,15 @@ class MeetingMinutesDocxView(MemberAccessMixin, View):
                     doc.add_paragraph(text)
         else:
             doc.add_paragraph('No minutes recorded.')
+
+        # Immutable document footer
+        from utils.exports import _get_document_footer
+        if doc.sections:
+            section = doc.sections[0]
+            footer = section.footer
+            footer_p = footer.paragraphs[0]
+            footer_p.text = _get_document_footer()
+            footer_p.alignment = 1  # Centered
 
         buf = io.BytesIO()
         doc.save(buf)
@@ -508,6 +778,7 @@ class MeetingDetailView(MemberAccessMixin, DetailView):
         ctx['rules'] = list(MeetingPenaltyRule.objects.values('id', 'name', 'default_amount'))
         ctx['all_members'] = Member.objects.all()
         ctx['unrecorded_members'] = Member.objects.exclude(pk__in=attended_ids)
+        ctx['financial_summary'] = get_meeting_financial_summary(meeting_date=meeting.date, meeting=meeting)
         return ctx
 
 
@@ -673,3 +944,6 @@ class PenaltyRuleDeleteView(AdminPasswordDeleteMixin, AdminRequiredMixin, Delete
     model = MeetingPenaltyRule
     template_name = 'meetings/penalty_rule_confirm_delete.html'
     success_url = reverse_lazy('meetings:rules')
+
+
+

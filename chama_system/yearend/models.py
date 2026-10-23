@@ -16,6 +16,43 @@ class YearEndWithdrawal(models.Model):
         default=Decimal('0.00'),
         validators=[MinValueValidator(Decimal('0.00'))],
     )
+    # Revenue stream inclusion configuration for dividend distribution
+    include_loan_interest = models.BooleanField(
+        default=True,
+        help_text='Whether loan interest collected was included in the shared profit pool.',
+    )
+    include_penalties = models.BooleanField(
+        default=True,
+        help_text='Whether penalties and fines paid were included in the shared profit pool.',
+    )
+    include_other_income = models.BooleanField(
+        default=False,
+        help_text='Whether other/external income was included in the shared profit pool.',
+    )
+    include_registration_fees = models.BooleanField(
+        default=False,
+        help_text='Whether registration fees were included in the shared profit pool.',
+    )
+    include_investment_returns = models.BooleanField(
+        default=True,
+        help_text='Whether investment returns/dividends were included in the shared profit pool.',
+    )
+    deduct_expenses = models.BooleanField(
+        default=True,
+        help_text='Whether group fund expenses were deducted from the distributable profit pool.',
+    )
+    retained_funds = models.DecimalField(
+        max_digits=14, decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text='Total funds retained to accumulate for the next financial year.',
+    )
+    total_income_evaluated = models.DecimalField(
+        max_digits=14, decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text='Total gross revenue pool evaluated at distribution time.',
+    )
     date = models.DateField()
     notes = models.TextField(blank=True)
     recorded_by = models.ForeignKey(

@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}{% if object %}Edit Expense{% else %}Record Expense{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit Expense{% else %}Record Expense{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Form -->
+  <div class="col-lg-7">
+
+    {% if available_fund_balance is not None %}
+    <div class="alert alert-info d-flex gap-2 align-items-center mb-3">
+      <i class="bi bi-info-circle-fill flex-shrink-0"></i>
+      <div style="font-size:0.875rem;">
+        Group fund balance: <strong>KES {{ available_fund_balance|kes }}</strong>
+        {% if reg_fee_balance is not None %}
+        &nbsp;·&nbsp;
+        Reg. fee fund: <strong>KES {{ reg_fee_balance|kes }}</strong>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-receipt me-2"></i>Expense Details</div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Description <span class="text-danger">*</span></label>
+            {{ form.description }}
+            {% if form.description.errors %}<div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold small">Amount (KES) <span class="text-danger">*</span></label>
+              {{ form.amount }}
+              {% if form.amount.errors %}<div class="text-danger small mt-1">{{ form.amount.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold small">Date <span class="text-danger">*</span></label>
+              {{ form.date }}
+              {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold small">Category</label>
+              {{ form.category }}
+              <datalist id="category-suggestions">
+                <option value="Transport">
+                <option value="Food & Beverages">
+                <option value="Stationery">
+                <option value="Venue Hire">
+                <option value="Printing">
+                <option value="Communication">
+                <option value="Entertainment">
+                <option value="Welfare">
+                <option value="Training">
+                <option value="Miscellaneous">
+              </datalist>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold small">Receipt / Invoice #</label>
+              {{ form.receipt_number }}
+            </div>
+          </div>
+
+          <!-- Fund Source -->
+          <div class="mb-3 p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0;">
+            <label class="form-label fw-semibold small mb-2">
+              <i class="bi bi-wallet2 me-1 text-primary"></i>Fund Source <span class="text-danger">*</span>
+            </label>
+            {{ form.fund_source }}
+            {% if form.fund_source.errors %}<div class="text-danger small mt-1">{{ form.fund_source.errors.0 }}</div>{% endif %}
+
+            <!-- Bank account picker -->
+            <div id="fundSourceBankRow" class="mt-2" style="display:none;">
+              <label class="form-label fw-semibold small">Select Bank Account</label>
+              {{ form.fund_source_bank }}
+              {% if form.fund_source_bank.errors %}<div class="text-danger small mt-1">{{ form.fund_source_bank.errors.0 }}</div>{% endif %}
+              <!-- Live balance display -->
+              <div id="bankBalanceDisplay" class="mt-1" style="display:none;font-size:0.82rem;color:#2563eb;">
+                <i class="bi bi-info-circle me-1"></i>
+                Current balance: <strong id="bankBalanceAmt">—</strong>
+              </div>
+            </div>
+
+            <!-- Other label -->
+            <div id="fundSourceLabelRow" class="mt-2" style="display:none;">
+              <label class="form-label fw-semibold small">Source Description</label>
+              {{ form.fund_source_label }}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold small">Notes</label>
+            {{ form.notes }}
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-circle me-1"></i>
+              {% if object %}Update Expense{% else %}Save Expense{% endif %}
+            </button>
+            <a href="{% url 'expenses:list' %}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info panel -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Fund Source Guide</div>
+      <div class="card-body" style="font-size:0.875rem;">
+        <div class="mb-3 p-3 rounded" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+          <div class="fw-semibold mb-1" style="color:#16a34a;">
+            <i class="bi bi-cash-stack me-1"></i>Group Funds
+          </div>
+          <p class="mb-0 text-muted">Deducted from the group's available fund balance (contributions + income − loans outstanding).</p>
+        </div>
+        <div class="mb-3 p-3 rounded" style="background:#eff6ff;border:1px solid #bfdbfe;">
+          <div class="fw-semibold mb-1" style="color:#2563eb;">
+            <i class="bi bi-bank me-1"></i>Bank Account
+          </div>
+          <p class="mb-0 text-muted">Deducted from a specific bank account balance. A new balance snapshot is created automatically.</p>
+        </div>
+        <div class="mb-3 p-3 rounded" style="background:#f5f3ff;border:1px solid #ddd6fe;">
+          <div class="fw-semibold mb-1" style="color:#7c3aed;">
+            <i class="bi bi-person-check me-1"></i>Registration Fee Fund
+          </div>
+          <p class="mb-0 text-muted">
+            Uses collected member registration fees.
+            Available: <strong>KES {% if reg_fee_balance %}{{ reg_fee_balance|kes }}{% else %}0.00{% endif %}</strong>.
+            <a href="{% url 'expenses:reg_fee_fund' %}" class="text-decoration-none" style="font-size:0.78rem;">
+              View fund →
+            </a>
+          </p>
+        </div>
+        <div class="p-3 rounded" style="background:#fffbeb;border:1px solid #fde68a;">
+          <div class="fw-semibold mb-1" style="color:#d97706;">
+            <i class="bi bi-three-dots me-1"></i>Other Source
+          </div>
+          <p class="mb-0 text-muted">Petty cash, external donation, etc. No automatic balance check — for record-keeping only.</p>
+        </div>
+        {% if bank_accounts %}
+        <div class="mt-3 pt-3 border-top">
+          <div class="fw-semibold small mb-2">Bank Account Balances</div>
+          {% for acc in bank_accounts %}
+          <div class="d-flex justify-content-between align-items-center mb-1"
+               style="font-size:0.82rem;"
+               data-bank-pk="{{ acc.pk }}"
+               data-bank-balance="{{ acc.current_balance }}">
+            <span class="text-muted">{{ acc.bank_name }}</span>
+            <span class="fw-semibold" style="color:#2563eb;">KES {{ acc.current_balance|kes }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateFundSourceUI() {
+    const sel   = document.getElementById('id_fund_source');
+    const bank  = document.getElementById('fundSourceBankRow');
+    const label = document.getElementById('fundSourceLabelRow');
+    if (!sel) return;
+    if (bank)  bank.style.display  = sel.value === 'bank_account' ? '' : 'none';
+    if (label) label.style.display = sel.value === 'other'        ? '' : 'none';
+}
+
+function updateBankBalance() {
+    const bankSel  = document.getElementById('id_fund_source_bank');
+    const display  = document.getElementById('bankBalanceDisplay');
+    const amtEl    = document.getElementById('bankBalanceAmt');
+    if (!bankSel || !display) return;
+    const pk = bankSel.value;
+    if (!pk) { display.style.display = 'none'; return; }
+    // Find from the data attributes in the panel
+    const row = document.querySelector(`[data-bank-pk="${pk}"]`);
+    if (row) {
+        const bal = parseFloat(row.dataset.bankBalance);
+        amtEl.textContent = 'KES ' + bal.toLocaleString('en-KE', {minimumFractionDigits:2});
+        display.style.display = '';
+    } else {
+        display.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const fundSel = document.getElementById('id_fund_source');
+    const bankSel = document.getElementById('id_fund_source_bank');
+    if (fundSel) {
+        fundSel.addEventListener('change', updateFundSourceUI);
+        updateFundSourceUI();
+    }
+    if (bankSel) {
+        bankSel.addEventListener('change', updateBankBalance);
+        updateBankBalance();
+    }
+});
+</script>
+{% endblock %}

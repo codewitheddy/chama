@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Delete Loan{% endblock %}
 {% block page_title %}Delete Loan{% endblock %}
 
@@ -13,7 +14,7 @@
                 <div class="alert alert-warning py-2 small mb-3">
                     <i class="bi bi-exclamation-triangle me-1"></i>
                     This will permanently delete the loan of
-                    <strong>KES {{ object.loan_amount|floatformat:2 }}</strong>
+                    <strong>KES {{ object.loan_amount|kes }}</strong>
                     for <strong>{{ object.member.name }}</strong>
                     and all associated payments.
                 </div>

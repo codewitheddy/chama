@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Delete Transaction Entry{% endblock %}
+{% block page_title %}Delete Transaction Entry{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm border-0" style="border-radius:14px;border:1px solid #fecaca !important;overflow:hidden;background:#ffffff;">
+            <div class="card-header bg-white py-3 px-4 d-flex align-items-center gap-2 border-bottom" style="background:linear-gradient(180deg,#fff1f2 0%,#ffffff 100%);border-color:#fecaca !important;">
+                <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+                <span class="fw-bold text-danger">Confirm Deletion of Transaction Entry</span>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted small mb-3">
+                    You are about to delete this ledger entry. The bank account balance will be recalculated accordingly.
+                </p>
+
+                <div class="alert alert-light border p-3 mb-4 rounded-3" style="background:#f8fafc;">
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span class="text-muted small">Account:</span>
+                        <strong class="text-dark small">{{ object.account.bank_name }} — {{ object.account.account_name }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span class="text-muted small">Type:</span>
+                        <span>
+                            {% if object.transaction_type == 'opening' %}
+                              <span class="badge" style="background:#f5f3ff;color:#7c3aed;">Opening Balance</span>
+                            {% elif object.transaction_type == 'topup' %}
+                              <span class="badge" style="background:#f0fdf4;color:#16a34a;">Top-Up</span>
+                            {% elif object.transaction_type == 'deduction' %}
+                              <span class="badge" style="background:#fff1f2;color:#e11d48;">Deduction</span>
+                            {% else %}
+                              <span class="badge bg-secondary">{{ object.get_transaction_type_display }}</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if object.topup_amount %}
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span class="text-muted small">Transaction Amount:</span>
+                        <strong class="text-danger small">KES {{ object.topup_amount|kes }}</strong>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span class="text-muted small">Recorded Balance:</span>
+                        <strong class="text-primary small">KES {{ object.balance|kes }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small">Date:</span>
+                        <span class="text-dark small">{{ object.recorded_on }}</span>
+                    </div>
+                </div>
+
+                {% if object.transaction_type == 'deduction' %}
+                <div class="alert alert-warning py-2 mb-3" style="font-size:0.82rem;border-radius:8px;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    This is a deduction from an expense or loan payout. Deleting this entry will restore the account balance but will <strong>not</strong> delete the corresponding expense record.
+                </div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% include 'includes/delete_auth_fields.html' %}
+                    <div class="d-flex gap-3 align-items-center pt-2">
+                        <button type="submit" class="btn btn-danger px-4 py-2" style="border-radius:8px;font-weight:600;">
+                            <i class="bi bi-trash me-1"></i>Yes, Delete Entry
+                        </button>
+                        <a href="{% url 'bank_accounts:detail' object.account_id %}" class="btn btn-outline-secondary px-3.5 py-2" style="border-radius:8px;">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

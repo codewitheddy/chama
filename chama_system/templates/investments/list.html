@@ -1,0 +1,448 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Investments Portfolio{% endblock %}
+
+{% block extra_css %}
+<style>
+    .inv-stat-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.25rem 1.35rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .inv-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    }
+    .inv-stat-icon-wrapper {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+    }
+    .inv-table-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+    .filter-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .table-modern th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 0.9rem 1rem;
+    }
+    .table-modern td {
+        vertical-align: middle;
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1e293b;
+    }
+    .table-modern tbody tr:hover {
+        background-color: #f8fafc;
+    }
+    .fund-source-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.65rem;
+        border-radius: 6px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}" class="text-decoration-none">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Investments</li>
+                </ol>
+            </nav>
+            <h2 class="h3 fw-bold text-dark mb-0">
+                <i class="bi bi-briefcase-fill text-primary me-2"></i>Investments Portfolio
+            </h2>
+            <p class="text-muted small mb-0">Manage group assets, real estate, stocks, fixed deposits, and monitor overall returns &amp; ROI.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'investments:category_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-tag me-1"></i> Categories
+            </a>
+            <a href="{% url 'investments:type_list' %}" class="btn btn-outline-primary">
+                <i class="bi bi-layers me-1"></i> Product Templates
+            </a>
+            <a href="{% url 'investments:add' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-plus-lg me-1"></i> Add Investment
+            </a>
+        </div>
+    </div>
+
+    <!-- Executive Portfolio Summary Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Metric 1: Total Capital Invested -->
+        <div class="col-xl-3 col-md-6">
+            <div class="inv-stat-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="text-muted small fw-medium text-uppercase tracking-wider">Total Capital Invested</span>
+                        <div class="fs-4 fw-bold text-dark mt-1 font-monospace">KES {{ total_invested|floatformat:2 }}</div>
+                    </div>
+                    <div class="inv-stat-icon-wrapper bg-primary-subtle text-primary">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center text-muted small mt-2">
+                    <i class="bi bi-pie-chart text-primary me-1.5"></i>
+                    <span>{{ active_count }} Active Holding{{ active_count|pluralize }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 2: Current Portfolio Value -->
+        <div class="col-xl-3 col-md-6">
+            <div class="inv-stat-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="text-muted small fw-medium text-uppercase tracking-wider">Current Market Valuation</span>
+                        <div class="fs-4 fw-bold text-dark mt-1 font-monospace">KES {{ total_current_value|floatformat:2 }}</div>
+                    </div>
+                    <div class="inv-stat-icon-wrapper bg-info-subtle text-info">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center text-muted small mt-2">
+                    <i class="bi bi-clock-history text-info me-1.5"></i>
+                    <span>Appraised Portfolio Value</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 3: Total Returns Harvested -->
+        <div class="col-xl-3 col-md-6">
+            <div class="inv-stat-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="text-muted small fw-medium text-uppercase tracking-wider">Total Returns Harvested</span>
+                        <div class="fs-4 fw-bold text-success mt-1 font-monospace">KES {{ total_returns|floatformat:2 }}</div>
+                    </div>
+                    <div class="inv-stat-icon-wrapper bg-success-subtle text-success">
+                        <i class="bi bi-cash-coin"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center text-muted small mt-2">
+                    <i class="bi bi-arrow-up-right text-success me-1.5"></i>
+                    <span>Dividends, Rental &amp; Interest</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 4: Net Gain/Loss Position -->
+        <div class="col-xl-3 col-md-6">
+            <div class="inv-stat-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="text-muted small fw-medium text-uppercase tracking-wider">Net Position (Gain/Loss)</span>
+                        <div class="fs-4 fw-bold {% if net_position >= 0 %}text-success{% else %}text-danger{% endif %} mt-1 font-monospace">
+                            {% if net_position >= 0 %}+{% endif %}KES {{ net_position|floatformat:2 }}
+                        </div>
+                    </div>
+                    <div class="inv-stat-icon-wrapper {% if net_position >= 0 %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %}">
+                        <i class="bi {% if net_position >= 0 %}bi-trophy-fill{% else %}bi-exclamation-triangle-fill{% endif %}"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center small mt-2 {% if net_position >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    <i class="bi {% if net_position >= 0 %}bi-arrow-up-circle-fill{% else %}bi-arrow-down-circle-fill{% endif %} me-1.5"></i>
+                    <span>Valuation + Yields &minus; Capital</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="filter-card p-3 mb-4">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-lg-3 col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" class="form-control border-start-0" placeholder="Search by asset, description, cert #..." value="{{ q }}">
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <select name="category" class="form-select">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.pk }}" {% if category_id == cat.pk|stringformat:"i" %}selected{% endif %}>
+                        {{ cat.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    {% for code, label in statuses.items %}
+                    <option value="{{ code }}" {% if status == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <select name="fund_source" class="form-select">
+                    <option value="">All Funding Sources</option>
+                    {% for code, label in fund_sources.items %}
+                    <option value="{{ code }}" {% if fund_source == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-3 col-md-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+                <a href="{% url 'investments:list' %}" class="btn btn-outline-secondary" title="Reset Filters">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Investments Table Card -->
+    <div class="inv-table-card mb-4">
+        <div class="table-responsive">
+            <table class="table table-modern align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="min-width: 220px;">Asset / Investment Product</th>
+                        <th>Funding Source</th>
+                        <th class="text-end">Capital Invested</th>
+                        <th class="text-end">Current Value</th>
+                        <th class="text-end">Returns</th>
+                        <th class="text-end">Net Gain / ROI</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th class="text-center" style="width: 140px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in investments %}
+                    <tr>
+                        <!-- Asset Name & Category -->
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="me-2.5">
+                                    {% if inv.investment_type.category %}
+                                    <span class="inv-stat-icon-wrapper" style="width: 36px; height: 36px; background: {{ inv.investment_type.category.color_code }}15; color: {{ inv.investment_type.category.color_code }}; font-size: 1.1rem;">
+                                        <i class="bi {{ inv.investment_type.category.icon|default:'bi-briefcase' }}"></i>
+                                    </span>
+                                    {% else %}
+                                    <span class="inv-stat-icon-wrapper bg-light text-muted" style="width: 36px; height: 36px; font-size: 1.1rem;">
+                                        <i class="bi bi-briefcase"></i>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <a href="{% url 'investments:detail' inv.pk %}" class="fw-bold text-dark text-decoration-none d-block">
+                                        {{ inv.investment_type.name }}
+                                    </a>
+                                    {% if inv.investment_type.category %}
+                                    <span class="badge rounded-pill px-2 py-0.5 text-xs" style="background: {{ inv.investment_type.category.color_code }}15; color: {{ inv.investment_type.category.color_code }};">
+                                        {{ inv.investment_type.category.name }}
+                                    </span>
+                                    {% endif %}
+                                    {% if inv.certificate_number %}
+                                    <span class="text-muted small ms-1" title="Certificate/Deed #">
+                                        <i class="bi bi-file-earmark-text"></i> {{ inv.certificate_number }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Funding Source & Payment -->
+                        <td>
+                            <span class="fund-source-badge">
+                                {% if inv.fund_source == 'group_funds' %}
+                                <i class="bi bi-wallet2 text-primary"></i> Group Funds
+                                {% elif inv.fund_source == 'bank_account' %}
+                                <i class="bi bi-bank text-info"></i> Bank Account
+                                {% elif inv.fund_source == 'bank_transfer' %}
+                                <i class="bi bi-arrow-left-right text-success"></i> Bank Transfer
+                                {% else %}
+                                <i class="bi bi-three-dots text-secondary"></i> Other
+                                {% endif %}
+                            </span>
+                            {% if inv.fund_source_bank %}
+                            <div class="text-muted small mt-0.5" style="font-size: 0.75rem;">
+                                {{ inv.fund_source_bank.bank_name }}
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- Initial Amount -->
+                        <td class="text-end font-monospace fw-semibold">
+                            KES {{ inv.initial_amount|floatformat:2 }}
+                            {% if inv.quantity and inv.quantity != 1 %}
+                            <div class="text-muted small" style="font-size: 0.75rem;">{{ inv.quantity }} units</div>
+                            {% endif %}
+                        </td>
+
+                        <!-- Current Value -->
+                        <td class="text-end font-monospace fw-semibold text-dark">
+                            KES {{ inv.current_value|floatformat:2 }}
+                        </td>
+
+                        <!-- Returns Received -->
+                        <td class="text-end font-monospace text-success fw-semibold">
+                            KES {{ inv.total_returns_received|floatformat:2 }}
+                        </td>
+
+                        <!-- Gain / Loss & ROI -->
+                        <td class="text-end">
+                            <div class="font-monospace fw-bold {% if inv.net_gain_loss >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if inv.net_gain_loss >= 0 %}+{% endif %}KES {{ inv.net_gain_loss|floatformat:2 }}
+                            </div>
+                            <span class="badge {% if inv.roi_percentage >= 0 %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %} rounded-pill px-2 py-0.5 text-xs">
+                                {% if inv.roi_percentage >= 0 %}+{% endif %}{{ inv.roi_percentage }}%
+                            </span>
+                        </td>
+
+                        <!-- Date -->
+                        <td class="small text-muted">
+                            {{ inv.date_invested|date:"d M Y" }}
+                        </td>
+
+                        <!-- Status & Approval -->
+                        <td>
+                            <div>
+                                {% if inv.status == 'active' %}
+                                <span class="badge bg-primary-subtle text-primary rounded-pill px-2.5 py-1">Active</span>
+                                {% elif inv.status == 'completed' %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1">Completed</span>
+                                {% else %}
+                                <span class="badge bg-warning-subtle text-warning rounded-pill px-2.5 py-1">{{ inv.get_status_display }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="mt-1">
+                                {% if inv.funds_deducted %}
+                                <span class="badge bg-success-subtle text-success text-xs border-0" title="Approved on {{ inv.approved_at|date:'d M Y' }}">
+                                    <i class="bi bi-check-circle-fill me-0.5"></i> Deducted
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning-subtle text-warning text-xs border-0" title="Awaiting Admin approval">
+                                    <i class="bi bi-clock-fill me-0.5"></i> Pending Approval
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Action Buttons -->
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'investments:detail' inv.pk %}" class="btn btn-outline-primary" title="View Full Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'investments:return_add' inv.pk %}" class="btn btn-outline-success" title="Record Return">
+                                    <i class="bi bi-plus-lg"></i>
+                                </a>
+                                <a href="{% url 'investments:valuation_add' inv.pk %}" class="btn btn-outline-info" title="Record Valuation">
+                                    <i class="bi bi-bar-chart"></i>
+                                </a>
+                                {% if inv.status != 'completed' %}
+                                <a href="{% url 'investments:edit' inv.pk %}" class="btn btn-outline-secondary" title="Edit Investment">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'investments:delete' inv.pk %}" class="btn btn-outline-danger" title="Delete Investment">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="bi bi-briefcase display-5 d-block mb-3 text-secondary opacity-50"></i>
+                                <h5 class="fw-bold text-dark">No Investments Found</h5>
+                                <p class="small text-muted mb-3">
+                                    {% if q or status or fund_source or category_id %}
+                                    No investments match your current filter criteria.
+                                    {% else %}
+                                    You have not recorded any investments yet.
+                                    {% endif %}
+                                </p>
+                                {% if q or status or fund_source or category_id %}
+                                <a href="{% url 'investments:list' %}" class="btn btn-sm btn-outline-secondary me-2">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Clear Filters
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'investments:add' %}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-plus-lg me-1"></i> Add Investment
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav class="mt-4" aria-label="Investment navigation">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if fund_source %}&fund_source={{ fund_source }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}">&laquo; First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if fund_source %}&fund_source={{ fund_source }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}">Previous</a>
+            </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if fund_source %}&fund_source={{ fund_source }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}">{{ num }}</a>
+            </li>
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if fund_source %}&fund_source={{ fund_source }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if fund_source %}&fund_source={{ fund_source }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}">Last &raquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

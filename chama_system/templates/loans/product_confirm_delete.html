@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Delete Loan Product{% endblock %}
+{% block page_title %}Delete Loan Product{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-5">
+        <div class="card border-danger">
+            <div class="card-header text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete</div>
+            <div class="card-body">
+                <p>Are you sure you want to delete the loan product <strong>{{ object.name }}</strong>?</p>
+                {% with count=object.loans.count %}
+                {% if count %}
+                <div class="alert alert-warning py-2" style="font-size:0.875rem;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    This product is linked to <strong>{{ count }} loan{{ count|pluralize }}</strong>.
+                    Deleting it will set those loans' product to blank but will <strong>not</strong> delete the loans.
+                </div>
+                {% endif %}
+                {% endwith %}
+                <form method="post" class="mt-3">
+                    {% csrf_token %}
+                    {% include 'includes/delete_auth_fields.html' %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>Yes, Delete
+                        </button>
+                        <a href="{% url 'loans:product_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

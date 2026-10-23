@@ -1,76 +1,974 @@
 {% extends 'base.html' %}
-{% block title %}{% if object %}Edit Meeting{% else %}New Meeting{% endif %}{% endblock %}
+{% load finance_tags %}
+{% block title %}{% if object %}Edit Meeting — {{ object.date }}{% else %}Schedule New Meeting{% endif %}{% endblock %}
 {% block page_title %}{% if object %}Edit Meeting{% else %}New Meeting{% endif %}{% endblock %}
 
 {% block extra_css %}
+<!-- Quill 2.0 Snow Theme CSS -->
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
 <style>
-    #quill-editor { min-height: 220px; font-size: 0.9rem; }
-    .ql-toolbar { border-radius: 6px 6px 0 0; border-color: #dee2e6 !important; }
-    .ql-container { border-radius: 0 0 6px 6px; border-color: #dee2e6 !important; }
+    /* Form Card & Section Styling */
+    .form-section-header {
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    /* Upgraded Quill Editor Styling */
+    .quill-editor-wrapper {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .quill-editor-wrapper:focus-within {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+    .ql-toolbar.ql-snow {
+        border: none !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        background: #f8fafc;
+        padding: 8px 12px;
+    }
+    .ql-container.ql-snow {
+        border: none !important;
+        font-family: inherit;
+        font-size: 0.92rem;
+    }
+    .ql-editor {
+        min-height: 280px;
+        max-height: 600px;
+        line-height: 1.65;
+        color: #1e293b;
+        padding: 14px 16px;
+    }
+    .ql-editor.ql-blank::before {
+        color: #94a3b8;
+        font-style: normal;
+    }
+
+    /* Editor Bottom Status Bar */
+    .editor-status-bar {
+        background: #f8fafc;
+        border-top: 1px solid #f1f5f9;
+        padding: 6px 12px;
+        font-size: 0.75rem;
+        color: #64748b;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* Fullscreen Editor Mode */
+    .quill-editor-wrapper.is-fullscreen {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        right: 20px;
+        bottom: 20px;
+        z-index: 1050;
+        background: #ffffff;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+        display: flex;
+        flex-direction: column;
+    }
+    .quill-editor-wrapper.is-fullscreen .ql-container {
+        flex: 1;
+        overflow-y: auto;
+    }
+    .quill-editor-wrapper.is-fullscreen .ql-editor {
+        min-height: 100%;
+        max-height: none;
+    }
+
+    /* Quick Template Chips */
+    .quick-chip-btn {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+        border-radius: 6px;
+        transition: all 0.15s ease;
+    }
+
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .spin-icon { animation: spin 1s linear infinite; display: inline-block; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-calendar-event me-2"></i>Meeting Details</div>
-            <div class="card-body">
-                <form method="post" id="meetingForm">
+
+<!-- Header & Breadcrumb -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1 small">
+                <li class="breadcrumb-item"><a href="{% url 'meetings:list' %}" class="text-decoration-none">Meetings</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{% if object %}Edit Meeting{% else %}New Meeting{% endif %}</li>
+            </ol>
+        </nav>
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-calendar-plus text-primary me-2"></i>{% if object %}Edit Meeting — {{ object.date }}{% else %}Schedule New Meeting{% endif %}
+        </h5>
+        <div class="text-muted small">
+            Configure meeting schedule, venue, agenda, and draft official Chama minutes.
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        {% if object %}
+        <a href="{% url 'meetings:detail' object.pk %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-eye me-1"></i>View Meeting
+        </a>
+        {% endif %}
+        <a href="{% url 'meetings:list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- Left / Main: Meeting Form -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="fw-bold text-dark">
+                    <i class="bi bi-calendar-event text-primary me-2"></i>Meeting Particulars & Minutes
+                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="draftStatusBadge" class="badge bg-light text-muted border border-light-subtle rounded-pill px-2 py-1 small" style="display:none; font-size: 0.72rem;">
+                        <i class="bi bi-cloud-check text-success me-1"></i>Draft auto-saved
+                    </span>
+                    <button type="button" id="discardDraftBtn" class="btn btn-xs btn-outline-danger py-1 px-2 rounded-pill" style="display:none;" title="Discard unsaved draft">
+                        <i class="bi bi-trash me-1"></i>Discard Draft
+                    </button>
+                    {% if object %}
+                    <span class="badge {% if object.status == 'held' %}bg-success-subtle text-success border border-success-subtle{% elif object.status == 'scheduled' %}bg-primary-subtle text-primary border border-primary-subtle{% else %}bg-danger-subtle text-danger border border-danger-subtle{% endif %}">
+                        {{ object.get_status_display }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="post" id="meetingForm" novalidate>
                     {% csrf_token %}
 
-                    {% for field in form %}
-                        {% if field.name == 'minutes' %}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">Minutes</label>
-                            {# hidden textarea that gets submitted #}
-                            <textarea name="minutes" id="id_minutes" style="display:none;">{{ field.value|default:'' }}</textarea>
-                            <div id="quill-editor">{{ field.value|default:''|safe }}</div>
-                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors.0 }}</div>{% endif %}
+                    <!-- Draft Restored Alert Banner -->
+                    <div id="draftRestoredBanner" class="alert alert-info py-2 px-3 small mb-3 rounded-3 d-flex justify-content-between align-items-center" style="display:none !important;">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-info-circle-fill text-info fs-6"></i>
+                            <span>
+                                <strong>Unsaved Draft Restored:</strong> Your previous meeting particulars and minutes have been restored.
+                                <span id="draftTimestampText" class="text-muted ms-1"></span>
+                            </span>
                         </div>
+                        <button type="button" id="bannerDiscardBtn" class="btn btn-xs btn-outline-danger px-2 py-1 rounded-pill">
+                            <i class="bi bi-x-circle me-1"></i>Discard & Clear
+                        </button>
+                    </div>
+
+                    <!-- Non-field errors -->
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small mb-3">
+                        {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Section 1: Logistics -->
+                    <div class="form-section-header">
+                        <i class="bi bi-clock-history text-primary"></i>1. Meeting Logistics & Status
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <!-- Date -->
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small text-dark" for="{{ form.date.id_for_label }}">
+                                Meeting Date <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-calendar3 text-muted"></i></span>
+                                {{ form.date }}
+                            </div>
+                            {% if form.date.errors %}
+                            <div class="text-danger small mt-1">{{ form.date.errors.0 }}</div>
+                            {% else %}
+                            <div class="form-text small text-muted">The scheduled date of the meeting.</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Status -->
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small text-dark" for="{{ form.status.id_for_label }}">
+                                Status <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-flag text-muted"></i></span>
+                                {{ form.status }}
+                            </div>
+                            {% if form.status.errors %}
+                            <div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>
+                            {% else %}
+                            <div class="form-text small text-muted">Set as 'Scheduled' or 'Held' once completed.</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Venue -->
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-semibold small text-dark mb-0" for="{{ form.venue.id_for_label }}">
+                                    Venue / Location
+                                </label>
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="btn btn-xs btn-outline-secondary quick-chip-btn" onclick="setVenue('Community Hall')">Community Hall</button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary quick-chip-btn" onclick="setVenue('Chairman Residence')">Chairman's House</button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary quick-chip-btn" onclick="setVenue('Online / Zoom')">Online (Zoom)</button>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-geo-alt text-muted"></i></span>
+                                {{ form.venue }}
+                            </div>
+                            {% if form.venue.errors %}
+                            <div class="text-danger small mt-1">{{ form.venue.errors.0 }}</div>
+                            {% else %}
+                            <div class="form-text small text-muted">Physical address, hall name, or online meeting link.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Agenda -->
+                    <div class="form-section-header">
+                        <i class="bi bi-list-check text-primary"></i>2. Meeting Agenda
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-semibold small text-dark mb-0" for="{{ form.agenda.id_for_label }}">
+                                Agenda Items
+                            </label>
+                            <button type="button" id="loadAgendaBtn" class="btn btn-xs btn-outline-primary quick-chip-btn">
+                                <i class="bi bi-magic me-1"></i>Insert Standard Agenda
+                            </button>
+                        </div>
+                        {{ form.agenda }}
+                        {% if form.agenda.errors %}
+                        <div class="text-danger small mt-1">{{ form.agenda.errors.0 }}</div>
                         {% else %}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">{{ field.label }}</label>
-                            {{ field }}
-                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors.0 }}</div>{% endif %}
+                        <div class="form-text small text-muted">Outline topics to be addressed during the session.</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Section 3: Official Minutes (Upgraded Rich Text Field) -->
+                    <div class="form-section-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-journal-richtext text-primary"></i>3. Official Meeting Minutes
+                        </div>
+                        <div class="d-flex gap-1 flex-wrap">
+                            <button type="button" class="btn btn-xs btn-outline-primary quick-chip-btn" id="insertMinutesTemplateBtn" title="Insert standard minutes structure">
+                                <i class="bi bi-file-earmark-text me-1"></i>Minutes Template
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-success quick-chip-btn" id="insertChecklistBtn" title="Insert action items checklist">
+                                <i class="bi bi-check2-square me-1"></i>Action Items
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-info quick-chip-btn" id="insertFinanceSummaryBtn" title="Insert table banking summary block">
+                                <i class="bi bi-cash-stack me-1"></i>Finance Summary
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        {# Hidden textarea synced with Quill before form submission #}
+                        <textarea name="minutes" id="id_minutes" style="display:none;">{{ form.minutes.value|default:'' }}</textarea>
+
+                        <!-- Upgraded Quill Editor Wrapper -->
+                        <div class="quill-editor-wrapper" id="quillWrapper">
+                            <div id="quill-editor">{{ form.minutes.value|default:''|safe }}</div>
+                            <div class="editor-status-bar">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span id="wordCount">0 words</span>
+                                    <span class="text-muted">•</span>
+                                    <span id="charCount">0 characters</span>
+                                </div>
+                                <div>
+                                    <button type="button" id="fullscreenToggleBtn" class="btn btn-link btn-xs p-0 text-decoration-none text-muted" title="Toggle Fullscreen Focus Mode">
+                                        <i class="bi bi-arrows-fullscreen me-1"></i><span id="fullscreenText">Expand</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if form.minutes.errors %}
+                        <div class="text-danger small mt-1">{{ form.minutes.errors.0 }}</div>
+                        {% else %}
+                        <div class="form-text small text-muted">
+                            Rich text formatting supported: headings, bold/italics, bullet/numbered lists, checklists, color highlights, and quotes.
                         </div>
                         {% endif %}
-                    {% endfor %}
-
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Save</button>
-                        <a href="{% url 'meetings:list' %}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
+
+                    <!-- Form Actions Footer -->
+                    <div class="d-flex justify-content-between align-items-center pt-3 border-top flex-wrap gap-2">
+                        <div class="d-flex gap-2">
+                            <button type="submit" id="saveMeetingBtn" class="btn btn-primary px-4 shadow-sm">
+                                <i class="bi bi-check-lg me-1"></i>{% if object %}Update Meeting{% else %}Schedule Meeting{% endif %}
+                            </button>
+                            <a href="{% url 'meetings:list' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                        {% if object %}
+                        <a href="{% url 'meetings:delete' object.pk %}" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </a>
+                        {% endif %}
+                    </div>
+
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- Right: Assistant Sidebar & Official Treasury Snapshot -->
+    <div class="col-lg-4">
+
+        <!-- Official System-Verified Treasury Snapshot Card -->
+        <div class="card shadow-sm border-0 mb-3" id="verifiedTreasuryCard">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark">
+                    <i class="bi bi-shield-check text-success me-2"></i>Official Treasury Ledger
+                </span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:0.72rem;">
+                    🔒 Immutable
+                </span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-borderless mb-0" style="font-size:0.83rem;">
+                    <tr class="border-bottom">
+                        <td class="text-muted ps-3 py-2">Share Capital (Cumulative)</td>
+                        <td class="fw-bold text-primary text-end pe-3 py-2" id="sidebarShareCap">KES {{ financial_summary.cumulative_shares|kes }}</td>
+                    </tr>
+                    <tr class="border-bottom">
+                        <td class="text-muted ps-3 py-2">Welfare Fund (Cumulative)</td>
+                        <td class="fw-bold text-danger text-end pe-3 py-2" id="sidebarWelfareFund">KES {{ financial_summary.cumulative_welfare|kes }}</td>
+                    </tr>
+                    <tr class="border-bottom">
+                        <td class="text-muted ps-3 py-2">Registration Fee Fund</td>
+                        <td class="fw-bold text-info text-end pe-3 py-2" id="sidebarRegFund">KES {{ financial_summary.cumulative_reg_fees|kes }}</td>
+                    </tr>
+                    <tr class="border-bottom bg-light">
+                        <td class="fw-bold text-dark ps-3 py-2">Total Treasury Balance</td>
+                        <td class="fw-bold text-success text-end pe-3 py-2" id="sidebarTreasuryBal">KES {{ financial_summary.cumulative_total_capital|kes }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3 py-2">Session Inflows (<span id="sidebarPeriodName">{{ financial_summary.period_name }}</span>)</td>
+                        <td class="fw-bold text-dark text-end pe-3 py-2" id="sidebarSessionInflows">KES {{ financial_summary.session_inflows|kes }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card-footer bg-light py-2 text-muted small" style="font-size:0.75rem;">
+                <i class="bi bi-info-circle me-1"></i>Figures are computed directly from the Chama database and cannot be manually modified or altered.
+            </div>
+        </div>
+
+        <!-- Protocol & Automation Card -->
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header bg-white py-3 border-bottom">
+                <span class="fw-bold text-dark">
+                    <i class="bi bi-shield-check text-primary me-2"></i>Chama Meeting Protocol
+                </span>
+            </div>
+            <div class="card-body p-3">
+                <div class="d-flex gap-2 mb-3">
+                    <div class="mt-1"><i class="bi bi-people-fill text-primary fs-5"></i></div>
+                    <div>
+                        <div class="fw-bold small text-dark">Auto-Attendance Pre-fill</div>
+                        <div class="text-muted small" style="font-size:0.8rem;">
+                            When you schedule a meeting, all active Chama members are automatically recorded as <em>present</em>. The secretary only needs to record late or absent members.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mb-3">
+                    <div class="mt-1"><i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i></div>
+                    <div>
+                        <div class="fw-bold small text-dark">Fines & Penalties</div>
+                        <div class="text-muted small" style="font-size:0.8rem;">
+                            Meeting lateness and unexcused absenteeism can have automatic penalty rules applied and tracked directly in the financial records.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <div class="mt-1"><i class="bi bi-file-earmark-pdf-fill text-danger fs-5"></i></div>
+                    <div>
+                        <div class="fw-bold small text-dark">Export & Archival</div>
+                        <div class="text-muted small" style="font-size:0.8rem;">
+                            Minutes saved with rich text formatting are fully exportable to professional PDF and DOCX documents with the Chama letterhead.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Help & Shortcuts -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom">
+                <span class="fw-bold text-dark">
+                    <i class="bi bi-lightning-charge text-warning me-2"></i>Quick Formatting Tips
+                </span>
+            </div>
+            <div class="card-body p-3 text-muted small" style="font-size:0.82rem;">
+                <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
+                    <li><i class="bi bi-check2 text-success me-1"></i> Use <strong>Headings (H2 / H3)</strong> for key agenda discussions and resolutions.</li>
+                    <li><i class="bi bi-check2 text-success me-1"></i> Use <strong>Checklists</strong> for action items assigned to specific members.</li>
+                    <li><i class="bi bi-check2 text-success me-1"></i> Use <strong>Blockquotes</strong> to record official resolutions passed by member votes.</li>
+                    <li><i class="bi bi-check2 text-success me-1"></i> Click <strong>Expand</strong> at the bottom right of the editor for full-screen distraction-free minutes writing.</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
+<!-- Quill 2.0 JS -->
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+
 <script>
-const quill = new Quill('#quill-editor', {
-    theme: 'snow',
-    modules: {
-        toolbar: [
-            [{ header: [1, 2, 3, false] }],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{ list: 'ordered' }, { list: 'bullet' }],
-            [{ indent: '-1' }, { indent: '+1' }],
-            ['blockquote'],
-            [{ color: [] }],
-            ['clean'],
-        ]
-    },
-    placeholder: 'Write meeting minutes here...',
+document.addEventListener('DOMContentLoaded', function() {
+
+    // 1. Initialize Upgraded Quill Editor
+    const toolbarOptions = [
+        [{ 'header': [1, 2, 3, 4, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'list': 'check' }],
+        [{ 'align': [] }],
+        [{ 'indent': '-1' }, { 'indent': '+1' }],
+        ['blockquote', 'code-block'],
+        ['link', 'clean'],
+    ];
+
+    const quill = new Quill('#quill-editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: toolbarOptions,
+            history: {
+                delay: 1000,
+                maxStack: 100,
+                userOnly: true
+            }
+        },
+        placeholder: 'Draft official meeting minutes, decisions made, loans approved, and action points here...',
+    });
+
+    // 2. Word & Character Counter
+    const wordCountSpan = document.getElementById('wordCount');
+    const charCountSpan = document.getElementById('charCount');
+
+    function updateCounts() {
+        const text = quill.getText().trim();
+        const charCount = text.length;
+        const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+        if (wordCountSpan) wordCountSpan.textContent = `${words} word${words !== 1 ? 's' : ''}`;
+        if (charCountSpan) charCountSpan.textContent = `${charCount} character${charCount !== 1 ? 's' : ''}`;
+    }
+
+    quill.on('text-change', updateCounts);
+    updateCounts();
+
+    // 3. Sync Quill HTML to hidden textarea on form submit
+    const meetingForm = document.getElementById('meetingForm');
+    if (meetingForm) {
+        meetingForm.addEventListener('submit', function (e) {
+            const minutesHtml = quill.getSemanticHTML ? quill.getSemanticHTML() : quill.root.innerHTML;
+            const hiddenInput = document.getElementById('id_minutes');
+            if (hiddenInput) {
+                hiddenInput.value = (quill.getText().trim().length === 0) ? '' : minutesHtml;
+            }
+        });
+    }
+
+    // 4. Fullscreen Mode Toggle
+    const quillWrapper = document.getElementById('quillWrapper');
+    const fullscreenToggleBtn = document.getElementById('fullscreenToggleBtn');
+    const fullscreenText = document.getElementById('fullscreenText');
+
+    if (fullscreenToggleBtn && quillWrapper) {
+        fullscreenToggleBtn.addEventListener('click', function() {
+            quillWrapper.classList.toggle('is-fullscreen');
+            const isFull = quillWrapper.classList.contains('is-fullscreen');
+            fullscreenText.textContent = isFull ? 'Minimize' : 'Expand';
+            const icon = fullscreenToggleBtn.querySelector('i');
+            if (icon) {
+                icon.className = isFull ? 'bi bi-fullscreen-exit me-1' : 'bi bi-arrows-fullscreen me-1';
+            }
+        });
+    }
+
+    // Helper to format currency
+    function formatKes(amount) {
+        return parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Fetch live real financial data for selected date
+    async function getFinancialData() {
+        const dateInput = document.getElementById('id_date');
+        const dateVal = dateInput ? dateInput.value : '';
+        const meetingId = '{{ object.pk|default:"" }}';
+        
+        try {
+            const params = new URLSearchParams();
+            if (dateVal) params.append('date', dateVal);
+            if (meetingId) params.append('meeting_id', meetingId);
+            
+            const response = await fetch('{% url "meetings:financial_summary_api" %}?' + params.toString());
+            if (response.ok) {
+                const json = await response.json();
+                if (json.ok && json.data) {
+                    return json.data;
+                }
+            }
+        } catch (e) {
+            console.warn('Could not fetch real-time financial data, using context fallback:', e);
+        }
+
+        const fallbackData = {{ financial_summary_json|safe|default:'{}' }};
+        return fallbackData;
+    }
+
+    // Helper to update sidebar ledger
+    function updateSidebarLedger(data) {
+        const shareCap = document.getElementById('sidebarShareCap');
+        const welfareFund = document.getElementById('sidebarWelfareFund');
+        const regFund = document.getElementById('sidebarRegFund');
+        const treasuryBal = document.getElementById('sidebarTreasuryBal');
+        const sessionInflows = document.getElementById('sidebarSessionInflows');
+        const periodName = document.getElementById('sidebarPeriodName');
+
+        if (shareCap) shareCap.textContent = 'KES ' + formatKes(data.cumulative_shares);
+        if (welfareFund) welfareFund.textContent = 'KES ' + formatKes(data.cumulative_welfare);
+        if (regFund) regFund.textContent = 'KES ' + formatKes(data.cumulative_reg_fees);
+        if (treasuryBal) treasuryBal.textContent = 'KES ' + formatKes(data.cumulative_total_capital);
+        if (sessionInflows) sessionInflows.textContent = 'KES ' + formatKes(data.session_inflows);
+        if (periodName && data.period_name) periodName.textContent = data.period_name;
+    }
+
+    // Date change listener to re-fetch live ledger data
+    const dateInput = document.getElementById('id_date');
+    if (dateInput) {
+        dateInput.addEventListener('change', async function() {
+            const data = await getFinancialData();
+            updateSidebarLedger(data);
+        });
+    }
+
+    // 5. Template Inserters with Exact Treasury Table Format
+    function buildFinanceSummaryHtml(data, periodLabel) {
+        return `
+<div class="immutable-financial-ledger-block" contenteditable="false" style="user-select: none; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; background: #ffffff; margin: 16px 0;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+        <span style="font-weight: 700; color: #0f172a; font-size: 1rem;">📊 Official Financial & Treasury Summary (${periodLabel})</span>
+        <span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 3px 10px; border-radius: 9999px; font-size: 0.78rem; font-weight: 600;">🔒 System-Verified Ledger Snapshot (Read-Only)</span>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 0.92rem; border: 1px solid #cbd5e1;">
+        <thead>
+            <tr style="background: #0f172a; color: #ffffff;">
+                <th colspan="3" style="border: 1px solid #334155; padding: 10px 12px; text-align: left; font-size: 0.95rem;">
+                    <strong>1. Overall Chama Treasury Position (Cumulative to Date)</strong>
+                </th>
+            </tr>
+            <tr style="background: #f1f5f9;">
+                <th style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left;">Fund Category</th>
+                <th style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center; width: 220px;">Transaction Count / Volume</th>
+                <th style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; width: 180px;">Total Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Total Share Contributions Collected</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.cumulative_shares_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #2563eb; font-weight: bold;">KES ${formatKes(data.cumulative_shares)}</td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Total Welfare Contributions Collected</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.cumulative_welfare_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #e11d48; font-weight: bold;">KES ${formatKes(data.cumulative_welfare)}</td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Total Registration Fee Fund Collected</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.cumulative_reg_fees_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #0891b2; font-weight: bold;">KES ${formatKes(data.cumulative_reg_fees)}</td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Total Loan Repayments Collected</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.cumulative_repayments_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #16a34a; font-weight: bold;">KES ${formatKes(data.cumulative_repayments)}</td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Total New Loans Disbursed</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.cumulative_loans_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #d97706; font-weight: bold;">KES ${formatKes(data.cumulative_loans)}</td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Meeting Penalties / Fines Issued</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.cumulative_penalties_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #dc2626; font-weight: bold;">KES ${formatKes(data.cumulative_penalties)}</td>
+            </tr>
+            <tr style="background: #f0fdf4;">
+                <td colspan="2" style="border: 1px solid #cbd5e1; padding: 9px 12px;"><strong>Total Chama Cumulative Treasury Balance</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 9px 12px; text-align: right; color: #15803d; font-weight: bold; font-size: 1rem;">KES ${formatKes(data.cumulative_total_capital)}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.92rem; border: 1px solid #cbd5e1;">
+        <thead>
+            <tr style="background: #1e293b; color: #ffffff;">
+                <th colspan="3" style="border: 1px solid #334155; padding: 10px 12px; text-align: left; font-size: 0.95rem;">
+                    <strong>2. Meeting Session Table Banking Collections (${periodLabel})</strong>
+                </th>
+            </tr>
+            <tr style="background: #f1f5f9;">
+                <th style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left;">Session Category</th>
+                <th style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center; width: 220px;">Transaction Count / Volume</th>
+                <th style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; width: 180px;">Session Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Share Contributions (Session)</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.session_shares_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #2563eb; font-weight: bold;">KES ${formatKes(data.session_shares)}</td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Welfare Contributions (Session)</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.session_welfare_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #e11d48; font-weight: bold;">KES ${formatKes(data.session_welfare)}</td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Loan Repayments Received</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.session_repayments_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #16a34a; font-weight: bold;">KES ${formatKes(data.session_repayments)}</td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>New Loans Disbursed</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.session_loans_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #d97706; font-weight: bold;">KES ${formatKes(data.session_loans)}</td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><strong>Meeting Penalties Issued</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center;">${data.session_penalties_count || 0}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; color: #dc2626; font-weight: bold;">KES ${formatKes(data.session_penalties)}</td>
+            </tr>
+            <tr style="background: #eff6ff;">
+                <td colspan="2" style="border: 1px solid #cbd5e1; padding: 9px 12px;"><strong>Total Session Inflows Collected</strong></td>
+                <td style="border: 1px solid #cbd5e1; padding: 9px 12px; text-align: right; color: #1d4ed8; font-weight: bold; font-size: 1rem;">KES ${formatKes(data.session_inflows)}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+`;
+    }
+
+    const insertMinutesTemplateBtn = document.getElementById('insertMinutesTemplateBtn');
+    if (insertMinutesTemplateBtn) {
+        insertMinutesTemplateBtn.addEventListener('click', async function() {
+            const data = await getFinancialData();
+            updateSidebarLedger(data);
+            const venueVal = document.getElementById('id_venue') ? document.getElementById('id_venue').value : '';
+            const displayDate = data.date_formatted || (document.getElementById('id_date') ? document.getElementById('id_date').value : '');
+            const periodLabel = data.period_name ? `${data.period_name} Cycle (${displayDate})` : displayDate;
+
+            const financeTableHtml = buildFinanceSummaryHtml(data, periodLabel);
+
+            const templateHtml = `
+<h2>Chama Meeting Minutes</h2>
+<p><strong>Meeting Date:</strong> ${displayDate}</p>
+<p><strong>Location/Venue:</strong> ${venueVal || 'Chama Meeting Venue'}</p>
+
+<h3>1. Call to Order & Opening</h3>
+<p>The meeting was called to order at <strong>[Time]</strong> with an opening prayer led by <strong>[Member Name]</strong>. The chairperson welcomed all attendees.</p>
+
+<h3>2. Confirmation of Previous Minutes</h3>
+<p>Minutes of the previous meeting were read, reviewed, proposed by <strong>[Member 1]</strong> and seconded by <strong>[Member 2]</strong> as a true record.</p>
+
+<h3>3. Matters Arising</h3>
+<ul>
+    <li>Review of previous action items and ongoing projects.</li>
+</ul>
+
+<h3>4. Table Banking & Financial Review</h3>
+<p>The treasurer presented the official table banking and financial report for <strong>${displayDate}</strong>:</p>
+${financeTableHtml}
+
+<h3>5. Resolutions & Decisions Passed</h3>
+<blockquote><strong>Resolution 1:</strong> [State official resolution or agreement passed by the members].</blockquote>
+
+<h3>6. Action Items & Assignments</h3>
+<ul data-list="check">
+    <li data-list="check">Follow up on outstanding loan repayments — Assigned to: Treasurer (Due: Next Meeting)</li>
+    <li data-list="check">Organize upcoming welfare support/visit — Assigned to: Welfare Secretary</li>
+</ul>
+
+<h3>7. Adjournment & Next Meeting</h3>
+<p>There being no other business, the meeting was adjourned at <strong>[Time]</strong>. The next scheduled meeting will take place on <strong>[Next Date]</strong> at <strong>[Venue]</strong>.</p>
+`;
+            quill.clipboard.dangerouslyPasteHTML(quill.getLength() - 1, templateHtml);
+            updateCounts();
+        });
+    }
+
+    const insertChecklistBtn = document.getElementById('insertChecklistBtn');
+    if (insertChecklistBtn) {
+        insertChecklistBtn.addEventListener('click', function() {
+            const checklistHtml = `
+<h3>Action Items & Tasks</h3>
+<ul data-list="check">
+    <li data-list="check">Collect and reconcile bank deposit receipts (Assigned to: Treasurer)</li>
+    <li data-list="check">Follow up on overdue member contributions (Assigned to: Secretary)</li>
+    <li data-list="check">Review and disburse approved loan applications (Assigned to: Credit Committee)</li>
+</ul>
+<p></p>
+`;
+            quill.clipboard.dangerouslyPasteHTML(quill.getLength() - 1, checklistHtml);
+            updateCounts();
+        });
+    }
+
+    const insertFinanceSummaryBtn = document.getElementById('insertFinanceSummaryBtn');
+    if (insertFinanceSummaryBtn) {
+        insertFinanceSummaryBtn.addEventListener('click', async function() {
+            const data = await getFinancialData();
+            updateSidebarLedger(data);
+            const periodLabel = data.period_name ? `${data.period_name} Cycle (${data.date_formatted || ''})` : (data.date_formatted || 'Meeting Period');
+
+            // Scroll / highlight verified sidebar card
+            const verifiedCard = document.getElementById('verifiedTreasuryCard');
+            if (verifiedCard) {
+                verifiedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                verifiedCard.classList.add('border-success');
+                setTimeout(() => verifiedCard.classList.remove('border-success'), 2000);
+            }
+
+            const financeTableHtml = buildFinanceSummaryHtml(data, periodLabel);
+            quill.clipboard.dangerouslyPasteHTML(quill.getLength() - 1, financeTableHtml);
+            updateCounts();
+        });
+    }
+
+    // 6. Insert Standard Agenda Button
+    const loadAgendaBtn = document.getElementById('loadAgendaBtn');
+    const agendaTextarea = document.getElementById('id_agenda');
+    if (loadAgendaBtn && agendaTextarea) {
+        loadAgendaBtn.addEventListener('click', function() {
+            const defaultAgenda = "1. Opening Prayer & Remarks by Chairperson\n2. Reading & Confirmation of Previous Meeting Minutes\n3. Table Banking: Monthly Share Contributions & Welfare Collection\n4. Loan Applications Review & Approvals\n5. Group Investments & Project Updates\n6. Any Other Business (A.O.B)\n7. Date of Next Meeting & Closing Prayer";
+            if (!agendaTextarea.value || confirm('Replace existing agenda with standard Chama template?')) {
+                agendaTextarea.value = defaultAgenda;
+                triggerAutoSave();
+            }
+        });
+    }
+
+    // 7. Auto-Save & Persistent Draft Recovery System
+    const isEditing = {{ object.pk|yesno:"true,false" }};
+    const DRAFT_KEY = isEditing ? 'chama_meeting_draft_{{ object.pk }}' : 'chama_meeting_draft_new';
+    const draftStatusBadge = document.getElementById('draftStatusBadge');
+    const discardDraftBtn = document.getElementById('discardDraftBtn');
+    const draftRestoredBanner = document.getElementById('draftRestoredBanner');
+    const draftTimestampText = document.getElementById('draftTimestampText');
+    const bannerDiscardBtn = document.getElementById('bannerDiscardBtn');
+
+    let autoSaveTimeout = null;
+
+    function saveDraft() {
+        try {
+            const dateVal = document.getElementById('id_date') ? document.getElementById('id_date').value : '';
+            const statusVal = document.getElementById('id_status') ? document.getElementById('id_status').value : '';
+            const venueVal = document.getElementById('id_venue') ? document.getElementById('id_venue').value : '';
+            const agendaVal = document.getElementById('id_agenda') ? document.getElementById('id_agenda').value : '';
+            const minutesHtml = quill.getSemanticHTML ? quill.getSemanticHTML() : quill.root.innerHTML;
+            const minutesText = quill.getText().trim();
+
+            // Check if there is user-entered content
+            const hasContent = venueVal.trim() || agendaVal.trim() || minutesText.length > 0 || dateVal;
+
+            if (!hasContent) {
+                return;
+            }
+
+            const draftData = {
+                date: dateVal,
+                status: statusVal,
+                venue: venueVal,
+                agenda: agendaVal,
+                minutes: (minutesText.length > 0) ? minutesHtml : '',
+                savedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                timestamp: Date.now()
+            };
+
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draftData));
+
+            if (draftStatusBadge) {
+                draftStatusBadge.style.display = 'inline-flex';
+                draftStatusBadge.innerHTML = `<i class="bi bi-cloud-check text-success me-1"></i>Draft auto-saved ${draftData.savedAt}`;
+            }
+            if (discardDraftBtn) {
+                discardDraftBtn.style.display = 'inline-flex';
+            }
+        } catch (err) {
+            console.warn('Could not save draft to localStorage:', err);
+        }
+    }
+
+    function triggerAutoSave() {
+        if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+        if (draftStatusBadge) {
+            draftStatusBadge.style.display = 'inline-flex';
+            draftStatusBadge.innerHTML = `<i class="bi bi-arrow-repeat text-primary me-1 spin-icon"></i>Saving draft...`;
+        }
+        autoSaveTimeout = setTimeout(saveDraft, 400);
+    }
+
+    async function restoreDraft() {
+        try {
+            const savedStr = localStorage.getItem(DRAFT_KEY);
+            if (!savedStr) return;
+            const draft = JSON.parse(savedStr);
+            if (!draft) return;
+
+            let restoredAnything = false;
+
+            const dateInput = document.getElementById('id_date');
+            if (dateInput && draft.date && (!dateInput.value || !isEditing)) {
+                dateInput.value = draft.date;
+                restoredAnything = true;
+            }
+
+            const statusInput = document.getElementById('id_status');
+            if (statusInput && draft.status && (!statusInput.value || !isEditing)) {
+                statusInput.value = draft.status;
+                restoredAnything = true;
+            }
+
+            const venueInput = document.getElementById('id_venue');
+            if (venueInput && draft.venue && (!venueInput.value || !isEditing)) {
+                venueInput.value = draft.venue;
+                restoredAnything = true;
+            }
+
+            const agendaInput = document.getElementById('id_agenda');
+            if (agendaInput && draft.agenda && (!agendaInput.value || !isEditing)) {
+                agendaInput.value = draft.agenda;
+                restoredAnything = true;
+            }
+
+            if (draft.minutes && draft.minutes.trim().length > 0) {
+                if (quill.getText().trim().length === 0 || !isEditing) {
+                    quill.root.innerHTML = draft.minutes;
+                    updateCounts();
+                    const hiddenInput = document.getElementById('id_minutes');
+                    if (hiddenInput) hiddenInput.value = draft.minutes;
+                    restoredAnything = true;
+                }
+            }
+
+            if (restoredAnything) {
+                if (draftRestoredBanner) {
+                    draftRestoredBanner.style.setProperty('display', 'flex', 'important');
+                    if (draftTimestampText && draft.savedAt) {
+                        draftTimestampText.textContent = `(Saved at ${draft.savedAt})`;
+                    }
+                }
+                if (draftStatusBadge) {
+                    draftStatusBadge.style.display = 'inline-flex';
+                    draftStatusBadge.innerHTML = `<i class="bi bi-cloud-check text-success me-1"></i>Draft restored (${draft.savedAt || 'recent'})`;
+                }
+                if (discardDraftBtn) {
+                    discardDraftBtn.style.display = 'inline-flex';
+                }
+
+                // Update financial calculations for restored date
+                const liveData = await getFinancialData();
+                updateSidebarLedger(liveData);
+            }
+        } catch (err) {
+            console.warn('Could not restore draft from localStorage:', err);
+        }
+    }
+
+    function clearDraft(confirmFirst = false) {
+        if (confirmFirst && !confirm('Are you sure you want to discard this draft and reset the form?')) {
+            return;
+        }
+        localStorage.removeItem(DRAFT_KEY);
+        if (draftStatusBadge) draftStatusBadge.style.display = 'none';
+        if (discardDraftBtn) discardDraftBtn.style.display = 'none';
+        if (draftRestoredBanner) draftRestoredBanner.style.setProperty('display', 'none', 'important');
+
+        if (!isEditing) {
+            const form = document.getElementById('meetingForm');
+            if (form) form.reset();
+            quill.setText('');
+            updateCounts();
+            const hiddenInput = document.getElementById('id_minutes');
+            if (hiddenInput) hiddenInput.value = '';
+        }
+    }
+
+    // Attach listeners for field inputs
+    const trackFieldIds = ['id_date', 'id_status', 'id_venue', 'id_agenda'];
+    trackFieldIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', triggerAutoSave);
+            el.addEventListener('change', triggerAutoSave);
+        }
+    });
+
+    quill.on('text-change', triggerAutoSave);
+
+    if (discardDraftBtn) {
+        discardDraftBtn.addEventListener('click', () => clearDraft(true));
+    }
+    if (bannerDiscardBtn) {
+        bannerDiscardBtn.addEventListener('click', () => clearDraft(true));
+    }
+
+    // Clear draft on successful form submission
+    if (meetingForm) {
+        meetingForm.addEventListener('submit', function() {
+            localStorage.removeItem(DRAFT_KEY);
+        });
+    }
+
+    // Attempt restoration on page load
+    restoreDraft();
+
 });
 
-// sync Quill HTML into the hidden textarea before submit
-document.getElementById('meetingForm').addEventListener('submit', function () {
-    document.getElementById('id_minutes').value = quill.getSemanticHTML();
-});
+// Helper for quick venue tags
+function setVenue(val) {
+    const venueInput = document.getElementById('id_venue');
+    if (venueInput) {
+        venueInput.value = val;
+        venueInput.focus();
+        venueInput.dispatchEvent(new Event('input'));
+    }
+}
 </script>
 {% endblock %}

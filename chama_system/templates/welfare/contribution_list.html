@@ -1,55 +1,136 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Welfare Contributions{% endblock %}
 {% block page_title %}Welfare Contributions{% endblock %}
+
+{% block extra_css %}
+{% include 'includes/payment_type_css.html' %}
+<style>
+    .bulk-toolbar-active {
+        animation: fadeInDown 0.25s ease-out;
+    }
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <!-- Stat Cards -->
 <div class="row g-3 mb-3">
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card">
+    <div class="col-sm-6 col-md-4 col-xl">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
             <div class="card-body d-flex align-items-center gap-3 py-3">
-                <div class="icon-box accent-blue"><i class="bi bi-cash-stack"></i></div>
+                <div class="icon-box accent-blue" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;"><i class="bi bi-cash-stack fs-5"></i></div>
                 <div>
-                    <div class="stat-label">Total Collected</div>
-                    <div class="stat-value">KES {{ stat_total_contributions|floatformat:0 }}</div>
+                    <div class="stat-label" style="font-size:0.75rem;text-transform:uppercase;">Total Collected</div>
+                    <div class="stat-value" style="font-size:1.25rem;font-weight:700;">KES {{ stat_total_contributions|kes:0 }}</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card">
+    <div class="col-sm-6 col-md-4 col-xl">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
             <div class="card-body d-flex align-items-center gap-3 py-3">
-                <div class="icon-box accent-rose"><i class="bi bi-arrow-up-circle"></i></div>
+                <div class="icon-box accent-rose" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;"><i class="bi bi-arrow-up-circle fs-5"></i></div>
                 <div>
-                    <div class="stat-label">Total Disbursed</div>
-                    <div class="stat-value" style="color:#e11d48;">KES {{ stat_total_disbursed|floatformat:0 }}</div>
+                    <div class="stat-label" style="font-size:0.75rem;text-transform:uppercase;">Total Disbursed</div>
+                    <div class="stat-value" style="color:#e11d48;font-size:1.25rem;font-weight:700;">KES {{ stat_total_disbursed|kes:0 }}</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card" style="border:2px solid #16a34a;">
+    <div class="col-sm-6 col-md-4 col-xl">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border:2px solid #16a34a;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:12px;">
             <div class="card-body d-flex align-items-center gap-3 py-3">
-                <div class="icon-box" style="background:#f0fdf4;color:#16a34a;"><i class="bi bi-safe2"></i></div>
+                <div class="icon-box" style="background:#16a34a;color:#fff;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;"><i class="bi bi-shield-check fs-5"></i></div>
                 <div>
-                    <div class="stat-label" style="color:#166534;">Welfare Balance</div>
-                    <div class="stat-value" style="color:#15803d;">KES {{ stat_welfare_balance|floatformat:0 }}</div>
+                    <div class="stat-label" style="color:#166534;font-size:0.75rem;text-transform:uppercase;font-weight:700;">Welfare Balance</div>
+                    <div class="stat-value" style="color:#15803d;font-size:1.25rem;font-weight:700;">KES {{ stat_welfare_balance|kes:0 }}</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card">
+    <div class="col-sm-6 col-md-6 col-xl">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border:2px solid #0284c7;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-radius:12px;">
             <div class="card-body d-flex align-items-center gap-3 py-3">
-                <div class="icon-box accent-amber"><i class="bi bi-clipboard2-heart"></i></div>
+                <div class="icon-box" style="background:#0284c7;color:#fff;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;"><i class="bi bi-bank2 fs-5"></i></div>
                 <div>
-                    <div class="stat-label">Open Events</div>
-                    <div class="stat-value">{{ stat_open_events }}</div>
+                    <div class="stat-label" style="color:#0369a1;font-size:0.75rem;text-transform:uppercase;font-weight:700;">Welfare in Bank</div>
+                    <div class="stat-value" style="color:#0284c7;font-size:1.25rem;font-weight:700;">KES {{ welfare_bank_balance|kes:0 }}</div>
+                    {% if primary_welfare_bank %}
+                    <div style="font-size:0.68rem;color:#0369a1;" class="text-truncate" title="{{ primary_welfare_bank.bank_name }}">
+                        {{ primary_welfare_bank.bank_name }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-md-6 col-xl">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box accent-amber" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;"><i class="bi bi-clipboard2-heart fs-5"></i></div>
+                <div>
+                    <div class="stat-label" style="font-size:0.75rem;text-transform:uppercase;">Open Events</div>
+                    <div class="stat-value" style="font-size:1.25rem;font-weight:700;">{{ stat_open_events }}</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Dedicated Welfare Bank Account Banner -->
+{% if primary_welfare_bank %}
+<div class="card shadow-sm border-0 mb-3" style="border-radius:14px; background:linear-gradient(135deg, #f8fafc 0%, #eff6ff 50%, #f0fdf4 100%); border:1.5px solid #93c5fd;">
+    <div class="card-body p-3 p-md-3.5">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#0284c7,#059669);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 10px rgba(2,132,199,0.25);">
+                    <i class="bi bi-shield-lock-fill fs-4"></i>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <h6 class="mb-0 fw-bold text-dark" style="font-size:0.98rem;">Dedicated Welfare Bank Account</h6>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-0.5 fw-semibold" style="font-size:0.72rem;">
+                            <i class="bi bi-lock-fill me-1"></i>Segregated from Group Lending
+                        </span>
+                        {% if welfare_bank_balance >= stat_welfare_balance and stat_welfare_balance > 0 %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5 fw-semibold" style="font-size:0.72rem;">
+                            <i class="bi bi-check2-all me-1"></i>100% Banked &amp; Reconciled
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted small mt-1">
+                        <strong class="text-dark">{{ primary_welfare_bank.bank_name }}</strong> &mdash; {{ primary_welfare_bank.account_name }}
+                        {% if primary_welfare_bank.account_number %}&bull; <span class="font-monospace fw-semibold text-secondary">A/C: {{ primary_welfare_bank.account_number }}</span>{% endif %}
+                        {% if primary_welfare_bank.branch %}&bull; <span>{{ primary_welfare_bank.branch }}</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="text-md-end">
+                    <div class="text-muted small text-uppercase fw-semibold" style="font-size:0.7rem;letter-spacing:0.5px;">Welfare Bank Balance</div>
+                    <div class="fs-4 fw-bolder text-primary font-monospace">KES {{ welfare_bank_balance|kes }}</div>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    {% if user.profile.role != 'readonly' %}
+                    <button type="button" class="btn btn-sm btn-success fw-semibold shadow-xs d-flex align-items-center gap-1.5 px-3 py-2" data-bs-toggle="modal" data-bs-target="#depositWelfareModal" style="border-radius:8px;">
+                        <i class="bi bi-plus-circle-fill"></i>
+                        <span>Deposit to Bank</span>
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'bank_accounts:detail' primary_welfare_bank.pk %}" class="btn btn-sm btn-outline-secondary fw-semibold shadow-xs d-flex align-items-center gap-1.5 px-3 py-2" style="border-radius:8px;background:#ffffff;">
+                        <i class="bi bi-receipt"></i>
+                        <span>Bank Statements</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <form class="d-flex gap-2 flex-wrap" method="get" data-ajax-filter>
@@ -70,19 +151,30 @@
         <a href="{% url 'welfare:contribution_list' %}" class="btn btn-sm btn-outline-danger ajax-clear"
            {% if not q and not selected_month and not selected_year %}style="display:none"{% endif %}>Clear</a>
     </form>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         {% if user.profile.role != 'readonly' %}
+        {% if primary_welfare_bank %}
+        <button type="button" class="btn btn-sm btn-success shadow-xs d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#depositWelfareModal">
+            <i class="bi bi-bank"></i>
+            <span>Deposit to Bank</span>
+        </button>
+        {% endif %}
         <a href="{% url 'welfare:contribution_add' %}" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-circle me-1"></i>Record Contribution
         </a>
-        <a href="{% url 'welfare:contribution_export' %}?format=csv&q={{ q }}&month={{ selected_month }}&year={{ selected_year }}"
-           class="btn btn-sm btn-outline-success">
-            <i class="bi bi-filetype-csv me-1"></i>CSV
+        <a href="{% url 'welfare:bulk' %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-people me-1"></i>Bulk Entry
         </a>
-        <a href="{% url 'welfare:contribution_export' %}?format=pdf&q={{ q }}&month={{ selected_month }}&year={{ selected_year }}"
-           class="btn btn-sm btn-outline-danger">
-            <i class="bi bi-filetype-pdf me-1"></i>PDF
-        </a>
+        <div class="btn-group btn-group-sm">
+            <a href="{% url 'welfare:contribution_export' %}?format=csv&q={{ q }}&month={{ selected_month }}&year={{ selected_year }}"
+               class="btn btn-outline-success">
+                <i class="bi bi-filetype-csv me-1"></i>CSV
+            </a>
+            <a href="{% url 'welfare:contribution_export' %}?format=pdf&q={{ q }}&month={{ selected_month }}&year={{ selected_year }}"
+               class="btn btn-outline-danger">
+                <i class="bi bi-filetype-pdf me-1"></i>PDF
+            </a>
+        </div>
         {% endif %}
         <a href="{% url 'welfare:defaulters' %}" class="btn btn-sm btn-outline-warning">
             <i class="bi bi-person-x me-1"></i>Defaulters
@@ -90,23 +182,109 @@
     </div>
 </div>
 
+<!-- Bulk Actions Toolbar -->
+<div id="bulk-actions-toolbar" class="alert alert-primary d-none mb-3 shadow-sm py-2 px-3 bulk-toolbar-active" role="alert" style="background:#eff6ff; border-color:#bfdbfe; color:#1e40af;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill text-primary fs-5"></i>
+            <div>
+                <strong><span id="selected-count">0</span> welfare contribution(s) selected</strong>
+                <span class="text-muted ms-2" style="font-size:0.88rem;">(Total: <span class="fw-semibold text-success">KES <span id="selected-amount">0.00</span></span>)</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            {% if user.profile.role != 'readonly' %}
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#bulkUpdateModal">
+                <i class="bi bi-pencil-square me-1"></i>Bulk Update
+            </button>
+            <div class="btn-group btn-group-sm">
+                <button type="button" id="bulk-export-csv-btn" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV
+                </button>
+                <button type="button" id="bulk-export-pdf-btn" class="btn btn-outline-danger">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+                </button>
+            </div>
+            {% if user.profile.is_admin %}
+            <button type="button" id="bulk-delete-btn" class="btn btn-sm btn-danger">
+                <i class="bi bi-trash me-1"></i>Delete Selected
+            </button>
+            {% endif %}
+            {% endif %}
+            <button type="button" id="clear-selection-btn" class="btn btn-sm btn-outline-secondary">
+                Clear Selection
+            </button>
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+
 <div id="results-container">
+
+<!-- Filtered totals — updates with AJAX when filters change -->
+{% if q or selected_month or selected_year %}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">{{ filter_label }} Total</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#2563eb;">KES {{ filtered_total|kes:0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card">
+            <div class="card-body py-3 px-3">
+                <div class="stat-label">{{ filter_label }} Records</div>
+                <div class="stat-value" style="font-size:1.1rem;color:#2563eb;">{{ filtered_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-cash me-2"></i>Welfare Contributions</span>
-        <span class="text-muted fw-normal" style="font-size:0.78rem;">{{ total_count }} record{{ total_count|pluralize }}</span>
+        <span><i class="bi bi-cash me-2"></i>
+            {% if q or selected_month or selected_year %}Filtered Welfare Contributions{% else %}All Welfare Contributions{% endif %}
+        </span>
+        <span class="text-muted fw-normal" style="font-size:0.78rem;">
+            {% if q or selected_month or selected_year %}
+            <span class="fw-semibold text-primary">KES {{ filtered_total|kes }} &middot; </span>
+            {% endif %}
+            {{ total_count }} record{{ total_count|pluralize }}
+        </span>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0 align-middle">
             <thead>
-                <tr><th>#</th><th>Member</th><th>Amount</th><th>Method</th><th>Month</th><th>Year</th><th>Date</th><th>Actions</th></tr>
+                <tr>
+                    <th style="width:40px;">
+                        <input type="checkbox" id="select-all-contributions" class="form-check-input" title="Select all on this page">
+                    </th>
+                    <th>#</th>
+                    <th>Member</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Month</th>
+                    <th>Year</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
             </thead>
             <tbody>
                 {% for c in contributions %}
-                <tr>
+                <tr id="row-contribution-{{ c.pk }}">
+                    <td>
+                        <input type="checkbox" class="contribution-checkbox form-check-input" 
+                               value="{{ c.pk }}" 
+                               data-amount="{{ c.amount }}" 
+                               data-member="{{ c.member.name }}">
+                    </td>
                     <td class="text-muted">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                     <td class="fw-semibold">{{ c.member.name }}</td>
-                    <td style="color:#16a34a;">KES {{ c.amount|floatformat:2 }}</td>
+                    <td style="color:#16a34a; font-weight:600;">KES {{ c.amount|kes }}</td>
                     <td>{% include 'includes/payment_type_badge.html' with obj=c %}</td>
                     <td>{{ c.get_month_display }}</td>
                     <td>{{ c.year }}</td>
@@ -114,11 +292,11 @@
                     <td>
                         {% if user.profile.role != 'readonly' %}
                         <div class="d-flex gap-1">
-                            <a href="{% url 'welfare:contribution_edit' c.pk %}" class="btn btn-sm btn-outline-warning">
+                            <a href="{% url 'welfare:contribution_edit' c.pk %}" class="btn btn-sm btn-outline-warning" title="Edit">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             {% if user.profile.is_admin %}
-                            <a href="{% url 'welfare:contribution_delete' c.pk %}" class="btn btn-sm btn-outline-danger">
+                            <a href="{% url 'welfare:contribution_delete' c.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
                                 <i class="bi bi-trash"></i>
                             </a>
                             {% endif %}
@@ -128,7 +306,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-5">
+                    <td colspan="9" class="text-center text-muted py-5">
                         <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
                         No welfare contributions recorded.
                     </td>
@@ -142,4 +320,327 @@
     </div>
 </div>
 </div>
+
+<!-- Bulk Update Modal -->
+<div class="modal fade" id="bulkUpdateModal" tabindex="-1" aria-labelledby="bulkUpdateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'welfare:bulk_update' %}" id="bulk-update-form">
+                {% csrf_token %}
+                <input type="hidden" name="contribution_ids" id="modal-update-ids" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bulkUpdateModalLabel">
+                        <i class="bi bi-pencil-square me-1"></i>Bulk Update Welfare Contributions
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Updating <strong id="modal-selected-count">0</strong> selected contribution(s). Leave any field unchanged to keep existing values.
+                    </p>
+                    <div class="mb-3">
+                        <label for="bulk_month" class="form-label fw-semibold">Contribution Month</label>
+                        <select name="bulk_month" id="bulk_month" class="form-select">
+                            <option value="">— Keep Unchanged —</option>
+                            {% for num, name in months %}
+                            <option value="{{ num }}">{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bulk_year" class="form-label fw-semibold">Contribution Year</label>
+                        <select name="bulk_year" id="bulk_year" class="form-select">
+                            <option value="">— Keep Unchanged —</option>
+                            {% for y in years %}
+                            <option value="{{ y }}">{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bulk_payment_type" class="form-label fw-semibold">Payment Method</label>
+                        <select name="bulk_payment_type" id="bulk_payment_type" class="form-select">
+                            <option value="">— Keep Unchanged —</option>
+                            <option value="cash">Cash</option>
+                            <option value="mpesa">M-Pesa</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Apply Updates
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Deposit to Welfare Bank Modal -->
+{% if primary_welfare_bank and user.profile.role != 'readonly' %}
+<div class="modal fade" id="depositWelfareModal" tabindex="-1" aria-labelledby="depositWelfareModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px; overflow:hidden;">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #059669 0%, #0284c7 100%); padding: 1.25rem 1.5rem;">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width:38px;height:38px;background:rgba(255,255,255,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="bi bi-bank2 fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="depositWelfareModalLabel">Deposit Cash to Welfare Bank Account</h5>
+                        <small class="opacity-75" style="font-size:0.75rem;">Deposit funds directly into dedicated welfare bank account</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'bank_accounts:topup' primary_welfare_bank.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'welfare:contribution_list' %}">
+                <div class="modal-body p-4">
+                    <div class="alert alert-light border d-flex align-items-center gap-3 mb-3 py-2.5 px-3" style="background:#f8fafc;border-radius:10px;">
+                        <i class="bi bi-shield-check text-success fs-3"></i>
+                        <div style="font-size:0.83rem;">
+                            Target: <strong>{{ primary_welfare_bank.bank_name }}</strong><br>
+                            A/C No: <span class="font-monospace fw-bold">{{ primary_welfare_bank.account_number }}</span>
+                            &bull; Current Balance: <span class="text-success fw-bold">KES {{ primary_welfare_bank.current_balance|kes }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark small mb-1">
+                            Deposit Amount (KES) <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-success fw-bold px-3">KES</span>
+                            <input type="number" name="amount" id="modalDepositAmount" class="form-control fw-bold fs-5" step="0.01" min="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="d-flex gap-1.5 mt-2 flex-wrap">
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2" style="font-size:0.75rem;border-radius:6px;" onclick="document.getElementById('modalDepositAmount').value = 500">+500</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2" style="font-size:0.75rem;border-radius:6px;" onclick="document.getElementById('modalDepositAmount').value = 1000">+1,000</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2" style="font-size:0.75rem;border-radius:6px;" onclick="document.getElementById('modalDepositAmount').value = 2000">+2,000</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2" style="font-size:0.75rem;border-radius:6px;" onclick="document.getElementById('modalDepositAmount').value = 5000">+5,000</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2" style="font-size:0.75rem;border-radius:6px;" onclick="document.getElementById('modalDepositAmount').value = 10000">+10,000</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark small mb-1">
+                            Date of Deposit <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" name="date" class="form-control" value="{% now 'Y-m-d' %}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark small mb-1">
+                            Notes / Reference <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <input type="text" name="notes" class="form-control" placeholder="e.g. Bank slip reference, welfare cash banked from meeting">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-2.5">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-success fw-semibold px-3">
+                        <i class="bi bi-check-circle me-1"></i>Confirm Deposit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bulkToolbar = document.getElementById('bulk-actions-toolbar');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const selectedAmountSpan = document.getElementById('selected-amount');
+    const clearSelectionBtn = document.getElementById('clear-selection-btn');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+    const bulkExportCsvBtn = document.getElementById('bulk-export-csv-btn');
+    const bulkExportPdfBtn = document.getElementById('bulk-export-pdf-btn');
+    const bulkUpdateModal = document.getElementById('bulkUpdateModal');
+    const modalUpdateIds = document.getElementById('modal-update-ids');
+    const modalSelectedCount = document.getElementById('modal-selected-count');
+
+    // Store selected IDs and amounts in a Set/Map across potential pagination/filter interactions
+    const selectedMap = new Map(); // id -> { amount: float, member: string }
+
+    function formatKes(amount) {
+        return parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function updateToolbar() {
+        const count = selectedMap.size;
+        selectedCountSpan.textContent = count;
+        if (modalSelectedCount) modalSelectedCount.textContent = count;
+
+        let total = 0;
+        selectedMap.forEach(item => {
+            total += (parseFloat(item.amount) || 0);
+        });
+        selectedAmountSpan.textContent = formatKes(total);
+
+        if (count > 0) {
+            bulkToolbar.classList.remove('d-none');
+        } else {
+            bulkToolbar.classList.add('d-none');
+        }
+
+        // Sync master checkbox state for currently visible items
+        const visibleCheckboxes = document.querySelectorAll('.contribution-checkbox');
+        const selectAllCheckbox = document.getElementById('select-all-contributions');
+        if (selectAllCheckbox && visibleCheckboxes.length > 0) {
+            const allChecked = Array.from(visibleCheckboxes).every(cb => selectedMap.has(cb.value));
+            const someChecked = Array.from(visibleCheckboxes).some(cb => selectedMap.has(cb.value));
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = (!allChecked && someChecked);
+        }
+    }
+
+    function syncCheckboxesFromMap() {
+        document.querySelectorAll('.contribution-checkbox').forEach(cb => {
+            cb.checked = selectedMap.has(cb.value);
+        });
+        updateToolbar();
+    }
+
+    // Event delegation on document for dynamically rendered rows (e.g. AJAX filter / pagination)
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('contribution-checkbox')) {
+            const id = e.target.value;
+            if (e.target.checked) {
+                selectedMap.set(id, {
+                    amount: e.target.dataset.amount || 0,
+                    member: e.target.dataset.member || ''
+                });
+            } else {
+                selectedMap.delete(id);
+            }
+            updateToolbar();
+        }
+
+        if (e.target && e.target.id === 'select-all-contributions') {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.contribution-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+                if (isChecked) {
+                    selectedMap.set(cb.value, {
+                        amount: cb.dataset.amount || 0,
+                        member: cb.dataset.member || ''
+                    });
+                } else {
+                    selectedMap.delete(cb.value);
+                }
+            });
+            updateToolbar();
+        }
+    });
+
+    if (clearSelectionBtn) {
+        clearSelectionBtn.addEventListener('click', function() {
+            selectedMap.clear();
+            document.querySelectorAll('.contribution-checkbox').forEach(cb => cb.checked = false);
+            const selectAll = document.getElementById('select-all-contributions');
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            updateToolbar();
+        });
+    }
+
+    // Prepare Bulk Update Modal before showing
+    if (bulkUpdateModal) {
+        bulkUpdateModal.addEventListener('show.bs.modal', function() {
+            const ids = Array.from(selectedMap.keys()).join(',');
+            modalUpdateIds.value = ids;
+            modalSelectedCount.textContent = selectedMap.size;
+        });
+    }
+
+    // Bulk Delete Action
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', function() {
+            const ids = Array.from(selectedMap.keys());
+            if (ids.length === 0) {
+                alert('Please select at least one welfare contribution.');
+                return;
+            }
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "welfare:bulk_delete" %}';
+
+            const inputIds = document.createElement('input');
+            inputIds.type = 'hidden';
+            inputIds.name = 'contribution_ids';
+            inputIds.value = ids.join(',');
+            form.appendChild(inputIds);
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfToken) {
+                form.appendChild(csrfToken.cloneNode());
+            }
+
+            document.body.appendChild(form);
+            form.submit();
+        });
+    }
+
+    // Bulk Export (CSV & PDF)
+    function triggerBulkExport(format) {
+        const ids = Array.from(selectedMap.keys());
+        if (ids.length === 0) {
+            alert('Please select at least one welfare contribution to export.');
+            return;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "welfare:contribution_export" %}';
+
+        const inputIds = document.createElement('input');
+        inputIds.type = 'hidden';
+        inputIds.name = 'ids';
+        inputIds.value = ids.join(',');
+        form.appendChild(inputIds);
+
+        const inputFormat = document.createElement('input');
+        inputFormat.type = 'hidden';
+        inputFormat.name = 'format';
+        inputFormat.value = format;
+        form.appendChild(inputFormat);
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfToken) {
+            form.appendChild(csrfToken.cloneNode());
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+
+    if (bulkExportCsvBtn) {
+        bulkExportCsvBtn.addEventListener('click', function() {
+            triggerBulkExport('csv');
+        });
+    }
+
+    if (bulkExportPdfBtn) {
+        bulkExportPdfBtn.addEventListener('click', function() {
+            triggerBulkExport('pdf');
+        });
+    }
+
+    // Observe DOM mutations inside results-container to re-sync checkboxes upon AJAX filter/pagination
+    const resultsContainer = document.getElementById('results-container');
+    if (resultsContainer) {
+        const observer = new MutationObserver(function() {
+            syncCheckboxesFromMap();
+        });
+        observer.observe(resultsContainer, { childList: true, subtree: true });
+    }
+});
+</script>
 {% endblock %}

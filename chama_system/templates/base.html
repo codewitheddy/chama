@@ -1,23 +1,44 @@
+{% load finance_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}DC Welfare Group{% endblock %}</title>
+    <title>{% block title %}{{ group_name }}{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
             --sidebar-bg: #1e2a3a;
             --sidebar-hover: #2c3e52;
-            --sidebar-active: #2563eb;
+            --sidebar-active: {{ theme_primary_color|default:"#2563eb" }};
             --sidebar-text: #94a3b8;
-            --sidebar-text-active: #f1f5f9;
+            --sidebar-text-active: #ffffff;
             --sidebar-section: #475569;
+            --primary-color: {{ theme_primary_color|default:"#2563eb" }};
             --topbar-bg: #ffffff;
             --body-bg: #f4f6f9;
             --card-bg: #ffffff;
             --border: #e2e8f0;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+        }
+        .btn-outline-primary {
+            color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+        }
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color) !important;
+            color: #ffffff !important;
+        }
+        .badge.bg-primary {
+            background-color: var(--primary-color) !important;
+        }
+        .text-primary {
+            color: var(--primary-color) !important;
         }
 
         body {
@@ -29,15 +50,32 @@
 
         /* Sidebar */
         .sidebar {
-            min-height: 100vh;
+            height: 100vh;
             background: var(--sidebar-bg);
             width: 260px;
             position: fixed;
             top: 0; left: 0;
             z-index: 100;
             overflow-y: auto;
+            overflow-x: hidden;
             display: flex;
             flex-direction: column;
+            /* thin custom scrollbar */
+            scrollbar-width: thin;
+            scrollbar-color: #2c3e52 transparent;
+        }
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #2c3e52;
+            border-radius: 99px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #3d5166;
         }
         .sidebar .brand {
             padding: 1.25rem 1.25rem 1rem;
@@ -84,6 +122,10 @@
             padding: 1rem 1.25rem;
             border-top: 1px solid #2c3e52;
             margin-top: auto;
+            position: sticky;
+            bottom: 0;
+            background: var(--sidebar-bg);
+            z-index: 1;
         }
         .sidebar-footer .username {
             color: #f1f5f9;
@@ -199,6 +241,14 @@
         }
         .form-label { font-size: 0.95rem; }
 
+        /* Suppress browser autofill highlight */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px white inset !important;
+        }
+
         /* Progress */
         .progress { background: #e2e8f0; border-radius: 99px; }
 
@@ -217,8 +267,22 @@
 <div class="d-flex">
     <nav class="sidebar">
         <div class="brand">
-            <h5><i class="bi bi-bank2 me-2"></i>DC Welfare Group</h5>
-            <small>Table Banking Manager</small>
+            <div class="d-flex align-items-center gap-2">
+                {% if group_logo %}
+                <img src="{{ group_logo }}" alt="{{ group_name }}" style="max-height: 38px; max-width: 44px; object-fit: contain; border-radius: 6px; background: rgba(255,255,255,0.08); padding: 2px;" class="flex-shrink-0" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+                <div style="display:none; width:34px; height:34px; border-radius:8px; background: rgba(255,255,255,0.1); align-items:center; justify-content:center; flex-shrink:0;">
+                    <i class="bi bi-bank2" style="font-size:1.1rem; color:var(--sidebar-active);"></i>
+                </div>
+                {% else %}
+                <div style="width:34px; height:34px; border-radius:8px; background: rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i class="bi bi-bank2" style="font-size:1.1rem; color:var(--sidebar-active);"></i>
+                </div>
+                {% endif %}
+                <div class="overflow-hidden">
+                    <h5 class="text-truncate mb-0" style="font-size: 0.98rem;" title="{{ group_name }}">{{ group_name }}</h5>
+                    <small class="text-truncate d-block" style="color:var(--sidebar-text); font-size: 0.76rem;">{{ group_tagline }}</small>
+                </div>
+            </div>
         </div>
         <ul class="nav flex-column mt-1 flex-grow-1">
             <li class="nav-section">Main</li>
@@ -234,8 +298,28 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="{% url 'members:fee_rate_list' %}" class="nav-link {% if request.resolver_match.url_name == 'fee_rate_list' or request.resolver_match.url_name == 'fee_rate_add' or request.resolver_match.url_name == 'fee_rate_edit' %}active{% endif %}">
+                    <i class="bi bi-tag me-2"></i>Registration Fee Rate
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'members:fee_payment_bulk' %}" class="nav-link {% if request.resolver_match.url_name == 'fee_payment_bulk' %}active{% endif %}">
+                    <i class="bi bi-receipt me-2"></i>Bulk Reg. Fee Entry
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'members:exit_list' %}" class="nav-link {% if request.resolver_match.url_name == 'exit_list' or request.resolver_match.url_name == 'exit_preview' or request.resolver_match.url_name == 'exit_detail' %}active{% endif %}">
+                    <i class="bi bi-box-arrow-right me-2"></i>Member Exits
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="{% url 'contributions:list' %}" class="nav-link {% if request.resolver_match.app_name == 'contributions' %}active{% endif %}">
                     <i class="bi bi-cash-stack me-2"></i>Contributions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'contributions:bulk' %}" class="nav-link {% if request.resolver_match.url_name == 'bulk' %}active{% endif %}">
+                    <i class="bi bi-people me-2"></i>Bulk Contributions
                 </a>
             </li>
             <li class="nav-item">
@@ -244,15 +328,38 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="{% url 'loans:list' %}" class="nav-link {% if request.resolver_match.app_name == 'loans' %}active{% endif %}">
+                <a href="{% url 'loans:list' %}" class="nav-link {% if request.resolver_match.app_name == 'loans' and request.resolver_match.url_name not in 'product_list product_add product_edit non_members non_member_add non_member_detail non_member_edit non_member_qualify guarantors_report group_settings settings' %}active{% endif %}">
                     <i class="bi bi-credit-card me-2"></i>Loans
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{% url 'loans:product_list' %}" class="nav-link {% if request.resolver_match.url_name == 'product_list' or request.resolver_match.url_name == 'product_add' or request.resolver_match.url_name == 'product_edit' %}active{% endif %}">
+                    <i class="bi bi-box me-2"></i>Loan Products
+                </a>
+            </li>
+
             <li class="nav-item">
                 <a href="{% url 'loans:guarantors_report' %}" class="nav-link">
                     <i class="bi bi-people me-2"></i>Guarantors
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{% url 'loans:non_members' %}" class="nav-link {% if request.resolver_match.url_name == 'non_members' or request.resolver_match.url_name == 'non_member_add' or request.resolver_match.url_name == 'non_member_detail' or request.resolver_match.url_name == 'non_member_edit' or request.resolver_match.url_name == 'non_member_qualify' %}active{% endif %}">
+                    <i class="bi bi-person-badge me-2"></i>Non-Members
+                </a>
+            </li>
+            {% if user.profile.is_admin %}
+            <li class="nav-item">
+                <a href="{% url 'loans:group_settings' %}" class="nav-link {% if request.resolver_match.url_name == 'group_settings' %}active{% endif %}">
+                    <i class="bi bi-gear-wide-connected me-2"></i>Group & System Setup
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'loans:settings' %}" class="nav-link {% if request.resolver_match.url_name == 'settings' and request.resolver_match.app_name == 'loans' %}active{% endif %}">
+                    <i class="bi bi-sliders me-2"></i>Loan Settings
+                </a>
+            </li>
+            {% endif %}
             <li class="nav-item">
                 <a href="{% url 'payments:list' %}" class="nav-link {% if request.resolver_match.app_name == 'payments' %}active{% endif %}">
                     <i class="bi bi-receipt me-2"></i>Payments
@@ -263,6 +370,23 @@
                     <i class="bi bi-exclamation-triangle me-2"></i>Penalties
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{% url 'expenses:list' %}" class="nav-link {% if request.resolver_match.app_name == 'expenses' and request.resolver_match.url_name != 'category_list' and request.resolver_match.url_name != 'category_add' and request.resolver_match.url_name != 'category_edit' and request.resolver_match.url_name != 'reg_fee_fund' %}active{% endif %}">
+                    <i class="bi bi-wallet2 me-2"></i>Expenses
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'expenses:reg_fee_fund' %}" class="nav-link {% if request.resolver_match.url_name == 'reg_fee_fund' %}active{% endif %}">
+                    <i class="bi bi-person-check me-2"></i>Reg. Fee Fund
+                </a>
+            </li>
+            {% if user.profile.is_admin %}
+            <li class="nav-item">
+                <a href="{% url 'expenses:category_list' %}" class="nav-link {% if request.resolver_match.app_name == 'expenses' and request.resolver_match.url_name == 'category_list' or request.resolver_match.app_name == 'expenses' and request.resolver_match.url_name == 'category_add' or request.resolver_match.app_name == 'expenses' and request.resolver_match.url_name == 'category_edit' %}active{% endif %}">
+                    <i class="bi bi-tags me-2"></i>Expense Categories
+                </a>
+            </li>
+            {% endif %}
             <li class="nav-item">
                 <a href="{% url 'meetings:list' %}" class="nav-link {% if request.resolver_match.app_name == 'meetings' %}active{% endif %}">
                     <i class="bi bi-calendar-event me-2"></i>Meetings
@@ -280,6 +404,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="{% url 'welfare:bulk' %}" class="nav-link {% if request.resolver_match.url_name == 'bulk' and request.resolver_match.app_name == 'welfare' %}active{% endif %}">
+                    <i class="bi bi-people me-2"></i>Bulk Welfare Contributions
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="{% url 'welfare:event_list' %}" class="nav-link">
                     <i class="bi bi-clipboard2-heart me-2"></i>Welfare Events
                 </a>
@@ -291,9 +420,89 @@
                 </a>
             </li>
             {% endif %}
+            <li class="nav-section">Money Movement &amp; Treasury</li>
+            <li class="nav-item">
+                <a href="{% url 'money_movement:dashboard' %}" class="nav-link {% if request.resolver_match.app_name == 'money_movement' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i class="bi bi-arrow-left-right me-2"></i>Funds Position &amp; Treasury
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'money_movement:transfer_list' %}" class="nav-link {% if request.resolver_match.app_name == 'money_movement' and 'transfer' in request.resolver_match.url_name %}active{% endif %} d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-send-check me-2"></i>Transfers &amp; Banking</span>
+                    {% if pending_transfers_count > 0 %}
+                    <span class="badge bg-warning text-dark rounded-pill" style="font-size:0.7rem;">{{ pending_transfers_count }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'money_movement:reconcile_cash' %}" class="nav-link {% if request.resolver_match.url_name == 'reconcile_cash' %}active{% endif %}">
+                    <i class="bi bi-cash-coin me-2"></i>Cash Reconciliation
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'money_movement:reconcile_bank' %}" class="nav-link {% if request.resolver_match.url_name == 'reconcile_bank' %}active{% endif %}">
+                    <i class="bi bi-bank2 me-2"></i>Bank Reconciliation
+                </a>
+            </li>
+            <li class="nav-section">Finance</li>
+            <li class="nav-item">
+                <a href="{% url 'investments:list' %}" class="nav-link {% if request.resolver_match.app_name == 'investments' and request.resolver_match.url_name != 'category_list' and request.resolver_match.url_name != 'category_add' and request.resolver_match.url_name != 'category_edit' and request.resolver_match.url_name != 'category_delete' and request.resolver_match.url_name != 'type_list' and request.resolver_match.url_name != 'type_add' and request.resolver_match.url_name != 'type_edit' and request.resolver_match.url_name != 'type_delete' %}active{% endif %}">
+                    <i class="bi bi-briefcase me-2"></i>Investments
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'investments:category_list' %}" class="nav-link {% if request.resolver_match.url_name == 'category_list' or request.resolver_match.url_name == 'category_add' or request.resolver_match.url_name == 'category_edit' or request.resolver_match.url_name == 'category_delete' %}active{% endif %}">
+                    <i class="bi bi-tag me-2"></i>Investment Categories
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'investments:type_list' %}" class="nav-link {% if request.resolver_match.url_name == 'type_list' or request.resolver_match.url_name == 'type_add' or request.resolver_match.url_name == 'type_edit' or request.resolver_match.url_name == 'type_delete' %}active{% endif %}">
+                    <i class="bi bi-layers me-2"></i>Investment Types
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'other_income:list' %}" class="nav-link {% if request.resolver_match.app_name == 'other_income' %}active{% endif %}">
+                    <i class="bi bi-graph-up me-2"></i>Other Income
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'bank_accounts:list' %}" class="nav-link {% if request.resolver_match.app_name == 'bank_accounts' %}active{% endif %}">
+                    <i class="bi bi-bank me-2"></i>Bank Accounts
+                </a>
+            </li>
             <li class="nav-section">Reports</li>
             <li class="nav-item">
-                <a href="{% url 'reports:income' %}" class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}">
+                <a href="{% url 'money_movement:report_meeting_summary' %}" class="nav-link {% if request.resolver_match.url_name == 'report_meeting_summary' %}active{% endif %}">
+                    <i class="bi bi-card-checklist me-2"></i>Meeting Summary
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'money_movement:report_cash_book' %}" class="nav-link {% if request.resolver_match.url_name == 'report_cash_book' %}active{% endif %}">
+                    <i class="bi bi-journal-bookmark me-2"></i>Treasurer Cash Book
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'money_movement:report_bank_ledger' %}" class="nav-link {% if request.resolver_match.url_name == 'report_bank_ledger' %}active{% endif %}">
+                    <i class="bi bi-journal-text me-2"></i>Bank Ledger
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'money_movement:report_income_vs_expenses' %}" class="nav-link {% if request.resolver_match.url_name == 'report_income_vs_expenses' %}active{% endif %}">
+                    <i class="bi bi-calculator me-2"></i>Income vs Expenses
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'money_movement:report_investments' %}" class="nav-link {% if request.resolver_match.url_name == 'report_investments' %}active{% endif %}">
+                    <i class="bi bi-pie-chart me-2"></i>Investment Register
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'money_movement:report_funds_position' %}" class="nav-link {% if request.resolver_match.url_name == 'report_funds_position' %}active{% endif %}">
+                    <i class="bi bi-shield-check me-2"></i>Funds Position (As at Date)
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'reports:income' %}" class="nav-link {% if request.resolver_match.app_name == 'reports' and request.resolver_match.url_name == 'income' %}active{% endif %}">
                     <i class="bi bi-bar-chart me-2"></i>Income Report
                 </a>
             </li>
@@ -330,6 +539,16 @@
                     <i class="bi bi-recycle me-2"></i>Recycle Bin
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{% url 'audit:log' %}" class="nav-link {% if request.resolver_match.app_name == 'audit' %}active{% endif %}">
+                    <i class="bi bi-journal-text me-2"></i>Audit Trail
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'backup:backup' %}" class="nav-link {% if request.resolver_match.app_name == 'backup' %}active{% endif %}">
+                    <i class="bi bi-cloud-arrow-down me-2"></i>Backup &amp; Restore
+                </a>
+            </li>
             {% endif %}
             <!-- <li class="nav-item">
                 <a href="/admin/" class="nav-link">
@@ -338,16 +557,20 @@
             </li> -->
         </ul>
         <div class="sidebar-footer">
-            <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'accounts:my_account' %}" class="text-decoration-none d-flex align-items-center gap-2"
+               title="My Account / Change Password">
                 <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white"
                      style="width:32px;height:32px;font-size:0.8rem;font-weight:700;flex-shrink:0;">
                     {{ user.username|first|upper }}
                 </div>
                 <div>
                     <div class="username">{{ user.username }}</div>
-                    <div class="role">{{ user.profile.get_role_display|default:"User" }}</div>
+                    <div class="role" style="font-size:0.75rem;">
+                        {{ user.profile.get_role_display|default:"User" }}
+                        <i class="bi bi-pencil-square ms-1" style="opacity:0.5;font-size:0.7rem;"></i>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
     </nav>
 
@@ -359,6 +582,23 @@
                     <i class="bi bi-calendar3 me-1"></i>
                     {% now "D, d M Y" %}
                 </span>
+                <!-- Advanced Calculator -->
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="calcToggleBtn" title="Advanced Calculator">
+                    <i class="bi bi-calculator-fill"></i>
+                </button>
+                <!-- Notification bell -->
+                <a href="{% url 'dashboard:notifications' %}"
+                   class="position-relative text-decoration-none"
+                   title="Notifications"
+                   style="color:#64748b;font-size:1.15rem;line-height:1;">
+                    <i class="bi bi-bell{% if total_alert_count %}-fill{% endif %}"></i>
+                    {% if total_alert_count %}
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill"
+                          style="background:#e11d48;font-size:0.6rem;padding:2px 5px;min-width:16px;">
+                        {{ total_alert_count }}
+                    </span>
+                    {% endif %}
+                </a>
                 <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-outline-secondary">
@@ -368,7 +608,65 @@
             </div>
         </div>
 
-        <div class="page-content">
+        <!-- Advanced Calculator Modal -->
+        <div class="modal fade" id="calcModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+                    <div class="modal-header py-2" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); border: none;">
+                        <h6 class="modal-title text-white"><i class="bi bi-calculator-fill me-2"></i>Advanced Calculator</h6>
+                        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="mb-3">
+                            <input type="text" id="calcDisplay" class="form-control" readonly 
+                                   style="font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); 
+                                          border: 2px solid #2563eb; text-align: right; padding: 1rem; color: #1e3a8a;">
+                        </div>
+                        <div class="row g-2">
+                            <!-- Row 1 -->
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100 calc-func" data-func="clear">AC</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100 calc-func" data-func="backspace"><i class="bi bi-backspace"></i></button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100 calc-func" data-func="percent">%</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-warning w-100 calc-op" data-op="/">÷</button></div>
+                            
+                            <!-- Row 2 -->
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="7">7</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="8">8</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="9">9</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-warning w-100 calc-op" data-op="*">×</button></div>
+                            
+                            <!-- Row 3 -->
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="4">4</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="5">5</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="6">6</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-warning w-100 calc-op" data-op="-">−</button></div>
+                            
+                            <!-- Row 4 -->
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="1">1</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="2">2</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="3">3</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-warning w-100 calc-op" data-op="+">+</button></div>
+                            
+                            <!-- Row 5 -->
+                            <div class="col-6"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num="0">0</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-primary w-100 calc-num" data-num=".">.</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-success w-100" id="calcEquals">=</button></div>
+                            
+                            <!-- Advanced Functions Row -->
+                            <div class="col-3"><button type="button" class="btn btn-sm btn-outline-info w-100 calc-func" data-func="sqrt" title="Square Root">√</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-sm btn-outline-info w-100 calc-func" data-func="square" title="Square">x²</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-sm btn-outline-info w-100 calc-func" data-func="inverse" title="1/x">1/x</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-sm btn-outline-info w-100 calc-func" data-func="negate" title="Negate">±</button></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2 px-3" style="background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 0.85rem; color: #64748b;">
+                        <small>Tip: Use keyboard (0-9, +, -, *, /, =, C, Backspace)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-content flex-grow-1">
             {% if messages %}
                 {% for message in messages %}
                 <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
@@ -379,6 +677,20 @@
             {% endif %}
             {% block content %}{% endblock %}
         </div>
+
+        <!-- Global Document & System Footer -->
+        <footer class="py-3 px-4 mt-auto border-top bg-white text-muted small" style="font-size: 0.825rem;">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+                <div>
+                    <span class="fw-bold text-dark">{{ group_name|default:"Finance Wise TBM" }}</span>
+                    <span class="mx-1">&mdash;</span>
+                    <span>Powered by <strong class="text-primary">Ropenix Investments Limited</strong> ( 018 218 0965 )</span>
+                </div>
+                <div class="text-secondary small">
+                    &copy; {% now "Y" %} All Rights Reserved
+                </div>
+            </div>
+        </footer>
     </div>
 </div>
 {% else %}
@@ -386,6 +698,193 @@
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+<script>
+// ── Advanced Calculator with Math.js ──────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    const calcToggleBtn = document.getElementById('calcToggleBtn');
+    const calcModal = document.getElementById('calcModal');
+    const calcDisplay = document.getElementById('calcDisplay');
+    const calcNumBtns = document.querySelectorAll('.calc-num');
+    const calcOpBtns = document.querySelectorAll('.calc-op');
+    const calcFuncBtns = document.querySelectorAll('.calc-func');
+    const calcEquals = document.getElementById('calcEquals');
+    
+    let expression = '';
+    let modal = null;
+    
+    function updateDisplay() {
+        calcDisplay.value = expression || '0';
+    }
+    
+    function handleNumber(num) {
+        // Prevent multiple leading zeros
+        if (expression === '0' && num === '0') return;
+        if (expression === '0' && num !== '.') {
+            expression = num;
+        } else {
+            expression += num;
+        }
+        updateDisplay();
+    }
+    
+    function handleOperator(op) {
+        if (expression === '') return;
+        expression += op;
+        updateDisplay();
+    }
+    
+    function handleEquals() {
+        if (expression === '') return;
+        try {
+            // Use math.js for safe evaluation
+            const result = math.evaluate(expression);
+            expression = String(result);
+            updateDisplay();
+        } catch (e) {
+            calcDisplay.value = 'Error';
+            expression = '';
+        }
+    }
+    
+    function handleFunction(func) {
+        try {
+            if (expression === '') return;
+            
+            let result;
+            switch(func) {
+                case 'sqrt':
+                    result = Math.sqrt(parseFloat(expression));
+                    break;
+                case 'square':
+                    result = Math.pow(parseFloat(expression), 2);
+                    break;
+                case 'inverse':
+                    result = 1 / parseFloat(expression);
+                    break;
+                case 'percent':
+                    result = parseFloat(expression) / 100;
+                    break;
+                case 'negate':
+                    result = -parseFloat(expression);
+                    break;
+                case 'backspace':
+                    expression = expression.slice(0, -1);
+                    updateDisplay();
+                    return;
+                case 'clear':
+                    expression = '';
+                    updateDisplay();
+                    return;
+                default:
+                    return;
+            }
+            
+            expression = String(result);
+            updateDisplay();
+        } catch (e) {
+            calcDisplay.value = 'Error';
+            expression = '';
+        }
+    }
+    
+    // Number buttons
+    calcNumBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            handleNumber(this.dataset.num);
+        });
+    });
+    
+    // Operator buttons
+    calcOpBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            handleOperator(this.dataset.op);
+        });
+    });
+    
+    // Function buttons
+    calcFuncBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            handleFunction(this.dataset.func);
+        });
+    });
+    
+    // Equals button
+    calcEquals.addEventListener('click', handleEquals);
+    
+    // Toggle calculator
+    if (calcToggleBtn && calcModal) {
+        calcToggleBtn.addEventListener('click', function() {
+            modal = new bootstrap.Modal(calcModal);
+            modal.show();
+            setTimeout(() => calcDisplay.focus(), 100);
+        });
+    }
+    
+    // Keyboard support
+    calcModal.addEventListener('shown.bs.modal', function() {
+        document.addEventListener('keydown', handleKeyboard);
+    });
+    
+    calcModal.addEventListener('hidden.bs.modal', function() {
+        document.removeEventListener('keydown', handleKeyboard);
+    });
+    
+    function handleKeyboard(e) {
+        const key = e.key;
+        
+        // Numbers
+        if (/^[0-9]$/.test(key)) {
+            handleNumber(key);
+            e.preventDefault();
+        } 
+        // Decimal
+        else if (key === '.') {
+            handleNumber('.');
+            e.preventDefault();
+        }
+        // Operators
+        else if (key === '+') {
+            handleOperator('+');
+            e.preventDefault();
+        }
+        else if (key === '-') {
+            handleOperator('-');
+            e.preventDefault();
+        }
+        else if (key === '*') {
+            handleOperator('*');
+            e.preventDefault();
+        }
+        else if (key === '/') {
+            handleOperator('/');
+            e.preventDefault();
+        }
+        // Equals
+        else if (key === 'Enter' || key === '=') {
+            handleEquals();
+            e.preventDefault();
+        }
+        // Clear
+        else if (key.toLowerCase() === 'c') {
+            handleFunction('clear');
+            e.preventDefault();
+        }
+        // Backspace
+        else if (key === 'Backspace') {
+            handleFunction('backspace');
+            e.preventDefault();
+        }
+    }
+});
+
+// Disable browser autocomplete/suggestions on all inputs globally
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('input:not(#calcDisplay), textarea, select').forEach(function (el) {
+        el.setAttribute('autocomplete', 'off');
+    });
+});
+</script>
 <script>
 (function () {
   function initAjaxFilter(form) {

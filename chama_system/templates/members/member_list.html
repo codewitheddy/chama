@@ -1,14 +1,20 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Members{% endblock %}
 {% block page_title %}Members{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <form class="d-flex gap-2" method="get" data-ajax-filter>
+    <form class="d-flex gap-2 flex-wrap" method="get" data-ajax-filter>
         <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
                placeholder="Search name or phone..." style="width:220px;">
+        <select name="sort" class="form-select form-select-sm" style="width:175px;">
+            {% for value, label in sort_options %}
+            <option value="{{ value }}" {% if selected_sort == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
         <a href="{% url 'members:list' %}" class="btn btn-sm btn-outline-danger ajax-clear"
-           {% if not q %}style="display:none"{% endif %}>Clear</a>
+           {% if not q and selected_sort == 'name_asc' %}style="display:none"{% endif %}>Clear</a>
     </form>
     <div class="d-flex gap-2">
         <a href="{% url 'members:add' %}" class="btn btn-primary btn-sm">
@@ -21,6 +27,28 @@
     </div>
 </div>
 
+<!-- Bulk Actions Toolbar -->
+<div id="bulk-actions-toolbar" class="alert alert-info d-none mb-3" role="alert">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <strong><span id="selected-count">0</span> member(s) selected</strong>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" id="bulk-exit-btn" class="btn btn-sm btn-warning" data-action="exit">
+                <i class="bi bi-box-arrow-right me-1"></i>Exit Members
+            </button>
+            <button type="button" id="bulk-delete-btn" class="btn btn-sm btn-danger" data-action="delete">
+                <i class="bi bi-trash me-1"></i>Delete Members
+            </button>
+            <button type="button" id="clear-selection-btn" class="btn btn-sm btn-outline-secondary">
+                Clear Selection
+            </button>
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+
 <div id="results-container">
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -29,26 +57,75 @@
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
-                <tr><th>#</th><th>Name</th><th>Phone</th><th>Reg. Fee</th><th>Date Joined</th><th>Actions</th></tr>
+                <tr>
+                    <th style="width:40px;"><input type="checkbox" id="select-all-members" title="Select all"></th>
+                    <th>#</th><th>Name</th><th>Phone</th><th>Next of Kin</th><th>Reg. Fee</th><th>Contributions</th><th>Date Joined</th><th>Status</th><th>Actions</th>
+                </tr>
             </thead>
             <tbody>
                 {% for m in members %}
                 <tr>
-                    <td class="text-muted" style="font-size:0.8rem;">{{ forloop.counter }}</td>
-                    <td><a href="{% url 'members:detail' m.pk %}" class="text-decoration-none fw-semibold">{{ m.name }}</a></td>
+                    <td><input type="checkbox" class="member-checkbox" value="{{ m.pk }}" data-name="{{ m.name }}"></td>
+                    <td class="text-muted" style="font-size:0.8rem;">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:30px;height:30px;border-radius:50%;background:#eff6ff;
+                                        display:flex;align-items:center;justify-content:center;
+                                        font-size:0.78rem;font-weight:700;color:#2563eb;flex-shrink:0;">
+                                {{ m.name|first|upper }}
+                            </div>
+                            <div>
+                                <a href="{% url 'members:detail' m.pk %}" class="text-decoration-none fw-semibold">{{ m.name }}</a>
+                                {% if m.id_document %}
+                                <i class="bi bi-file-earmark-check ms-1 text-success" title="ID document on file" style="font-size:0.72rem;"></i>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
                     <td>{{ m.phone }}</td>
-                    <td>KES {{ m.registration_fee }}</td>
+                    <td class="text-muted" style="font-size:0.82rem;">
+                        {% if m.next_of_kin_name %}
+                            {{ m.next_of_kin_name }}
+                            {% if m.next_of_kin_relationship %}
+                            <span style="font-size:0.72rem;">({{ m.next_of_kin_relationship }})</span>
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>KES {{ m.registration_fee_paid|kes }}</td>
+                    <td style="color:#16a34a;">
+                        {% if m.total_contributions_sum %}
+                            KES {{ m.total_contributions_sum|kes }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
                     <td>{{ m.date_joined }}</td>
                     <td>
+                        {% if m.exit_record %}
+                            <span class="badge" style="background:#fff1f2;color:#e11d48;"><i class="bi bi-x-circle me-1"></i>Exited</span>
+                        {% elif m.is_active %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;"><i class="bi bi-check-circle me-1"></i>Active</span>
+                        {% else %}
+                            <span class="badge" style="background:#f3f4f6;color:#6b7280;"><i class="bi bi-dash-circle me-1"></i>Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
                         <div class="d-flex gap-1">
-                            <a href="{% url 'members:detail' m.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
-                            <a href="{% url 'members:edit' m.pk %}" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil"></i></a>
-                            <a href="{% url 'members:delete' m.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                            <a href="{% url 'members:detail' m.pk %}" class="btn btn-sm btn-outline-secondary" title="View Details"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'members:edit' m.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Member"><i class="bi bi-pencil"></i></a>
+                            {% if m.exit_record %}
+                            <a href="{% url 'members:exit_detail' m.pk %}" class="btn btn-sm btn-outline-info" title="View Exit Record"><i class="bi bi-receipt"></i></a>
+                            {% elif m.is_active %}
+                            <a href="{% url 'members:exit_preview' m.pk %}" class="btn btn-sm btn-outline-warning" title="Exit Member"><i class="bi bi-box-arrow-right"></i></a>
+                            {% endif %}
+                            <a href="{% url 'members:delete' m.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Member"><i class="bi bi-trash"></i></a>
                         </div>
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" class="text-center text-muted py-5">No members found.</td></tr>
+                <tr><td colspan="10" class="text-center text-muted py-5">No members found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -58,4 +135,114 @@
     </div>
 </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all-members');
+    const memberCheckboxes = document.querySelectorAll('.member-checkbox');
+    const bulkToolbar = document.getElementById('bulk-actions-toolbar');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const bulkExitBtn = document.getElementById('bulk-exit-btn');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+    const clearSelectionBtn = document.getElementById('clear-selection-btn');
+
+    function updateToolbar() {
+        const checkedCount = document.querySelectorAll('.member-checkbox:checked').length;
+        selectedCountSpan.textContent = checkedCount;
+        
+        if (checkedCount > 0) {
+            bulkToolbar.classList.remove('d-none');
+        } else {
+            bulkToolbar.classList.add('d-none');
+            selectAllCheckbox.checked = false;
+        }
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            memberCheckboxes.forEach(cb => cb.checked = this.checked);
+            updateToolbar();
+        });
+    }
+
+    memberCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateToolbar);
+    });
+
+    if (clearSelectionBtn) {
+        clearSelectionBtn.addEventListener('click', function() {
+            memberCheckboxes.forEach(cb => cb.checked = false);
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+            updateToolbar();
+        });
+    }
+
+    if (bulkExitBtn) {
+        bulkExitBtn.addEventListener('click', function() {
+            const selected = Array.from(document.querySelectorAll('.member-checkbox:checked'))
+                .map(cb => ({ id: cb.value, name: cb.dataset.name }));
+            
+            if (selected.length === 0) {
+                alert('Please select at least one member.');
+                return;
+            }
+
+            const names = selected.map(m => m.name).join(', ');
+            if (confirm(`Exit ${selected.length} member(s)?\n\n${names}`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{% url "members:bulk_exit" %}';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'member_ids';
+                input.value = selected.map(m => m.id).join(',');
+                form.appendChild(input);
+                
+                const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfTokenElement) {
+                    form.appendChild(csrfTokenElement.cloneNode());
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', function() {
+            const selected = Array.from(document.querySelectorAll('.member-checkbox:checked'))
+                .map(cb => ({ id: cb.value, name: cb.dataset.name }));
+            
+            if (selected.length === 0) {
+                alert('Please select at least one member.');
+                return;
+            }
+
+            const names = selected.map(m => m.name).join(', ');
+            const pageNote = {% if paginator.num_pages > 1 %}` (Page {{ page_obj.number }} of {{ paginator.num_pages }})`{% else %}''{% endif %};
+            if (confirm(`Delete ${selected.length} member(s) selected on this page${pageNote}?\n\n${names}\n\nThis action cannot be undone.`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{% url "members:bulk_delete" %}';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'member_ids';
+                input.value = selected.map(m => m.id).join(',');
+                form.appendChild(input);
+                
+                const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfTokenElement) {
+                    form.appendChild(csrfTokenElement.cloneNode());
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
@@ -21,7 +22,7 @@
                 <div class="icon-box accent-green"><i class="bi bi-cash-stack"></i></div>
                 <div>
                     <div class="stat-label">Total Contributions</div>
-                    <div class="stat-value">KES {{ total_contributions|floatformat:0 }}</div>
+                    <div class="stat-value">KES {{ total_contributions|kes:0 }}</div>
                 </div>
             </div>
         </div>
@@ -32,7 +33,7 @@
                 <div class="icon-box accent-amber"><i class="bi bi-credit-card"></i></div>
                 <div>
                     <div class="stat-label">Total Loans Given</div>
-                    <div class="stat-value">KES {{ total_loans_given|floatformat:0 }}</div>
+                    <div class="stat-value">KES {{ total_loans_given|kes:0 }}</div>
                 </div>
             </div>
         </div>
@@ -43,8 +44,8 @@
                 <div class="icon-box accent-violet"><i class="bi bi-percent"></i></div>
                 <div>
                     <div class="stat-label">Interest Collected</div>
-                    <div class="stat-value">KES {{ total_interest_collected|floatformat:0 }}</div>
-                    <div style="font-size:0.72rem;color:#94a3b8;">Projected: KES {{ total_interest_projected|floatformat:0 }}</div>
+                    <div class="stat-value">KES {{ total_interest_collected|kes:0 }}</div>
+                    <div style="font-size:0.72rem;color:#94a3b8;">Projected: KES {{ total_interest_projected|kes:0 }}</div>
                 </div>
             </div>
         </div>
@@ -55,11 +56,11 @@
                 <div class="icon-box accent-rose"><i class="bi bi-exclamation-circle"></i></div>
                 <div>
                     <div class="stat-label">Outstanding Balance</div>
-                    <div class="stat-value" style="color:#e11d48;">KES {{ total_loan_balance|floatformat:0 }}</div>
+                    <div class="stat-value" style="color:#e11d48;">KES {{ total_loan_balance|kes:0 }}</div>
                     <div style="font-size:0.72rem;color:#94a3b8;">
-                        Principal: KES {{ principal_outstanding|floatformat:0 }}
+                        Principal: KES {{ principal_outstanding|kes:0 }}
                         &nbsp;|&nbsp;
-                        Interest: KES {{ outstanding_interest|floatformat:0 }}
+                        Interest: KES {{ outstanding_interest|kes:0 }}
                     </div>
                 </div>
             </div>
@@ -73,7 +74,7 @@
                 </div>
                 <div>
                     <div class="stat-label" style="color:#94a3b8;">Total Income</div>
-                    <div class="stat-value" style="color:#f1f5f9;">KES {{ total_income|floatformat:0 }}</div>
+                    <div class="stat-value" style="color:#f1f5f9;">KES {{ total_income|kes:0 }}</div>
                 </div>
             </div>
         </div>
@@ -84,7 +85,67 @@
                 <div class="icon-box accent-teal"><i class="bi bi-check2-circle"></i></div>
                 <div>
                     <div class="stat-label">Total Loan Paid</div>
-                    <div class="stat-value">KES {{ total_loan_paid|floatformat:0 }}</div>
+                    <div class="stat-value">KES {{ total_loan_paid|kes:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box accent-teal"><i class="bi bi-graph-up"></i></div>
+                <div>
+                    <div class="stat-label">Total Expenses</div>
+                    <div class="stat-value">KES {{ total_expenses|kes:0 }}</div>
+                    <div style="font-size:0.72rem;color:#94a3b8;">All group expenditures</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box accent-green"><i class="bi bi-graph-up"></i></div>
+                <div>
+                    <div class="stat-label">Investment Returns</div>
+                    <div class="stat-value">KES {{ total_investment_returns|kes:0 }}</div>
+                    <div style="font-size:0.72rem;color:#94a3b8;">Dividends & interest earned</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card stat-card" style="border:1.5px solid #06b6d4;background:linear-gradient(135deg,#ecf9fd,#cffafe);">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box" style="background:#cffafe;color:#0891b2;"><i class="bi bi-receipt"></i></div>
+                <div>
+                    <div class="stat-label" style="color:#0891b2;font-weight:600;">Reg. Fee Balance</div>
+                    <div class="stat-value" style="color:#0891b2;">KES {{ reg_fee_balance|kes:0 }}</div>
+                    <div style="font-size:0.72rem;color:#0891b2;">Collected &minus; Spent</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box accent-teal"><i class="bi bi-graph-up"></i></div>
+                <div>
+                    <div class="stat-label">Other Income</div>
+                    <div class="stat-value">KES {{ total_other_income|kes:0 }}</div>
+                    <div style="font-size:0.72rem;color:#94a3b8;">External interest &amp; investments</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <div class="icon-box accent-blue"><i class="bi bi-bank"></i></div>
+                <div>
+                    <div class="stat-label">Lending Bank Balance</div>
+                    <div class="stat-value">KES {{ total_bank_balance|kes:0 }}</div>
+                    <div style="font-size:0.72rem;color:#94a3b8;">General Chama &bull; Welfare: KES {{ welfare_bank_balance|kes:0 }}</div>
                 </div>
             </div>
         </div>
@@ -99,18 +160,23 @@
                     </div>
                     <div>
                         <div class="stat-label" style="color:#166534;font-weight:700;font-size:0.85rem;">Treasurer Balance</div>
-                        <div class="stat-value" style="color:#15803d;font-size:1.75rem;">KES {{ treasurer_balance|floatformat:2 }}</div>
+                        <div class="stat-value" style="color:#15803d;font-size:1.75rem;">KES {{ treasurer_balance|kes }}</div>
                         <div style="font-size:0.72rem;color:#4ade80;">
-                            Total income KES {{ total_income|floatformat:0 }} &minus;
-                            Principal out KES {{ principal_outstanding|floatformat:0 }}
+                            Total income KES {{ total_income|kes:0 }} &minus;
+                            Principal out KES {{ principal_outstanding|kes:0 }}
                         </div>
                     </div>
                 </div>
                 <div class="text-end" style="font-size:0.78rem;color:#166534;">
-                    <div>Contributions &amp; Reg Fees: <strong>KES {{ total_contributions|add:total_reg_fees|floatformat:0 }}</strong></div>
-                    <div>Interest Collected: <strong>KES {{ total_interest_collected|floatformat:0 }}</strong></div>
-                    <div>Penalties Paid: <strong>KES {{ total_penalties|floatformat:0 }}</strong></div>
-                    <div>Loan Repayments Received: <strong>KES {{ total_loan_paid|floatformat:0 }}</strong></div>
+                    <div>Contributions: <strong>KES {{ total_contributions|kes:0 }}</strong></div>
+                    <div>Interest Collected: <strong>KES {{ total_interest_collected|kes:0 }}</strong></div>
+                    <div>Penalties Paid: <strong>KES {{ total_penalties|kes:0 }}</strong></div>
+                    <div>Other Income: <strong>KES {{ total_other_income|kes:0 }}</strong></div>
+                    <div>Loan Repayments Received: <strong>KES {{ total_loan_paid|kes:0 }}</strong></div>
+                    <div style="color:#7c3aed;margin-top:2px;">
+                        Reg. Fee Fund: <strong>KES {{ total_reg_fees|kes:0 }}</strong>
+                        <span style="font-size:0.7rem;opacity:0.7;">(separate)</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -124,6 +190,9 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-bar-chart me-2"></i>Contributions vs Loans — {{ chart_year }}</span>
                 <div class="d-flex gap-2">
+                    <a href="{% url 'dashboard:export_pdf' %}" class="btn btn-sm btn-danger">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Export Summary PDF
+                    </a>
                     <a href="{% url 'reports:export_contributions' %}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-download me-1"></i>Export Contributions
                     </a>
@@ -153,7 +222,7 @@
                         <div class="fw-semibold" style="font-size:0.875rem;">{{ c.member.name }}</div>
                         <div class="text-muted" style="font-size:0.75rem;">{{ c.get_month_display }} {{ c.year }}</div>
                     </div>
-                    <span class="badge rounded-pill" style="background:#f0fdf4;color:#16a34a;">KES {{ c.amount }}</span>
+                    <span class="badge rounded-pill" style="background:#f0fdf4;color:#16a34a;">KES {{ c.amount|kes }}</span>
                 </li>
                 {% empty %}
                 <li class="list-group-item text-muted text-center py-4" style="font-size:0.875rem;">No contributions yet.</li>
@@ -174,7 +243,7 @@
                         <div class="fw-semibold" style="font-size:0.875rem;">{{ l.member.name }}</div>
                         <div class="text-muted" style="font-size:0.75rem;">{{ l.date_taken }}</div>
                     </div>
-                    <span class="badge rounded-pill" style="background:#fffbeb;color:#d97706;">KES {{ l.loan_amount }}</span>
+                    <span class="badge rounded-pill" style="background:#fffbeb;color:#d97706;">KES {{ l.loan_amount|kes }}</span>
                 </li>
                 {% empty %}
                 <li class="list-group-item text-muted text-center py-4" style="font-size:0.875rem;">No loans yet.</li>
@@ -195,10 +264,31 @@
                         <div class="fw-semibold" style="font-size:0.875rem;">{{ p.member.name }}</div>
                         <div class="text-muted" style="font-size:0.75rem;">{{ p.date }}</div>
                     </div>
-                    <span class="badge rounded-pill" style="background:#eff6ff;color:#2563eb;">KES {{ p.amount }}</span>
+                    <span class="badge rounded-pill" style="background:#eff6ff;color:#2563eb;">KES {{ p.amount|kes }}</span>
                 </li>
                 {% empty %}
                 <li class="list-group-item text-muted text-center py-4" style="font-size:0.875rem;">No payments yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-graph-up me-2" style="color:#0d9488;"></i>Recent Other Income</span>
+                <a href="{% url 'other_income:list' %}" class="btn btn-sm btn-outline-secondary">View all</a>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for oi in recent_other_income %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
+                    <div>
+                        <div class="fw-semibold" style="font-size:0.875rem;">{{ oi.source }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">{{ oi.date }}</div>
+                    </div>
+                    <span class="badge rounded-pill" style="background:#f0fdfa;color:#0d9488;">KES {{ oi.amount|kes }}</span>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted text-center py-4" style="font-size:0.875rem;">No other income yet.</li>
                 {% endfor %}
             </ul>
         </div>

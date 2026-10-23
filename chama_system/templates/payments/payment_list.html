@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Payments{% endblock %}
 {% block page_title %}Loan Payments{% endblock %}
 
@@ -31,10 +32,10 @@
             <tbody>
                 {% for p in payments %}
                 <tr>
-                    <td class="text-muted">{{ forloop.counter }}</td>
+                    <td class="text-muted">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                     <td class="fw-semibold">{{ p.member.name }}</td>
-                    <td>KES {{ p.loan.loan_amount|floatformat:2 }}</td>
-                    <td style="color:#2563eb;">KES {{ p.amount|floatformat:2 }}</td>
+                    <td>KES {{ p.loan.loan_amount|kes }}</td>
+                    <td style="color:#2563eb;">KES {{ p.amount|kes }}</td>
                     <td>
                         {% if p.payment_type == 'mpesa' %}
                             <span class="badge" style="background:#f0fdf4;color:#16a34a;">

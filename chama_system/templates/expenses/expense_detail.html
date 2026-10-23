@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Expense — {{ expense.description|truncatechars:40 }}{% endblock %}
+{% block page_title %}Expense Detail{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-7">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="fw-bold mb-0">{{ expense.description }}</h5>
+    <div class="d-flex gap-2">
+      <a href="{% url 'expenses:edit' expense.pk %}" class="btn btn-sm btn-outline-warning">
+        <i class="bi bi-pencil me-1"></i>Edit
+      </a>
+      <a href="{% url 'expenses:list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0">
+        <tr>
+          <td class="text-muted ps-4 py-3" style="width:40%;">Amount</td>
+          <td class="fw-bold py-3 text-danger" style="font-size:1.1rem;">KES {{ expense.amount|kes }}</td>
+        </tr>
+        <tr>
+          <td class="text-muted ps-4 py-3">Date</td>
+          <td class="py-3">{{ expense.date }}</td>
+        </tr>
+        <tr>
+          <td class="text-muted ps-4 py-3">Category</td>
+          <td class="py-3">
+            <span class="badge" style="background:#f5f3ff;color:#7c3aed;">{{ expense.category.name }}</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="text-muted ps-4 py-3">Fund Source</td>
+          <td class="py-3 fw-semibold">
+            {% if expense.fund_source == 'bank_account' %}
+              <i class="bi bi-bank me-1 text-primary"></i>{{ expense.fund_source_description }}
+            {% elif expense.fund_source == 'other' %}
+              <i class="bi bi-three-dots me-1 text-warning"></i>{{ expense.fund_source_description }}
+            {% else %}
+              <i class="bi bi-cash-stack me-1 text-success"></i>Group Funds
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td class="text-muted ps-4 py-3">Receipt #</td>
+          <td class="py-3">{{ expense.receipt_number|default:"—" }}</td>
+        </tr>
+        {% if expense.notes %}
+        <tr>
+          <td class="text-muted ps-4 py-3">Notes</td>
+          <td class="py-3">{{ expense.notes }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td class="text-muted ps-4 py-3">Recorded By</td>
+          <td class="py-3">{{ expense.recorded_by.username|default:"—" }} &nbsp;
+            <span class="text-muted" style="font-size:0.78rem;">{{ expense.created_at|date:"d M Y, H:i" }}</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+</div>
+{% endblock %}

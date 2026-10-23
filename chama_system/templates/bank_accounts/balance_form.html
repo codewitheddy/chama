@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Record Balance — {{ account.bank_name }}{% endblock %}
+{% block page_title %}Record Balance — {{ account.bank_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-bank me-2"></i>{{ account.bank_name }} — {{ account.account_name }}
+            </div>
+            <div class="card-body">
+                <div class="p-3 rounded mb-4" style="background:#eff6ff;border:1px solid #bfdbfe;">
+                    <div class="text-muted small">Current Balance</div>
+                    <div class="fw-bold" style="color:#2563eb;font-size:1.3rem;">KES {{ account.current_balance|kes }}</div>
+                    {% if account.last_updated %}
+                    <div class="text-muted" style="font-size:0.78rem;">Last updated: {{ account.last_updated }}</div>
+                    {% endif %}
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">New Balance (KES) *</label>
+                        {{ form.balance }}
+                        {% if form.balance.errors %}<div class="text-danger small mt-1">{{ form.balance.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Date *</label>
+                        {{ form.recorded_on }}
+                        {% if form.recorded_on.errors %}<div class="text-danger small mt-1">{{ form.recorded_on.errors }}</div>{% endif %}
+                        <div class="form-text">The date this balance was observed (e.g. statement date).</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">Notes <span class="text-muted fw-normal">(optional)</span></label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}<div class="text-danger small mt-1">{{ form.notes.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Save Snapshot
+                        </button>
+                        <a href="{% url 'bank_accounts:detail' account.pk %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

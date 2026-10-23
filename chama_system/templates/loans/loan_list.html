@@ -1,191 +1,487 @@
 {% extends 'base.html' %}
-{% block title %}Loans{% endblock %}
+{% load finance_tags %}
+{% block title %}Loans Management{% endblock %}
 {% block page_title %}Loan Management{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* ── Root & Design Tokens ── */
+    :root {
+        --loan-card-border: rgba(226, 232, 240, 0.8);
+        --loan-primary: #2563eb;
+        --loan-success: #10b981;
+        --loan-warning: #f59e0b;
+        --loan-danger: #ef4444;
+        --loan-purple: #8b5cf6;
+    }
+
+    /* ── Metric Stat Cards ── */
+    .stat-metric-card {
+        background: #ffffff;
+        border: 1px solid var(--loan-card-border);
+        border-radius: 1rem;
+        padding: 1.25rem 1.35rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .stat-metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06);
+    }
+    .stat-icon-box {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    /* ── Toolbar & Filter Pills ── */
+    .loan-toolbar-card {
+        background: #ffffff;
+        border: 1px solid var(--loan-card-border);
+        border-radius: 1rem;
+        padding: 1rem 1.25rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        margin-bottom: 1.25rem;
+    }
+    .loan-filter-nav {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .loan-filter-btn {
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.4rem 0.85rem;
+        border-radius: 9999px;
+        transition: all 0.15s ease;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        text-decoration: none;
+    }
+    .loan-filter-btn:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+    .loan-filter-btn.active {
+        background: #2563eb;
+        color: #ffffff !important;
+        border-color: #2563eb;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+    }
+    .loan-filter-btn.active .pill-count {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+    }
+    .pill-count {
+        background: #e2e8f0;
+        color: #475569;
+        font-size: 0.72rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 9999px;
+        font-weight: 700;
+    }
+
+    /* ── Table Card & Rows ── */
+    .loan-table-card {
+        background: #ffffff;
+        border: 1px solid var(--loan-card-border);
+        border-radius: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        overflow: hidden;
+    }
+    .loan-table tbody tr {
+        transition: background-color 0.15s ease;
+    }
+    .loan-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .borrower-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        color: #3730a3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.82rem;
+        flex-shrink: 0;
+        border: 1px solid rgba(199, 210, 254, 0.6);
+    }
+    .borrower-avatar.purple {
+        background: linear-gradient(135deg, #f3e8ff 0%, #ddd6fe 100%);
+        color: #6b21a8;
+        border-color: rgba(221, 214, 254, 0.6);
+    }
+
+    /* ── Action Buttons ── */
+    .action-btn-circle {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        transition: all 0.15s ease;
+    }
+    .action-btn-circle:hover {
+        transform: scale(1.08);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<!-- Stats -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-lg-2">
-        <div class="card stat-card">
-            <div class="card-body py-3 px-3">
-                <div class="stat-label">Total Issued</div>
-                <div class="stat-value" style="font-size:1.1rem;">KES {{ total_loans|floatformat:0 }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-2">
-        <div class="card stat-card">
-            <div class="card-body py-3 px-3">
-                <div class="stat-label">Interest Earned</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#16a34a;">KES {{ total_interest|floatformat:0 }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-2">
-        <div class="card stat-card">
-            <div class="card-body py-3 px-3">
-                <div class="stat-label">Active</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#d97706;">{{ active_count }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-2">
-        <div class="card stat-card">
-            <div class="card-body py-3 px-3">
-                <div class="stat-label">Cleared</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#16a34a;">{{ cleared_count }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-2">
-        <div class="card stat-card">
-            <div class="card-body py-3 px-3">
-                <div class="stat-label">Late</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#e11d48;">{{ late_count }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-2">
-        <div class="card stat-card">
-            <div class="card-body py-3 px-3">
-                <div class="stat-label">Total Balance</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#e11d48;">KES {{ total_balance|floatformat:0 }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-2">
-        <div class="card stat-card">
-            <div class="card-body py-3 px-3">
-                <div class="stat-label">Total Paid</div>
-                <div class="stat-value" style="font-size:1.1rem;color:#2563eb;">KES {{ total_paid|floatformat:0 }}</div>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="container-fluid px-0">
 
-<!-- Toolbar -->
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div class="d-flex gap-2 flex-wrap align-items-center">
-        <form class="d-flex gap-2" method="get" data-ajax-filter id="loan-filter-form">
-            <input type="hidden" name="status" value="{{ current_status }}" id="loan-status-input">
-            <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
-                   placeholder="Search member..." style="width:200px;">
-            <a href="{% url 'loans:list' %}" class="btn btn-sm btn-outline-danger ajax-clear"
-               {% if not q and not current_status %}style="display:none"{% endif %}>Clear</a>
-        </form>
-        <div class="d-flex gap-1" id="loan-status-btns">
-            <button type="button" class="btn btn-sm {% if not current_status %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-                    data-status="">All</button>
-            <button type="button" class="btn btn-sm {% if current_status == 'active' %}btn-warning{% else %}btn-outline-secondary{% endif %}"
-                    data-status="active">Active</button>
-            <button type="button" class="btn btn-sm {% if current_status == 'cleared' %}btn-success{% else %}btn-outline-secondary{% endif %}"
-                    data-status="cleared">Cleared</button>
-            <button type="button" class="btn btn-sm {% if current_status == 'late' %}btn-danger{% else %}btn-outline-secondary{% endif %}"
-                    data-status="late">Late</button>
-            <button type="button" class="btn btn-sm {% if current_status == 'unpaid' %}btn-dark{% else %}btn-outline-secondary{% endif %}"
-                    data-status="unpaid">Unpaid</button>
+    <!-- ── 1. Executive 4-Stat Metric Dashboard Strip ── -->
+    <div class="row g-3 mb-4">
+        <!-- Metric 1: Total Principal Disbursed -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Total Disbursed</div>
+                        <h4 class="fw-bold text-dark mb-0 mt-1">KES {{ total_loans|kes:0 }}</h4>
+                    </div>
+                    <div class="stat-icon-box" style="background:#eff6ff;color:#2563eb;">
+                        <i class="bi bi-wallet2"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small text-muted mt-2" style="font-size:0.75rem;">
+                    <span><i class="bi bi-collection me-1 text-primary"></i><strong>{{ total_count }}</strong> Total Loans Issued</span>
+                    <span class="badge bg-primary-subtle text-primary fw-semibold">{{ non_member_count }} Non-Member</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 2: Total Collections & Recovery Rate -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Total Collections</div>
+                        <h4 class="fw-bold text-success mb-0 mt-1">KES {{ total_paid|kes:0 }}</h4>
+                    </div>
+                    <div class="stat-icon-box" style="background:#ecfdf5;color:#10b981;">
+                        <i class="bi bi-cash-coin"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-1 small text-muted" style="font-size:0.75rem;">
+                        <span>Recovery Rate</span>
+                        <strong class="text-success">{{ recovery_rate }}%</strong>
+                    </div>
+                    <div class="progress" style="height: 5px; border-radius: 9999px; background: #f1f5f9;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ recovery_rate }}%;" aria-valuenow="{{ recovery_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 3: Total Outstanding Portfolio Balance -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Outstanding Balance</div>
+                        <h4 class="fw-bold text-danger mb-0 mt-1">KES {{ total_balance|kes:0 }}</h4>
+                    </div>
+                    <div class="stat-icon-box" style="background:#fef2f2;color:#ef4444;">
+                        <i class="bi bi-exclamation-octagon-fill"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small mt-2" style="font-size:0.75rem;">
+                    <span class="text-warning fw-semibold"><i class="bi bi-clock-history me-1"></i>{{ active_count }} Active</span>
+                    <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i>{{ late_count }} Overdue</span>
+                    <span class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>{{ cleared_count }} Cleared</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 4: Projected & Realized Interest Revenue -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Interest Revenue</div>
+                        <h4 class="fw-bold mb-0 mt-1" style="color:#7c3aed;">KES {{ total_interest|kes:0 }}</h4>
+                    </div>
+                    <div class="stat-icon-box" style="background:#f5f3ff;color:#7c3aed;">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small text-muted mt-2" style="font-size:0.75rem;">
+                    <span><i class="bi bi-bank me-1 text-purple"></i>Chama Income Asset</span>
+                    <span class="badge bg-light text-muted border">Accrued</span>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="d-flex gap-2">
-        <a href="{% url 'loans:add' %}" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-circle me-1"></i>Issue Loan
-        </a>
-        {% include 'includes/export_buttons.html' with export_url='/loans/export/' %}
-    </div>
-</div>
 
-<div id="results-container">
-<div class="card">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th>#</th><th>Member</th><th>Amount</th><th>Duration</th>
-                        <th>Interest</th><th>Total</th><th>Paid</th><th>Balance</th>
-                        <th>Progress</th><th>Due Date</th><th>Status</th><th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for l in loans %}
-                    <tr>
-                        <td class="text-muted" style="font-size:0.8rem;">#{{ l.pk }}</td>
-                        <td class="fw-semibold">{{ l.member.name }}</td>
-                        <td>KES {{ l.loan_amount|floatformat:0 }}</td>
-                        <td>{{ l.duration_months }} mo.</td>
-                        <td style="color:#16a34a;">KES {{ l.interest_amount|floatformat:0 }}</td>
-                        <td>KES {{ l.total_payable|floatformat:0 }}</td>
-                        <td style="color:#2563eb;">
-                            {% if l.amount_paid > 0 %}
-                                KES {{ l.amount_paid|floatformat:0 }}
-                            {% else %}
-                                <span class="text-muted">—</span>
-                            {% endif %}
-                        </td>
-                        <td class="fw-semibold {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
-                            KES {{ l.balance|floatformat:0 }}
-                        </td>
-                        <td style="min-width:110px;">
-                            <div class="progress mb-1" style="height:6px;">
-                                <div class="progress-bar {% if l.status == 'cleared' %}bg-success{% elif l.status == 'late' %}bg-danger{% else %}bg-primary{% endif %}"
-                                     style="width:{{ l.repayment_percent }}%;"></div>
-                            </div>
-                            <span style="font-size:0.72rem;color:#64748b;">{{ l.repayment_percent }}%</span>
-                        </td>
-                        <td style="font-size:0.82rem;">{{ l.due_date|default:"—" }}</td>
-                        <td>
-                            {% if l.status == 'cleared' %}
-                                <span class="badge" style="background:#f0fdf4;color:#16a34a;">Cleared</span>
-                            {% elif l.status == 'late' %}
-                                <span class="badge" style="background:#fff1f2;color:#e11d48;">Late</span>
-                            {% else %}
-                                <span class="badge" style="background:#fffbeb;color:#d97706;">Active</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div class="d-flex gap-1">
-                                <a href="{% url 'loans:detail' l.pk %}" class="btn btn-sm btn-outline-secondary" title="View"><i class="bi bi-eye"></i></a>
-                                {% if l.status != 'cleared' %}
-                                <a href="{% url 'payments:add' %}?loan={{ l.pk }}" class="btn btn-sm btn-success" title="Pay"><i class="bi bi-cash"></i></a>
+    <!-- ── 2. Toolbar & Filter Nav Card ── -->
+    <div class="loan-toolbar-card">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <!-- Left: Search and Filter Pills -->
+            <div class="d-flex flex-column flex-md-row align-items-md-center gap-2 flex-wrap">
+                <form class="d-flex gap-2" method="get" id="loan-filter-form">
+                    <input type="hidden" name="status" value="{{ current_status }}" id="loan-status-input">
+                    <input type="hidden" name="borrower_type" value="{{ current_borrower_type }}" id="loan-borrower-type-input">
+                    <div class="input-group input-group-sm" style="width: 240px;">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" value="{{ q }}" class="form-control border-start-0" placeholder="Search borrower name...">
+                        {% if q or current_status or current_borrower_type %}
+                        <a href="{% url 'loans:list' %}" class="btn btn-outline-danger" title="Clear Filters"><i class="bi bi-x-lg"></i></a>
+                        {% endif %}
+                    </div>
+                </form>
+
+                <!-- Filter Pills -->
+                <div class="loan-filter-nav" id="loan-status-btns">
+                    <button type="button" class="loan-filter-btn {% if not current_status and not current_borrower_type %}active{% endif %}" data-status="" data-borrower-type="">
+                        All <span class="pill-count">{{ total_count }}</span>
+                    </button>
+                    <button type="button" class="loan-filter-btn {% if current_status == 'active' %}active{% endif %}" data-status="active" data-borrower-type="">
+                        <span class="text-warning">●</span> Active <span class="pill-count">{{ active_count }}</span>
+                    </button>
+                    <button type="button" class="loan-filter-btn {% if current_status == 'late' %}active{% endif %}" data-status="late" data-borrower-type="">
+                        <span class="text-danger">●</span> Overdue / Late <span class="pill-count">{{ late_count }}</span>
+                    </button>
+                    <button type="button" class="loan-filter-btn {% if current_status == 'cleared' %}active{% endif %}" data-status="cleared" data-borrower-type="">
+                        <span class="text-success">●</span> Cleared <span class="pill-count">{{ cleared_count }}</span>
+                    </button>
+                    <button type="button" class="loan-filter-btn {% if current_status == 'unpaid' %}active{% endif %}" data-status="unpaid" data-borrower-type="">
+                        <span class="text-secondary">●</span> Unpaid <span class="pill-count">{{ unpaid_count }}</span>
+                    </button>
+                    <button type="button" class="loan-filter-btn {% if current_status == 'restructured' %}active{% endif %}" data-status="restructured" data-borrower-type="">
+                        <i class="bi bi-arrow-repeat text-purple"></i> Restructured <span class="pill-count">{{ restructured_count }}</span>
+                    </button>
+                    <a href="{% url 'loans:non_members' %}" class="loan-filter-btn {% if current_borrower_type == 'non_member' %}active{% endif %}">
+                        <i class="bi bi-person-badge text-purple"></i> Non-Members <span class="pill-count">{{ non_member_count }}</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Right: Action Buttons Strip -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="{% url 'loans:add' %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-plus-circle me-1"></i>Issue New Loan
+                </a>
+                {% include 'includes/export_buttons.html' with export_url='/loans/export/' %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 3. Loan Portfolio Table Panel ── -->
+    <div id="results-container">
+        <div class="loan-table-card">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 loan-table">
+                    <thead class="table-light" style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <tr>
+                            <th class="ps-3 py-3">#</th>
+                            <th class="py-3">Borrower</th>
+                            <th class="py-3">Loan Plan</th>
+                            <th class="py-3">Principal</th>
+                            <th class="py-3">Interest</th>
+                            <th class="py-3">Total Payable</th>
+                            <th class="py-3">Paid</th>
+                            <th class="py-3">Balance</th>
+                            <th class="py-3" style="min-width:120px;">Recovery</th>
+                            <th class="py-3">Due Date</th>
+                            <th class="py-3">Status</th>
+                            <th class="py-3 text-end pe-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for l in loans %}
+                        <tr>
+                            <td class="ps-3 py-3 text-muted small fw-semibold">
+                                <a href="{% url 'loans:detail' l.pk %}" class="text-decoration-none text-muted">#{{ l.pk }}</a>
+                            </td>
+                            <td class="py-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="borrower-avatar {% if l.borrower_type == 'non_member' %}purple{% endif %}">
+                                        {{ l.borrower_name|slice:":2"|upper }}
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'loans:detail' l.pk %}" class="fw-bold text-dark text-decoration-none small d-block">
+                                            {{ l.borrower_name }}
+                                        </a>
+                                        <div class="text-muted" style="font-size:0.7rem;">
+                                            {% if l.borrower_type == 'non_member' %}
+                                                <span class="badge bg-purple-subtle text-purple border border-purple-subtle px-1 py-0 rounded" style="font-size:0.65rem; background:#f5f3ff; color:#7c3aed;">External Non-Member</span>
+                                            {% else %}
+                                                <span>Member #{{ l.member.id }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3">
+                                <div class="d-flex flex-column gap-1">
+                                    <div>
+                                        {% if l.loan_type == 'emergency' %}
+                                            <span class="badge rounded-pill" style="background:#fff7ed;color:#ea580c;border:1px solid #ffedd5;font-size:0.7rem;">
+                                                <i class="bi bi-shield-exclamation me-1"></i>Emergency (0%)
+                                            </span>
+                                        {% elif l.loan_type == 'reducing_principal' %}
+                                            <span class="badge rounded-pill" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ede9fe;font-size:0.7rem;">
+                                                Reducing (Principal)
+                                            </span>
+                                        {% elif l.loan_type == 'reducing' %}
+                                            <span class="badge rounded-pill" style="background:#eff6ff;color:#2563eb;border:1px solid #dbeafe;font-size:0.7rem;">
+                                                Reducing (EMI)
+                                            </span>
+                                        {% else %}
+                                            <span class="badge rounded-pill" style="background:#f0fdf4;color:#16a34a;border:1px solid #dcfce7;font-size:0.7rem;">
+                                                Flat Rate
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-muted" style="font-size:0.72rem;">
+                                        <span><i class="bi bi-calendar3 me-1"></i>{{ l.duration_months }} mo.</span>
+                                        {% if l.fund_source == 'bank_account' %}
+                                            · <span class="text-primary"><i class="bi bi-bank me-1"></i>Bank</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 fw-bold text-dark small">KES {{ l.loan_amount|kes:0 }}</td>
+                            <td class="py-3 fw-semibold small" style="color:#16a34a;">KES {{ l.interest_amount|kes:0 }}</td>
+                            <td class="py-3 fw-bold text-secondary small">KES {{ l.total_payable|kes:0 }}</td>
+                            <td class="py-3 fw-semibold small text-primary">
+                                {% if l.amount_paid > 0 %}
+                                    KES {{ l.amount_paid|kes:0 }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
                                 {% endif %}
-                                <a href="{% url 'loans:edit' l.pk %}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="bi bi-pencil"></i></a>
-                                <a href="{% url 'loans:delete' l.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="12" class="text-center text-muted py-5">No loans found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                            <td class="py-3 fw-bold small {% if l.balance == 0 %}text-success{% else %}text-danger{% endif %}">
+                                KES {{ l.balance|kes:0 }}
+                            </td>
+                            <td class="py-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:0.72rem;">
+                                    <span class="text-muted">Progress</span>
+                                    <strong class="{% if l.status == 'cleared' %}text-success{% else %}text-secondary{% endif %}">{{ l.repayment_percent }}%</strong>
+                                </div>
+                                <div class="progress" style="height: 5px; border-radius: 9999px; background: #f1f5f9;">
+                                    <div class="progress-bar {% if l.status == 'cleared' %}bg-success{% elif l.status == 'late' %}bg-danger{% else %}bg-primary{% endif %}"
+                                         role="progressbar" style="width: {{ l.repayment_percent }}%;"></div>
+                                </div>
+                            </td>
+                            <td class="py-3 small text-muted" style="font-size:0.78rem;">
+                                <div>{{ l.due_date|default:"—" }}</div>
+                                {% if l.status == 'late' %}
+                                    <span class="badge bg-danger-subtle text-danger px-1 py-0 rounded" style="font-size:0.65rem;">Overdue</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3">
+                                <div class="d-flex flex-column gap-1 align-items-start">
+                                    {% if l.status == 'cleared' %}
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;font-size:0.72rem;">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Cleared
+                                        </span>
+                                    {% elif l.status == 'late' %}
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#fff1f2;color:#e11d48;border:1px solid #fecdd3;font-size:0.72rem;">
+                                            <i class="bi bi-exclamation-circle-fill me-1"></i>Late
+                                        </span>
+                                    {% elif l.status == 'written_off' %}
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;font-size:0.72rem;">
+                                            <i class="bi bi-slash-circle me-1"></i>Written Off
+                                        </span>
+                                    {% else %}
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#fffbeb;color:#d97706;border:1px solid #fde68a;font-size:0.72rem;">
+                                            <span class="spinner-grow spinner-grow-sm me-1" style="width:0.4rem;height:0.4rem;" role="status"></span>Active
+                                        </span>
+                                    {% endif %}
+
+                                    {% if l.has_approved_restructure or l.is_restructured or l.status == 'restructured' %}
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-size:0.68rem;" title="Loan terms have been modified/restructured">
+                                            <i class="bi bi-arrow-repeat me-1"></i>Restructured
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="py-3 text-end pe-3">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a href="{% url 'loans:detail' l.pk %}" class="btn btn-xs btn-outline-secondary action-btn-circle" title="View Full Loan Ledger">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if l.status != 'cleared' %}
+                                    <a href="{% url 'payments:add' %}?loan={{ l.pk }}" class="btn btn-xs btn-outline-success action-btn-circle" title="Record Loan Repayment">
+                                        <i class="bi bi-cash-stack"></i>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'loans:edit' l.pk %}" class="btn btn-xs btn-outline-warning action-btn-circle" title="Edit Loan">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'loans:delete' l.pk %}" class="btn btn-xs btn-outline-danger action-btn-circle" title="Delete Loan">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="12" class="text-center text-muted py-5">
+                                <i class="bi bi-credit-card-2-front fs-1 opacity-25 mb-2 d-block"></i>
+                                <h6 class="fw-bold text-dark mb-1">No Loans Found</h6>
+                                <p class="small text-muted mb-3">No loan records match your current filter parameters.</p>
+                                <a href="{% url 'loans:add' %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
+                                    <i class="bi bi-plus-circle me-1"></i>Issue New Loan
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="mt-3">
+            {% include 'includes/pagination.html' %}
         </div>
     </div>
+
 </div>
-{% include 'includes/pagination.html' %}
-</div>
+{% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const statusInput = document.getElementById('loan-status-input');
+    const borrowerTypeInput = document.getElementById('loan-borrower-type-input');
     const form = document.getElementById('loan-filter-form');
-    document.getElementById('loan-status-btns').querySelectorAll('button[data-status]').forEach(btn => {
+    
+    document.querySelectorAll('#loan-status-btns button[data-status]').forEach(btn => {
         btn.addEventListener('click', function () {
             statusInput.value = this.dataset.status;
-            // update button styles immediately
-            document.querySelectorAll('#loan-status-btns button').forEach(b => {
-                b.className = 'btn btn-sm btn-outline-secondary';
-            });
-            const active = this.dataset.status;
-            if (!active) this.className = 'btn btn-sm btn-primary';
-            else if (active === 'active') this.className = 'btn btn-sm btn-warning';
-            else if (active === 'cleared') this.className = 'btn btn-sm btn-success';
-            else if (active === 'late') this.className = 'btn btn-sm btn-danger';
-            else if (active === 'unpaid') this.className = 'btn btn-sm btn-dark';
-            form.dispatchEvent(new Event('submit'));
+            if (borrowerTypeInput) borrowerTypeInput.value = this.dataset.borrowerType || '';
+            
+            // update button active states
+            document.querySelectorAll('#loan-status-btns .loan-filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            form.submit();
         });
     });
 });
 </script>
-{% endblock %}
 {% endblock %}

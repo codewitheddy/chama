@@ -1,7 +1,5 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.contrib.auth import authenticate
-from django.contrib import messages
 
 
 class AdminPasswordDeleteMixin:
@@ -22,18 +20,26 @@ class AdminPasswordDeleteMixin:
         password = request.POST.get(self.delete_password_field, '').strip()
 
         if not reason:
-            messages.error(request, "A reason for deletion is required.")
-            return self.get(request, *args, **kwargs)
+            return self._render_with_error(request, "A reason for deletion is required.", reason, *args, **kwargs)
 
-        user = authenticate(request, username=request.user.username, password=password)
-        if user is None:
-            messages.error(request, "Incorrect admin password. Deletion cancelled.")
-            return self.get(request, *args, **kwargs)
+        if not request.user.check_password(password):
+            return self._render_with_error(request, "Incorrect password. Deletion cancelled.", reason, *args, **kwargs)
 
         # Save to recycle bin before the actual delete
         self._save_to_recycle_bin(request, reason)
 
         return super().post(request, *args, **kwargs)
+
+    def _render_with_error(self, request, error_msg, reason='', *args, **kwargs):
+        """Re-render the confirmation page with an inline error — no messages framework."""
+        from django.shortcuts import render as django_render
+        self.object = self.get_object()
+        ctx = self.get_context_data(
+            object=self.object,
+            delete_error=error_msg,
+            delete_reason_value=reason,
+        )
+        return django_render(request, self.get_template_names()[0], ctx)
 
     def _save_to_recycle_bin(self, request, reason):
         from recycle_bin.models import DeletedRecord
@@ -63,6 +69,8 @@ class RoleRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         # Let LoginRequiredMixin handle unauthenticated users first
         if not request.user.is_authenticated:
+            return super().dispatch(request, *args, **kwargs)
+        if request.user.is_superuser:
             return super().dispatch(request, *args, **kwargs)
         # Now check role
         profile = getattr(request.user, 'profile', None)

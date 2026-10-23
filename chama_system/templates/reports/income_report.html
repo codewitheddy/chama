@@ -1,115 +1,399 @@
 {% extends 'base.html' %}
-{% block title %}Income Report{% endblock %}
-{% block page_title %}Income Report{% endblock %}
+{% load finance_tags %}
+{% block title %}Financial Report{% endblock %}
+{% block page_title %}Financial Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .section-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #64748b;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    .fin-table td, .fin-table th {
+        padding: 9px 14px;
+        font-size: 0.875rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .fin-table thead th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #475569;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .fin-table tfoot td {
+        background: #f8fafc;
+        font-weight: 700;
+        border-top: 2px solid #e2e8f0;
+        border-bottom: none;
+    }
+    .fin-table tbody tr:last-child td { border-bottom: none; }
+    .progress-thin { height: 6px; border-radius: 99px; background: #e2e8f0; }
+    .progress-thin .bar { height: 100%; border-radius: 99px; }
+    .kpi-card { border-radius: 10px; }
+    .kpi-card .kpi-label { font-size: 0.78rem; color: #64748b; font-weight: 500; }
+    .kpi-card .kpi-value { font-size: 1.35rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
+    .kpi-card .kpi-sub { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+    .divider-row td { background: #f8fafc !important; font-size: 0.72rem; font-weight: 700;
+                      text-transform: uppercase; letter-spacing: 0.8px; color: #64748b;
+                      padding: 6px 14px !important; border-bottom: 1px solid #e2e8f0; }
+</style>
+{% endblock %}
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted small mb-0">Summary of all income streams collected by DC Welfare Group.</p>
-    <div class="d-flex gap-2">
-        <a href="{% url 'reports:export_income_pdf' %}" class="btn btn-sm btn-outline-danger">
-            <i class="bi bi-filetype-pdf me-1"></i>Download PDF
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <p class="text-muted small mb-0">
+            Complete financial overview of {{ group_name }}.
+            {% if selected_year %}<strong>Filtered: {{ selected_year }}</strong>{% else %}All time.{% endif %}
+        </p>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <!-- Year filter -->
+        <form method="get" class="d-flex gap-2 align-items-center">
+            <select name="year" class="form-select form-select-sm" style="width:110px;" onchange="this.form.submit()">
+                <option value="">All Years</option>
+                {% for y in years %}
+                <option value="{{ y }}" {% if selected_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            {% if selected_year %}
+            <a href="{% url 'reports:income' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+            {% endif %}
+        </form>
+        <a href="{% url 'reports:export_income_pdf' %}{% if selected_year %}?year={{ selected_year }}{% endif %}"
+           class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-filetype-pdf me-1"></i>PDF
         </a>
     </div>
 </div>
 
-<!-- Stat Cards -->
+<!-- ── KPI Row ──────────────────────────────────────────────────── -->
 <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="icon-box accent-blue"><i class="bi bi-person-check"></i></div>
-                <div>
-                    <div class="stat-label">Registration Fees</div>
-                    <div class="stat-value">KES {{ total_reg_fees|floatformat:2 }}</div>
+    <div class="col-6 col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-3 px-3">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="rounded" style="width:32px;height:32px;background:#eff6ff;display:flex;align-items:center;justify-content:center;">
+                        <i class="bi bi-wallet2" style="color:#2563eb;font-size:1rem;"></i>
+                    </div>
+                    <div class="kpi-label">Total Income</div>
                 </div>
+                <div class="kpi-value" style="color:#2563eb;">KES {{ total_income|kes }}</div>
+                <div class="kpi-sub">Contributions + interest + penalties + other income</div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="icon-box accent-green"><i class="bi bi-cash-stack"></i></div>
-                <div>
-                    <div class="stat-label">Contributions</div>
-                    <div class="stat-value">KES {{ total_contributions|floatformat:2 }}</div>
+    <div class="col-6 col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-3 px-3">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="rounded" style="width:32px;height:32px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;">
+                        <i class="bi bi-credit-card" style="color:#16a34a;font-size:1rem;"></i>
+                    </div>
+                    <div class="kpi-label">Loans Given</div>
                 </div>
+                <div class="kpi-value" style="color:#16a34a;">KES {{ total_loans_given|kes }}</div>
+                <div class="kpi-sub">{{ total_loan_count }} loan{{ total_loan_count|pluralize }} total</div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="icon-box accent-violet"><i class="bi bi-percent"></i></div>
-                <div>
-                    <div class="stat-label">Interest Earned</div>
-                    <div class="stat-value">KES {{ total_interest|floatformat:2 }}</div>
+    <div class="col-6 col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-3 px-3">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="rounded" style="width:32px;height:32px;background:#fff1f2;display:flex;align-items:center;justify-content:center;">
+                        <i class="bi bi-hourglass-split" style="color:#e11d48;font-size:1rem;"></i>
+                    </div>
+                    <div class="kpi-label">Unpaid Loans</div>
                 </div>
+                <div class="kpi-value" style="color:#e11d48;">KES {{ unpaid_loan_balance|kes }}</div>
+                <div class="kpi-sub">{{ active_count }} active · {{ late_count }} late</div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="icon-box accent-teal"><i class="bi bi-wallet2"></i></div>
-                <div>
-                    <div class="stat-label">Total Income</div>
-                    <div class="stat-value">KES {{ total_income|floatformat:2 }}</div>
+    <div class="col-6 col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-3 px-3">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="rounded" style="width:32px;height:32px;background:#fffbeb;display:flex;align-items:center;justify-content:center;">
+                        <i class="bi bi-exclamation-triangle" style="color:#d97706;font-size:1rem;"></i>
+                    </div>
+                    <div class="kpi-label">Penalties Outstanding</div>
                 </div>
+                <div class="kpi-value" style="color:#d97706;">KES {{ total_penalties_unpaid|kes }}</div>
+                <div class="kpi-sub">KES {{ total_penalties_paid|kes }} collected</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Breakdown Card -->
-<div class="card">
-    <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Income Breakdown</div>
-    <div class="card-body p-0">
-        <table class="table mb-0">
-            <thead>
-                <tr>
-                    <th>Income Stream</th>
-                    <th>Amount (KES)</th>
-                    <th>% of Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><i class="bi bi-person-check me-2 text-primary"></i>Registration Fees</td>
-                    <td>KES {{ total_reg_fees|floatformat:2 }}</td>
-                    <td>
-                        {% if total_income %}
-                        {% widthratio total_reg_fees total_income 100 %}%
-                        {% else %}—{% endif %}
-                    </td>
-                </tr>
-                <tr>
-                    <td><i class="bi bi-cash-stack me-2 text-success"></i>Member Contributions</td>
-                    <td>KES {{ total_contributions|floatformat:2 }}</td>
-                    <td>
-                        {% if total_income %}
-                        {% widthratio total_contributions total_income 100 %}%
-                        {% else %}—{% endif %}
-                    </td>
-                </tr>
-                <tr>
-                    <td><i class="bi bi-percent me-2 text-violet"></i>Loan Interest</td>
-                    <td>KES {{ total_interest|floatformat:2 }}</td>
-                    <td>
-                        {% if total_income %}
-                        {% widthratio total_interest total_income 100 %}%
-                        {% else %}—{% endif %}
-                    </td>
-                </tr>
-            </tbody>
-            <tfoot class="table-light">
-                <tr>
-                    <td class="fw-bold">Total Income</td>
-                    <td class="fw-bold" style="color:#0d9488;">KES {{ total_income|floatformat:2 }}</td>
-                    <td class="fw-bold">100%</td>
-                </tr>
-            </tfoot>
-        </table>
+<div class="row g-3">
+
+    <!-- ── Left column ─────────────────────────────────────────── -->
+    <div class="col-lg-7">
+
+        <!-- Income Breakdown -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Income Breakdown</div>
+            <div class="table-responsive">
+                <table class="fin-table table mb-0">
+                    <thead>
+                        <tr><th>Stream</th><th class="text-end">Amount (KES)</th><th style="width:120px;">Share</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><i class="bi bi-cash-stack me-2" style="color:#16a34a;"></i>Member Contributions</td>
+                            <td class="text-end fw-semibold">{{ total_contributions|kes }}</td>
+                            <td>
+                                {% if total_income %}
+                                <div class="progress-thin"><div class="bar" style="width:{% widthratio total_contributions total_income 100 %}%;background:#16a34a;"></div></div>
+                                <small class="text-muted">{% widthratio total_contributions total_income 100 %}%</small>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-percent me-2" style="color:#7c3aed;"></i>Loan Interest Collected</td>
+                            <td class="text-end fw-semibold">{{ total_interest|kes }}</td>
+                            <td>
+                                {% if total_income %}
+                                <div class="progress-thin"><div class="bar" style="width:{% widthratio total_interest total_income 100 %}%;background:#7c3aed;"></div></div>
+                                <small class="text-muted">{% widthratio total_interest total_income 100 %}%</small>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-exclamation-triangle me-2" style="color:#d97706;"></i>Penalties Collected</td>
+                            <td class="text-end fw-semibold">{{ total_penalties_paid|kes }}</td>
+                            <td>
+                                {% if total_income %}
+                                <div class="progress-thin"><div class="bar" style="width:{% widthratio total_penalties_paid total_income 100 %}%;background:#d97706;"></div></div>
+                                <small class="text-muted">{% widthratio total_penalties_paid total_income 100 %}%</small>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-plus-circle me-2" style="color:#0d9488;"></i>Other Income</td>
+                            <td class="text-end fw-semibold">{{ total_other_income|kes }}</td>
+                            <td>
+                                {% if total_income %}
+                                <div class="progress-thin"><div class="bar" style="width:{% widthratio total_other_income total_income 100 %}%;background:#0d9488;"></div></div>
+                                <small class="text-muted">{% widthratio total_other_income total_income 100 %}%</small>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>Total Income</td>
+                            <td class="text-end" style="color:#2563eb;">{{ total_income|kes }}</td>
+                            <td><small class="text-muted">100%</small></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Loans Portfolio -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-credit-card me-2"></i>Loans Portfolio</div>
+            <div class="table-responsive">
+                <table class="fin-table table mb-0">
+                    <tbody>
+                        <tr class="divider-row"><td colspan="2">Disbursement</td></tr>
+                        <tr>
+                            <td>Total Loans Issued</td>
+                            <td class="text-end fw-semibold" style="color:#16a34a;">KES {{ total_loans_given|kes }}</td>
+                        </tr>
+                        <tr>
+                            <td>Cleared Loans ({{ cleared_count }})</td>
+                            <td class="text-end fw-semibold" style="color:#16a34a;">KES {{ total_loans_paid|kes }}</td>
+                        </tr>
+                        <tr class="divider-row"><td colspan="2">Outstanding Balance</td></tr>
+                        <tr>
+                            <td>
+                                <span class="badge me-1" style="background:#fffbeb;color:#d97706;">{{ active_count }} Active</span>
+                                Active Loans Balance
+                            </td>
+                            <td class="text-end fw-semibold" style="color:#d97706;">KES {{ active_loan_balance|kes }}</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <span class="badge me-1" style="background:#fff1f2;color:#e11d48;">{{ late_count }} Late</span>
+                                Late Loans Balance
+                            </td>
+                            <td class="text-end fw-semibold" style="color:#e11d48;">KES {{ late_loan_balance|kes }}</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>Total Unpaid Balance</td>
+                            <td class="text-end" style="color:#e11d48;">KES {{ unpaid_loan_balance|kes }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Penalties -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-exclamation-triangle me-2"></i>Penalties</div>
+            <div class="table-responsive">
+                <table class="fin-table table mb-0">
+                    <tbody>
+                        <tr>
+                            <td>Total Issued</td>
+                            <td class="text-end fw-semibold">KES {{ total_penalties_issued|kes }}</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-check-circle me-1 text-success"></i>Paid</td>
+                            <td class="text-end fw-semibold" style="color:#16a34a;">KES {{ total_penalties_paid|kes }}</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-clock me-1 text-warning"></i>Unpaid (outstanding)</td>
+                            <td class="text-end fw-semibold" style="color:#d97706;">KES {{ total_penalties_unpaid|kes }}</td>
+                        </tr>
+                    </tbody>
+                    {% if total_penalties_issued %}
+                    <tfoot>
+                        <tr>
+                            <td>Collection Rate</td>
+                            <td class="text-end">
+                                {% widthratio total_penalties_paid total_penalties_issued 100 %}%
+                                <div class="progress-thin mt-1">
+                                    <div class="bar" style="width:{% widthratio total_penalties_paid total_penalties_issued 100 %}%;background:#16a34a;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Right column ────────────────────────────────────────── -->
+    <div class="col-lg-5">
+
+        <!-- Fund Position -->
+        <div class="card mb-3" style="border:2px solid #16a34a;">
+            <div class="card-header" style="background:#f0fdf4;color:#15803d;">
+                <i class="bi bi-safe2 me-2"></i>Fund Position
+            </div>
+            <div class="card-body p-0">
+                <table class="fin-table table mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted">Member Contributions</td>
+                            <td class="text-end fw-semibold" style="color:#16a34a;">KES {{ total_contributions|kes }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Interest Collected</td>
+                            <td class="text-end fw-semibold" style="color:#7c3aed;">KES {{ total_interest|kes }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Penalties Collected</td>
+                            <td class="text-end fw-semibold" style="color:#d97706;">KES {{ total_penalties_paid|kes }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Other Income</td>
+                            <td class="text-end fw-semibold" style="color:#0d9488;">KES {{ total_other_income|kes }}</td>
+                        </tr>
+                        <tr style="border-top:2px solid #e2e8f0;">
+                            <td class="fw-bold">Total Group Income</td>
+                            <td class="text-end fw-bold" style="color:#2563eb;font-size:1.05rem;">KES {{ total_income|kes }}</td>
+                        </tr>
+                        <tr style="background:#f5f3ff;">
+                            <td class="text-muted" style="font-size:0.82rem;">
+                                <i class="bi bi-person-check me-1" style="color:#7c3aed;"></i>
+                                Reg. Fee Fund (separate)
+                            </td>
+                            <td class="text-end fw-semibold" style="color:#7c3aed;font-size:0.82rem;">
+                                KES {{ total_reg_fees|kes }}
+                                <a href="{% url 'expenses:reg_fee_fund' %}" class="ms-1 text-decoration-none" style="font-size:0.75rem;">→</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Loans Outstanding</td>
+                            <td class="text-end fw-semibold text-danger">− KES {{ unpaid_loan_balance|kes }}</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td style="color:#15803d;">Liquid Fund Balance</td>
+                            <td class="text-end" style="color:#15803d;font-size:1.1rem;">
+                                KES {% with bal=total_income|add:"-0" %}{{ total_income|kes }}{% endwith %}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Welfare Fund -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-heart-pulse me-2"></i>Welfare Fund</div>
+            <div class="card-body p-0">
+                <table class="fin-table table mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted">Total Collected</td>
+                            <td class="text-end fw-semibold" style="color:#16a34a;">KES {{ total_welfare_contributions|kes }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Total Disbursed</td>
+                            <td class="text-end fw-semibold text-danger">KES {{ total_welfare_disbursed|kes }}</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>Welfare Balance</td>
+                            <td class="text-end" style="color:#0d9488;">KES {{ welfare_balance|kes }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Members -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-people me-2"></i>Membership</div>
+            <div class="card-body p-0">
+                <table class="fin-table table mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted">Total Members</td>
+                            <td class="text-end fw-semibold">{{ total_members }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Active Members</td>
+                            <td class="text-end fw-semibold" style="color:#16a34a;">{{ active_members }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Loans (Active / Late / Cleared)</td>
+                            <td class="text-end">
+                                <span class="badge" style="background:#fffbeb;color:#d97706;">{{ active_count }}</span>
+                                <span class="badge" style="background:#fff1f2;color:#e11d48;">{{ late_count }}</span>
+                                <span class="badge" style="background:#f0fdf4;color:#16a34a;">{{ cleared_count }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 </div>
 

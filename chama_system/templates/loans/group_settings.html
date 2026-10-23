@@ -1,0 +1,618 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Group & System Setup{% endblock %}
+{% block page_title %}Group & System Setup{% endblock %}
+
+{% block extra_css %}
+<style>
+    .theme-card {
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .theme-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .theme-card.active {
+        border-color: #2563eb;
+        background: #f8faff;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .color-chip {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 2px solid #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .nav-tabs .nav-link {
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #64748b;
+        padding: 0.75rem 1rem;
+        border-radius: 8px 8px 0 0;
+    }
+    .nav-tabs .nav-link.active {
+        color: #2563eb;
+        border-color: #e2e8f0 #e2e8f0 #fff;
+    }
+    .preview-sidebar {
+        border-radius: 8px;
+        padding: 1rem;
+        transition: background-color 0.25s ease;
+    }
+    .dropzone-box {
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        background: #f8fafc;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .dropzone-box:hover {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+    <!-- Settings Forms / Tabs -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom pt-3 pb-0">
+                <ul class="nav nav-tabs border-bottom-0" id="settingsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'profile' %}active{% endif %}" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-pane" type="button" role="tab">
+                            <i class="bi bi-building me-1"></i>Profile &amp; Identity
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'logo' %}active{% endif %}" id="logo-tab" data-bs-toggle="tab" data-bs-target="#logo-pane" type="button" role="tab">
+                            <i class="bi bi-image me-1"></i>Logo &amp; Branding
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'theme' %}active{% endif %}" id="theme-tab" data-bs-toggle="tab" data-bs-target="#theme-pane" type="button" role="tab">
+                            <i class="bi bi-palette me-1"></i>Theme &amp; Colors
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'financial' %}active{% endif %}" id="financial-tab" data-bs-toggle="tab" data-bs-target="#financial-pane" type="button" role="tab">
+                            <i class="bi bi-sliders me-1"></i>Financial Rules
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'documents' %}active{% endif %}" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents-pane" type="button" role="tab">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>Document &amp; PDF
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-body p-4">
+                <div class="tab-content" id="settingsTabContent">
+
+                    <!-- Tab 1: Profile & Identity -->
+                    <div class="tab-pane fade {% if active_tab == 'profile' %}show active{% endif %}" id="profile-pane" role="tabpanel">
+                        <form method="post" action="{% url 'loans:group_settings' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="active_tab" value="profile">
+
+                            <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-info-circle me-1"></i>Chama General Details</h6>
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label class="form-label fw-semibold small">Group / Chama Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="group_name" id="input_group_name" value="{{ info.group_name }}" class="form-control" required maxlength="150" placeholder="e.g. Finance Wise TBM">
+                                    <div class="form-text">Official name shown across navigation, topbar, reports, and login.</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Currency Symbol / Code</label>
+                                    <input type="text" name="group_currency" value="{{ info.group_currency }}" class="form-control" maxlength="10" placeholder="KES">
+                                    <div class="form-text">e.g. KES, USD, UGX, TZS</div>
+                                </div>
+
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small">Tagline / Subtitle</label>
+                                    <input type="text" name="group_tagline" id="input_group_tagline" value="{{ info.group_tagline }}" class="form-control" maxlength="200" placeholder="e.g. Table Banking & Investment Group">
+                                    <div class="form-text">Displayed below the group name in the sidebar.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Registration Number</label>
+                                    <input type="text" name="group_registration" value="{{ info.group_registration }}" class="form-control" maxlength="100" placeholder="e.g. REG/2020/12345">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Year Founded</label>
+                                    <input type="text" name="group_founded" value="{{ info.group_founded }}" class="form-control" maxlength="10" placeholder="e.g. 2018">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Official Phone Number</label>
+                                    <input type="text" name="group_phone" id="input_group_phone" value="{{ info.group_phone }}" class="form-control" maxlength="50" placeholder="e.g. +254 700 000 000">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Official Email Address</label>
+                                    <input type="email" name="group_email" value="{{ info.group_email }}" class="form-control" maxlength="254" placeholder="e.g. info@chama.org">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Physical Location / Town</label>
+                                    <input type="text" name="group_location" id="input_group_location" value="{{ info.group_location }}" class="form-control" maxlength="200" placeholder="e.g. Nairobi, Kenya">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Postal Address</label>
+                                    <input type="text" name="group_postal_address" value="{{ info.group_postal_address }}" class="form-control" maxlength="255" placeholder="e.g. P.O. Box 12345-00100">
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i>Save Profile
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Tab 2: Logo & Branding -->
+                    <div class="tab-pane fade {% if active_tab == 'logo' %}show active{% endif %}" id="logo-pane" role="tabpanel">
+                        <form method="post" action="{% url 'loans:group_settings' %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="active_tab" value="logo">
+
+                            <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-image me-1"></i>Official Group Logo</h6>
+
+                            <div class="row g-4 align-items-center mb-4">
+                                <div class="col-md-4 text-center">
+                                    <div class="p-3 border rounded bg-light d-flex flex-column align-items-center justify-content-center" style="min-height: 140px;">
+                                        {% if info.group_logo %}
+                                        <img src="{{ info.group_logo }}" id="current_logo_img" alt="Current Logo" style="max-height: 90px; max-width: 140px; object-fit: contain;" onerror="this.style.display='none'; document.getElementById('no_logo_placeholder').classList.remove('d-none');">
+                                        <div id="no_logo_placeholder" class="text-muted py-3 d-none">
+                                            <i class="bi bi-image fs-1 d-block text-secondary mb-1"></i>
+                                            <span class="small">Logo file not found</span>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block">Current Logo</small>
+                                        {% else %}
+                                        <div id="no_logo_placeholder" class="text-muted py-3">
+                                            <i class="bi bi-image fs-1 d-block text-secondary mb-1"></i>
+                                            <span class="small">No logo uploaded yet</span>
+                                        </div>
+                                        <img id="current_logo_img" src="" alt="Preview" class="d-none" style="max-height: 90px; max-width: 140px; object-fit: contain;">
+                                        {% endif %}
+                                    </div>
+                                    {% if info.group_logo %}
+                                    <button type="submit" name="remove_logo" value="1" class="btn btn-sm btn-outline-danger mt-2" onclick="return confirm('Are you sure you want to remove the group logo?');">
+                                        <i class="bi bi-trash me-1"></i>Remove Logo
+                                    </button>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-8">
+                                    <label class="form-label fw-semibold small">Upload New Logo</label>
+                                    <div class="dropzone-box" onclick="document.getElementById('logo_file_input').click();">
+                                        <i class="bi bi-cloud-arrow-up fs-2 text-primary d-block mb-2"></i>
+                                        <div class="fw-semibold">Click to browse or drag image here</div>
+                                        <small class="text-muted d-block mt-1">PNG, JPG, JPEG, WEBP or SVG (Max 3MB)</small>
+                                        <input type="file" name="logo_file" id="logo_file_input" class="d-none" accept=".png,.jpg,.jpeg,.webp,.svg,.gif">
+                                        <div id="selected_filename" class="text-success small fw-semibold mt-2"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-light border d-flex gap-2 align-items-center" style="font-size:0.85rem;">
+                                <i class="bi bi-info-circle text-primary fs-5"></i>
+                                <div>
+                                    <strong>Where the logo appears:</strong> Top-left of the sidebar navigation, system document headers, and exported PDF reports.
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-upload me-1"></i>Upload &amp; Save Logo
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Tab 3: Theme & Colors -->
+                    <div class="tab-pane fade {% if active_tab == 'theme' %}show active{% endif %}" id="theme-pane" role="tabpanel">
+                        <form method="post" action="{% url 'loans:group_settings' %}" id="theme_form">
+                            {% csrf_token %}
+                            <input type="hidden" name="active_tab" value="theme">
+                            <input type="hidden" name="theme_preset" id="selected_preset_input" value="{{ info.theme_preset }}">
+                            <input type="hidden" name="use_custom_theme" id="use_custom_input" value="{% if info.theme_preset == 'custom' %}1{% else %}0{% endif %}">
+
+                            <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-palette me-1"></i>Preset Color Palettes</h6>
+                            
+                            <div class="row g-3 mb-4">
+                                {% for key, preset in theme_presets.items %}
+                                <div class="col-md-6 col-xl-4">
+                                    <div class="theme-card p-3 h-100 {% if info.theme_preset == key %}active{% endif %}" 
+                                         data-preset-id="{{ key }}"
+                                         data-bg="{{ preset.sidebar_bg }}"
+                                         data-primary="{{ preset.primary_color }}"
+                                         data-hover="{{ preset.sidebar_hover }}"
+                                         data-text="{{ preset.sidebar_text }}"
+                                         data-section="{{ preset.sidebar_section }}">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <strong style="font-size:0.9rem;">{{ preset.name }}</strong>
+                                            <div class="d-flex gap-1 align-items-center">
+                                                <span class="color-chip" style="background-color: #1e2a3a;" title="Sidebar (Fixed Dark Navy)"></span>
+                                                <span class="color-chip" style="background-color: {{ preset.primary_color }};" title="Accent: {{ preset.name }}"></span>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mb-0">{{ preset.description }}</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-sliders2 me-1"></i>Custom Theme Accent</h6>
+                            <div class="p-3 bg-light rounded border mb-3">
+                                <input type="hidden" name="custom_sidebar_bg" id="custom_bg_text" value="#1e2a3a">
+                                <label class="form-label fw-semibold small">Primary Accent / Theme Color</label>
+                                <div class="input-group input-group-sm" style="max-width: 340px;">
+                                    <input type="color" id="custom_primary_picker" class="form-control form-control-color" value="{{ info.theme_primary_color }}">
+                                    <input type="text" name="custom_primary_color" id="custom_primary_text" value="{{ info.theme_primary_color }}" class="form-control font-monospace" maxlength="7">
+                                </div>
+                                <div class="form-text mt-2 small text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>The side navigation background remains a fixed dark navy slate (<code>#1e2a3a</code>). Changing the theme customizes primary action buttons, active navigation pills, badges, and accents.
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i>Apply Theme
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Tab 4: Financial Rules -->
+                    <div class="tab-pane fade {% if active_tab == 'financial' %}show active{% endif %}" id="financial-pane" role="tabpanel">
+                        <form method="post" action="{% url 'loans:group_settings' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="active_tab" value="financial">
+
+                            <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-calculator me-1"></i>Financial &amp; Lending Operations</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Default Loan Interest Rate (%)</label>
+                                    <div class="input-group">
+                                        <input type="number" step="0.01" min="0" max="100" name="default_interest_rate" value="{{ info.default_interest_rate }}" class="form-control" required>
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <div class="form-text">System-wide default rate pre-filled when creating new loans.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Default Late Penalty Rate (%)</label>
+                                    <div class="input-group">
+                                        <input type="number" step="0.01" min="0" max="100" name="default_late_penalty_rate" value="{{ info.default_late_penalty_rate }}" class="form-control" required>
+                                        <span class="input-group-text">% / month</span>
+                                    </div>
+                                    <div class="form-text">Applied monthly on overdue principal or balance.</div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Grace Period (Days)</label>
+                                    <input type="number" min="0" max="365" name="grace_period_days" value="{{ info.grace_period_days }}" class="form-control">
+                                    <div class="form-text">Days allowed after due date before marking late.</div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Max Active Loans Per Member</label>
+                                    <input type="number" min="0" max="20" name="max_active_loans_per_member" value="{{ info.max_active_loans_per_member }}" class="form-control">
+                                    <div class="form-text">0 for unlimited concurrent active loans.</div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Savings-to-Loan Multiple</label>
+                                    <div class="input-group">
+                                        <input type="number" step="0.1" min="0" max="20" name="savings_loan_multiplier" value="{{ info.savings_loan_multiplier }}" class="form-control">
+                                        <span class="input-group-text">x</span>
+                                    </div>
+                                    <div class="form-text">e.g. 3.0x contributions (0 to disable limit).</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i>Save Financial Rules
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Tab 5: Document & PDF -->
+                    <div class="tab-pane fade {% if active_tab == 'documents' %}show active{% endif %}" id="documents-pane" role="tabpanel">
+                        <form method="post" action="{% url 'loans:group_settings' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="active_tab" value="documents">
+
+                            <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-file-earmark-text me-1"></i>PDF Header &amp; Footer Branding</h6>
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small">Custom Document Header Title (Optional)</label>
+                                    <input type="text" name="pdf_header_title" id="input_pdf_title" value="{{ info.pdf_header_title }}" class="form-control" maxlength="200" placeholder="Leave empty to use official Group Name">
+                                    <div class="form-text">Overrides the group name in generated PDF title banner if specified.</div>
+                                </div>
+
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small">Footer Notice &amp; Attribution (Immutable)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted"><i class="bi bi-lock-fill"></i></span>
+                                        <input type="text" id="input_pdf_footer" value="{{ info.group_name }} - Powered by Ropenix Investments Limited ( 018 218 0965 )" class="form-control bg-light" readonly disabled>
+                                    </div>
+                                    <div class="form-text text-muted"><i class="bi bi-shield-lock me-1"></i>Permanent system footer attribution enforced on all generated PDF statements, reports, and exported documents.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" name="pdf_show_logo" id="check_pdf_logo" value="1" {% if info.pdf_show_logo %}checked{% endif %}>
+                                        <label class="form-check-label fw-semibold small" for="check_pdf_logo">
+                                            Include Group Logo in PDF Header
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ps-4">Renders group logo on the top-left of PDF exports.</small>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" name="pdf_show_contact" id="check_pdf_contact" value="1" {% if info.pdf_show_contact %}checked{% endif %}>
+                                        <label class="form-check-label fw-semibold small" for="check_pdf_contact">
+                                            Include Phone &amp; Location in PDF Subtitle
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ps-4">Includes phone and location details under the title.</small>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i>Save Document Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Preview Sidebar Column -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+            <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between">
+                <span class="fw-semibold text-secondary small text-uppercase" style="letter-spacing:0.5px;">
+                    <i class="bi bi-eye me-1"></i>Live Visual Preview
+                </span>
+                <span class="badge bg-light text-dark border">Interactive</span>
+            </div>
+            <div class="card-body p-3">
+
+                <!-- 1. Live Sidebar Brand Preview -->
+                <div class="mb-3">
+                    <small class="text-muted fw-bold d-block mb-1">Sidebar Preview:</small>
+                    <div id="live_preview_sidebar" class="preview-sidebar" style="background-color: #1e2a3a;">
+                        <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <div id="live_preview_logo_box">
+                                {% if info.group_logo %}
+                                <img src="{{ info.group_logo }}" id="live_preview_logo" alt="Logo" style="max-height: 36px; max-width: 40px; object-fit: contain; border-radius: 4px;">
+                                {% else %}
+                                <div style="width:32px; height:32px; border-radius:6px; background: rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center;">
+                                    <i class="bi bi-bank2" style="color: #fff; font-size:1rem;"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="overflow-hidden">
+                                <h6 id="live_preview_name" class="text-white mb-0 text-truncate" style="font-size:0.92rem; font-weight:700;">
+                                    {{ info.group_name }}
+                                </h6>
+                                <small id="live_preview_tagline" class="d-block text-truncate" style="color: #94a3b8; font-size:0.72rem;">
+                                    {{ info.group_tagline|default:"Table Banking Manager" }}
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Sample Active Nav Item -->
+                        <div id="live_preview_nav_active" class="px-2 py-1 rounded text-white small fw-semibold d-flex align-items-center gap-2" style="background-color: {{ info.theme_primary_color }};">
+                            <i class="bi bi-speedometer2"></i>
+                            <span>Dashboard (Active)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Live PDF Header Preview -->
+                <div>
+                    <small class="text-muted fw-bold d-block mb-1">PDF Export Header Preview:</small>
+                    <div class="border rounded overflow-hidden shadow-sm" style="font-size:0.78rem;">
+                        <div id="live_pdf_header" class="p-2 text-white d-flex justify-content-between align-items-center" style="background-color: #1e2a3a;">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                                <div>
+                                    <strong id="live_pdf_name">{{ info.pdf_header_title|default:info.group_name }}</strong>
+                                    <div id="live_pdf_location" class="text-white-50" style="font-size:0.68rem;">{{ info.group_location }}</div>
+                                </div>
+                            </div>
+                            <div class="text-end text-white-50" style="font-size:0.68rem;">
+                                <div>Official Statement</div>
+                                <div id="live_pdf_phone">{{ info.group_phone }}</div>
+                            </div>
+                        </div>
+                        <div class="bg-light p-2 border-top d-flex justify-content-between text-muted" style="font-size:0.68rem;">
+                            <span id="live_pdf_footer">{{ info.group_name|default:"Finance Wise TBM" }} - Powered by Ropenix Investments Limited ( 018 218 0965 )</span>
+                            <span>Page 1</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Live Input Mirroring
+    const inputName = document.getElementById('input_group_name');
+    const inputTagline = document.getElementById('input_group_tagline');
+    const inputLocation = document.getElementById('input_group_location');
+    const inputPhone = document.getElementById('input_group_phone');
+    const inputPdfTitle = document.getElementById('input_pdf_title');
+    const inputPdfFooter = document.getElementById('input_pdf_footer');
+
+    const liveName = document.getElementById('live_preview_name');
+    const liveTagline = document.getElementById('live_preview_tagline');
+    const livePdfName = document.getElementById('live_pdf_name');
+    const livePdfLocation = document.getElementById('live_pdf_location');
+    const livePdfPhone = document.getElementById('live_pdf_phone');
+    const livePdfFooter = document.getElementById('live_pdf_footer');
+
+    function getDefaultFooter() {
+        const name = (inputName ? inputName.value.trim() : '') || 'Finance Wise TBM';
+        return name + ' - Powered by Ropenix Investments Limited ( 018 218 0965 )';
+    }
+
+    if (inputName) {
+        inputName.addEventListener('input', function() {
+            const val = this.value.trim() || 'Finance Wise TBM';
+            if (liveName) liveName.textContent = val;
+            if (livePdfName && !inputPdfTitle.value.trim()) livePdfName.textContent = val;
+            const footerVal = getDefaultFooter();
+            if (livePdfFooter) livePdfFooter.textContent = footerVal;
+            if (inputPdfFooter) inputPdfFooter.value = footerVal;
+        });
+    }
+
+    if (inputTagline) {
+        inputTagline.addEventListener('input', function() {
+            if (liveTagline) liveTagline.textContent = this.value.trim() || 'Table Banking Manager';
+        });
+    }
+
+    if (inputLocation) {
+        inputLocation.addEventListener('input', function() {
+            if (livePdfLocation) livePdfLocation.textContent = this.value.trim();
+        });
+    }
+
+    if (inputPhone) {
+        inputPhone.addEventListener('input', function() {
+            if (livePdfPhone) livePdfPhone.textContent = this.value.trim();
+        });
+    }
+
+    if (inputPdfTitle) {
+        inputPdfTitle.addEventListener('input', function() {
+            const val = this.value.trim() || (inputName ? inputName.value.trim() : 'Finance Wise TBM');
+            if (livePdfName) livePdfName.textContent = val;
+        });
+    }
+
+    if (inputPdfFooter) {
+        inputPdfFooter.addEventListener('input', function() {
+            if (livePdfFooter) livePdfFooter.textContent = this.value.trim() || getDefaultFooter();
+        });
+    }
+
+    // 2. Logo File Selection Preview
+    const logoFileInput = document.getElementById('logo_file_input');
+    const selectedFilename = document.getElementById('selected_filename');
+    const currentLogoImg = document.getElementById('current_logo_img');
+    const noLogoPlaceholder = document.getElementById('no_logo_placeholder');
+    const liveLogoBox = document.getElementById('live_preview_logo_box');
+
+    if (logoFileInput) {
+        logoFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (selectedFilename) selectedFilename.textContent = `Selected: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    if (currentLogoImg) {
+                        currentLogoImg.src = evt.target.result;
+                        currentLogoImg.classList.remove('d-none');
+                    }
+                    if (noLogoPlaceholder) noLogoPlaceholder.classList.add('d-none');
+                    if (liveLogoBox) {
+                        liveLogoBox.innerHTML = `<img src="${evt.target.result}" style="max-height: 36px; max-width: 40px; object-fit: contain; border-radius: 4px;">`;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // 3. Theme Preset Selection & Custom Color Pickers
+    const themeCards = document.querySelectorAll('.theme-card');
+    const selectedPresetInput = document.getElementById('selected_preset_input');
+    const useCustomInput = document.getElementById('use_custom_input');
+
+    const customBgPicker = document.getElementById('custom_bg_picker');
+    const customBgText = document.getElementById('custom_bg_text');
+    const customPrimaryPicker = document.getElementById('custom_primary_picker');
+    const customPrimaryText = document.getElementById('custom_primary_text');
+
+    const liveSidebar = document.getElementById('live_preview_sidebar');
+    const liveNavActive = document.getElementById('live_preview_nav_active');
+    const livePdfHeader = document.getElementById('live_pdf_header');
+
+    function applyLiveColors(primary) {
+        if (liveSidebar) liveSidebar.style.backgroundColor = '#1e2a3a';
+        if (livePdfHeader) livePdfHeader.style.backgroundColor = '#1e2a3a';
+        if (liveNavActive) liveNavActive.style.backgroundColor = primary;
+        if (liveTagline) liveTagline.style.color = '#94a3b8';
+    }
+
+    themeCards.forEach(card => {
+        card.addEventListener('click', function() {
+            themeCards.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+
+            const presetId = this.dataset.presetId;
+            const primary = this.dataset.primary;
+
+            if (selectedPresetInput) selectedPresetInput.value = presetId;
+            if (useCustomInput) useCustomInput.value = '0';
+
+            if (customPrimaryPicker) customPrimaryPicker.value = primary;
+            if (customPrimaryText) customPrimaryText.value = primary;
+
+            applyLiveColors(primary);
+        });
+    });
+
+    function syncCustomPrimary(color) {
+        if (useCustomInput) useCustomInput.value = '1';
+        themeCards.forEach(c => c.classList.remove('active'));
+        if (selectedPresetInput) selectedPresetInput.value = 'custom';
+        applyLiveColors(color);
+    }
+
+    if (customPrimaryPicker && customPrimaryText) {
+        customPrimaryPicker.addEventListener('input', function() {
+            customPrimaryText.value = this.value;
+            syncCustomPrimary(this.value);
+        });
+        customPrimaryText.addEventListener('input', function() {
+            if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+                customPrimaryPicker.value = this.value;
+                syncCustomPrimary(this.value);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

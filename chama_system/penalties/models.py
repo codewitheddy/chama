@@ -22,4 +22,8 @@ class Penalty(PaymentTypeMixin, models.Model):
         verbose_name_plural = 'Penalties'
 
     def __str__(self):
-        return f"{self.member.name} - KES {self.amount} ({self.date})"
+        try:
+            name = self.member.name
+        except Exception:
+            name = f"Member #{self.member_id}"
+        return f"{name} - KES {self.amount} ({self.date})"

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Remove Guarantor{% endblock %}
 {% block page_title %}Remove Guarantor{% endblock %}
 
@@ -13,9 +14,9 @@
                 <div class="alert alert-warning py-2 small mb-3">
                     <i class="bi bi-exclamation-triangle me-1"></i>
                     Remove <strong>{{ object.guarantor.name }}</strong> as guarantor for
-                    <strong>{{ object.loan.member.name }}</strong>'s loan of
-                    KES {{ object.loan.loan_amount|floatformat:2 }}?
-                    Their guaranteed amount of KES {{ object.amount_guaranteed|floatformat:2 }} will be released.
+                    <strong>{{ object.loan.borrower_name }}</strong>'s loan of
+                    KES {{ object.loan.loan_amount|kes }}?
+                    Their guaranteed amount of KES {{ object.amount_guaranteed|kes }} will be released.
                 </div>
                 <form method="post" novalidate>
                     {% csrf_token %}

@@ -37,15 +37,25 @@ INSTALLED_APPS = [
     'welfare',
     'yearend',
     'recycle_bin',
+    'audit',
+    'backup',
+    'other_income',
+    'bank_accounts',
+    'investments',
+    'utils',
+    'expenses',
+    'money_movement',
 ]
 
 MIDDLEWARE = [
+    'audit.db_reconnect.DbReconnectMiddleware',  # must be first — retries on stale DB after restore
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # serve static files
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    'chama_system.csrf_middleware.DesktopCsrfMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'audit.middleware.AuditMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -63,6 +73,10 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'utils.context_processors.group_settings',
+                'utils.context_processors.pending_loan_applications',
+                'utils.context_processors.notification_count',
+                'utils.context_processors.pending_transfers',
             ],
         },
     },
@@ -86,10 +100,12 @@ elif not DEBUG and config('DB_HOST', default=''):
         }
     }
 else:
+    import os as _os
+    _desktop_db = _os.environ.get('DESKTOP_DB_PATH', '')
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': _desktop_db if _desktop_db else BASE_DIR / 'db.sqlite3',
         }
     }
 
@@ -111,9 +127,19 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+_desktop_media = _os.environ.get('DESKTOP_MEDIA_ROOT', '')
+if _desktop_media:
+    MEDIA_ROOT = Path(_desktop_media)
+elif _desktop_db:
+    MEDIA_ROOT = Path(_desktop_db).parent / 'media'
+else:
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Bulk contribution/welfare form sends ~7 fields per member row.
+# With 1000 members that's 7000 fields — raise the limit well above that.
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
@@ -131,17 +157,41 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='DC Welfare Group <noreply@dcwelfare.local>')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default="Finance Wise TBM <noreply@financewise.local>")
 
-# Security (enable in production)
+# Security (enable SSL in production only when explicitly requested)
 _trusted = config('CSRF_TRUSTED_ORIGINS', default='')
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in _trusted.split(',') if o.strip()]
+for _local_origin in ['http://127.0.0.1', 'http://localhost']:
+    if _local_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_local_origin)
 
-if not DEBUG:
+import os as _os
+_desktop_db = _os.environ.get('DESKTOP_DB_PATH', '')
+_is_desktop = _desktop_db != ''
+
+USE_HTTPS = config('USE_HTTPS', default=False, cast=bool) or config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+
+if USE_HTTPS:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+else:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+
+# On the desktop app, use file-based sessions so they survive a database restore
+# and don't conflict with database table rewrites.
+if _is_desktop:
+    SESSION_ENGINE = 'django.contrib.sessions.backends.file'
+    _session_dir = Path(_desktop_db).parent / 'sessions'
+    _session_dir.mkdir(parents=True, exist_ok=True)
+    SESSION_FILE_PATH = str(_session_dir)
+
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Security headers — applied in all environments
 X_FRAME_OPTIONS = 'DENY'

@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Propose Loan Restructure — Loan #{{ loan.pk }}{% endblock %}
+{% block page_title %}Propose Loan Restructure{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1 small">
+                <li class="breadcrumb-item"><a href="{% url 'loans:list' %}" class="text-decoration-none">Loans</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'loans:detail' loan.pk %}" class="text-decoration-none">Loan #{{ loan.pk }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Propose Restructure</li>
+            </ol>
+        </nav>
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-arrow-repeat text-primary me-2"></i>Propose Restructure for Loan #{{ loan.pk }}
+        </h5>
+        <div class="text-muted small">
+            Borrower: <strong class="text-dark">{{ loan.borrower_name }}</strong> &bull; Outstanding Balance: <strong class="text-danger">KES {{ loan.balance|kes }}</strong>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Loan
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Current Loan Profile & Parameters Form -->
+    <div class="col-lg-6">
+        <!-- Current Loan Summary Card -->
+        <div class="card shadow-sm border-0 mb-4 bg-light">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold text-dark small"><i class="bi bi-info-circle text-primary me-1"></i>Current Loan Terms</span>
+                    <span class="badge bg-secondary-subtle text-dark border">{{ loan.get_status_display }}</span>
+                </div>
+                <div class="row g-2 small text-muted">
+                    <div class="col-6">Original Principal: <strong class="text-dark">KES {{ loan.loan_amount|kes }}</strong></div>
+                    <div class="col-6">Total Payable: <strong class="text-dark">KES {{ loan.total_payable|kes }}</strong></div>
+                    <div class="col-6">Amount Paid: <strong class="text-success">KES {{ loan.amount_paid|kes }}</strong></div>
+                    <div class="col-6">Remaining Balance: <strong class="text-danger">KES {{ loan.balance|kes }}</strong></div>
+                    <div class="col-6">Interest Rate: <strong class="text-dark">{{ loan.interest_rate|floatformat:2 }}%</strong> ({{ loan.get_loan_type_display }})</div>
+                    <div class="col-6">Current Due Date: <strong class="text-dark">{{ loan.due_date|default:"—" }}</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proposal Form -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-sliders text-primary me-2"></i>Restructure Parameters
+                </h6>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" id="restructureForm" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small mb-3">
+                        {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Restructure Type -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-dark" for="{{ form.restructure_type.id_for_label }}">
+                            Restructure Type <span class="text-danger">*</span>
+                        </label>
+                        {{ form.restructure_type }}
+                        {% if form.restructure_type.errors %}
+                        <div class="text-danger small mt-1">{{ form.restructure_type.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Dynamic Field: Term Extension / Duration -->
+                    <div class="mb-3 field-group" id="group-term-months">
+                        <label class="form-label fw-semibold small text-dark" for="{{ form.new_term_months.id_for_label }}">
+                            New Term Duration (Months)
+                        </label>
+                        {{ form.new_term_months }}
+                        <div class="form-text small text-muted">Number of months to spread the remaining balance over.</div>
+                        {% if form.new_term_months.errors %}
+                        <div class="text-danger small mt-1">{{ form.new_term_months.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Dynamic Field: Rate Adjustment -->
+                    <div class="mb-3 field-group" id="group-rate">
+                        <label class="form-label fw-semibold small text-dark" for="{{ form.new_rate.id_for_label }}">
+                            New Interest Rate (%)
+                        </label>
+                        {{ form.new_rate }}
+                        <div class="form-text small text-muted">Enter percentage rate (e.g. 5 for 5%). Leave blank to keep current rate.</div>
+                        {% if form.new_rate.errors %}
+                        <div class="text-danger small mt-1">{{ form.new_rate.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Dynamic Field: Moratorium Period -->
+                    <div class="mb-3 field-group" id="group-moratorium" style="display:none;">
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold small text-dark" for="{{ form.moratorium_months.id_for_label }}">
+                                    Moratorium Months (Freeze)
+                                </label>
+                                {{ form.moratorium_months }}
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold small text-dark" for="{{ form.remaining_months.id_for_label }}">
+                                    Post-Freeze Months
+                                </label>
+                                {{ form.remaining_months }}
+                            </div>
+                        </div>
+                        <div class="form-check mt-2">
+                            {{ form.accrue_interest }}
+                            <label class="form-check-label small text-dark" for="{{ form.accrue_interest.id_for_label }}">
+                                Accrue interest on balance during freeze period
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Field: Consolidation -->
+                    <div class="mb-3 field-group" id="group-consolidation" style="display:none;">
+                        <label class="form-label fw-semibold small text-dark" for="{{ form.consolidated_loans.id_for_label }}">
+                            Select Additional Active Loans to Consolidate
+                        </label>
+                        {{ form.consolidated_loans }}
+                        <div class="form-text small text-muted">Hold Ctrl / Cmd to select multiple active loans.</div>
+                    </div>
+
+                    <!-- Reason / Justification -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small text-dark" for="{{ form.reason.id_for_label }}">
+                            Reason / Committee Justification <span class="text-danger">*</span>
+                        </label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}
+                        <div class="text-danger small mt-1">{{ form.reason.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button type="button" id="btnPreviewCalc" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-calculator me-1"></i>Refresh Preview
+                        </button>
+                        <button type="submit" class="btn btn-sm btn-primary px-4">
+                            <i class="bi bi-send-check me-1"></i>Submit Proposal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Live Schedule Preview -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark">
+                    <i class="bi bi-calendar-check text-success me-2"></i>Proposed Schedule Preview
+                </span>
+                <span id="previewSummaryBadge" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">
+                    KES {{ loan.balance|kes }} Total
+                </span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle mb-0" id="previewTable">
+                        <thead class="table-light sticky-top">
+                            <tr class="small text-muted text-uppercase" style="font-size:0.7rem;">
+                                <th>#</th>
+                                <th>Due Date</th>
+                                <th class="text-end">Principal</th>
+                                <th class="text-end">Interest</th>
+                                <th class="text-end pe-3">Installment</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewTableBody">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4 small">
+                                    <i class="bi bi-hourglass-split me-1"></i>Configuring parameters...
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="table-light fw-bold small">
+                            <tr>
+                                <td colspan="2" class="ps-3">Totals</td>
+                                <td class="text-end" id="sumPrincipal">0.00</td>
+                                <td class="text-end" id="sumInterest">0.00</td>
+                                <td class="text-end pe-3 text-primary" id="sumTotal">0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top py-2 small text-muted">
+                <i class="bi bi-info-circle me-1 text-primary"></i>This preview is recalculated dynamically based on the remaining balance of KES {{ loan.balance|kes }}.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const typeSelect = document.getElementById('id_restructure_type');
+    const termGroup = document.getElementById('group-term-months');
+    const rateGroup = document.getElementById('group-rate');
+    const morGroup = document.getElementById('group-moratorium');
+    const consGroup = document.getElementById('group-consolidation');
+    const btnPreview = document.getElementById('btnPreviewCalc');
+
+    function updateFormVisibility() {
+        const val = typeSelect.value;
+        termGroup.style.display = (val === 'TERM_EXTENSION' || val === 'RATE_ADJUSTMENT' || val === 'CONSOLIDATION') ? 'block' : 'none';
+        rateGroup.style.display = (val === 'RATE_ADJUSTMENT' || val === 'TERM_EXTENSION') ? 'block' : 'none';
+        morGroup.style.display = (val === 'MORATORIUM') ? 'block' : 'none';
+        consGroup.style.display = (val === 'CONSOLIDATION') ? 'block' : 'none';
+    }
+
+    async function fetchPreview() {
+        const formData = new FormData(document.getElementById('restructureForm'));
+        try {
+            const resp = await fetch("{% url 'loans:restructure_preview_api' loan.pk %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            });
+            const res = await resp.json();
+            const tbody = document.getElementById('previewTableBody');
+            tbody.innerHTML = '';
+
+            if (res.success && res.schedule.length > 0) {
+                let totalP = 0, totalI = 0, totalAll = 0;
+                res.schedule.forEach(s => {
+                    totalP += s.principal_amount;
+                    totalI += s.interest_amount;
+                    totalAll += s.total_installment;
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'small';
+                    tr.innerHTML = `
+                        <td class="fw-semibold text-secondary">${s.installment_number}</td>
+                        <td>${s.due_date} <span class="text-muted d-block" style="font-size:0.68rem;">${s.description || ''}</span></td>
+                        <td class="text-end">KES ${s.principal_amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                        <td class="text-end">KES ${s.interest_amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                        <td class="text-end pe-3 fw-bold text-dark">KES ${s.total_installment.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById('sumPrincipal').textContent = 'KES ' + totalP.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+                document.getElementById('sumInterest').textContent = 'KES ' + totalI.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+                document.getElementById('sumTotal').textContent = 'KES ' + totalAll.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+                document.getElementById('previewSummaryBadge').textContent = 'KES ' + totalAll.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Total';
+            } else if (res.success && res.schedule.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4 small"><i class="bi bi-slash-circle me-1"></i>Write-Off Selected: Schedule zeroed out.</td></tr>';
+            } else {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4 small">${res.error || 'Could not calculate schedule.'}</td></tr>`;
+            }
+        } catch (e) {
+            console.error('Preview error', e);
+        }
+    }
+
+    typeSelect.addEventListener('change', () => {
+        updateFormVisibility();
+        fetchPreview();
+    });
+
+    ['id_new_term_months', 'id_new_rate', 'id_moratorium_months', 'id_remaining_months', 'id_accrue_interest'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', fetchPreview);
+            el.addEventListener('change', fetchPreview);
+        }
+    });
+
+    btnPreview.addEventListener('click', fetchPreview);
+
+    updateFormVisibility();
+    fetchPreview();
+});
+</script>
+{% endblock %}

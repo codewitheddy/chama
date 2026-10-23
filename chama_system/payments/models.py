@@ -11,7 +11,7 @@ class Payment(models.Model):
         ('mpesa', 'M-Pesa'),
     ]
 
-    member = models.ForeignKey(Member, on_delete=models.CASCADE)
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, null=True, blank=True)
     loan = models.ForeignKey(Loan, on_delete=models.CASCADE)
     amount = models.DecimalField(
         max_digits=12,
@@ -41,4 +41,13 @@ class Payment(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.member.name} - KES {self.amount} on {self.date}"
+        try:
+            if self.member_id:
+                name = self.member.name
+            elif self.loan_id:
+                name = self.loan.borrower_name
+            else:
+                name = 'Unknown'
+        except Exception:
+            name = f"Member #{self.member_id}" if self.member_id else 'Unknown'
+        return f"{name} - KES {self.amount} on {self.date}"

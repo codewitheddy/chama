@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Delete Expense{% endblock %}
+{% block page_title %}Delete Expense{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-5">
+  <div class="card" style="border:1.5px solid #fca5a5;">
+    <div class="card-header" style="background:#fff1f2;border-bottom:1px solid #fca5a5;">
+      <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+      <span class="fw-bold text-danger">Confirm Deletion</span>
+    </div>
+    <div class="card-body">
+      <p>Are you sure you want to delete this expense?</p>
+      <table class="table table-sm mb-4">
+        <tr><td class="text-muted">Description</td><td class="fw-semibold">{{ object.description }}</td></tr>
+        <tr><td class="text-muted">Amount</td><td class="fw-bold text-danger">KES {{ object.amount|kes }}</td></tr>
+        <tr><td class="text-muted">Date</td><td>{{ object.date }}</td></tr>
+        <tr><td class="text-muted">Fund Source</td><td>{{ object.fund_source_description }}</td></tr>
+      </table>
+
+      <form method="post">
+        {% csrf_token %}
+        {% include 'includes/delete_auth_fields.html' %}
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i>Delete
+          </button>
+          <a href="{% url 'expenses:list' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

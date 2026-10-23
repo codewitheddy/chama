@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Confirm Bulk Delete Welfare Contributions{% endblock %}
+{% block page_title %}Confirm Bulk Delete Welfare Contributions{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-2">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger text-white d-flex align-items-center justify-content-between">
+                    <span class="fw-semibold">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Bulk Welfare Contribution Deletion
+                    </span>
+                    <span class="badge bg-white text-danger">{{ contributions.count }} record{{ contributions.count|pluralize }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
+                        <i class="bi bi-shield-slash fs-4 me-2 flex-shrink-0"></i>
+                        <div>
+                            <strong>Permanent Deletion Warning:</strong> You are about to delete 
+                            <strong>{{ contributions.count }} welfare contribution(s)</strong> totaling 
+                            <strong>KES {{ total_amount|kes }}</strong>. A recovery snapshot will be saved in the Recycle Bin.
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mb-2 text-secondary">Welfare Contributions to be Deleted:</h6>
+                    <div class="table-responsive mb-3" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-sm table-hover table-bordered mb-0 align-middle">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Member</th>
+                                    <th>Amount</th>
+                                    <th>Month / Year</th>
+                                    <th>Method</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in contributions %}
+                                <tr>
+                                    <td class="text-muted" style="font-size:0.8rem;">{{ forloop.counter }}</td>
+                                    <td class="fw-semibold">{{ c.member.name }}</td>
+                                    <td style="color:#16a34a; font-weight:600;">KES {{ c.amount|kes }}</td>
+                                    <td>{{ c.get_month_display }} {{ c.year }}</td>
+                                    <td>{{ c.get_payment_type_display }}</td>
+                                    <td class="text-muted" style="font-size:0.85rem;">{{ c.date }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr class="fw-bold">
+                                    <td colspan="2" class="text-end">Total Amount:</td>
+                                    <td colspan="4" style="color:#16a34a;">KES {{ total_amount|kes }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    {% if error %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        <strong>Error:</strong> {{ error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+                        <input type="hidden" name="confirm" value="true">
+                        <input type="hidden" name="contribution_ids" value="{{ contribution_ids }}">
+
+                        <div class="mb-3">
+                            <label for="delete_reason" class="form-label fw-semibold">
+                                Reason for Deletion <span class="text-danger">*</span>
+                            </label>
+                            <textarea name="delete_reason" id="delete_reason" class="form-control" rows="2" 
+                                      placeholder="Provide the reason for deleting these welfare contributions..." required>{{ delete_reason|default:'' }}</textarea>
+                            <small class="text-muted">This reason will be logged in the system audit trail and Recycle Bin.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="admin_password" class="form-label fw-semibold">
+                                Admin Password <span class="text-danger">*</span>
+                            </label>
+                            <input type="password" name="admin_password" id="admin_password" class="form-control" 
+                                   placeholder="Enter your administrator password to confirm" required>
+                            <small class="text-muted">Required to confirm authorization.</small>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-2 border-top">
+                            <a href="{% url 'welfare:contribution_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Cancel & Return
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash-fill me-1"></i>Permanently Delete {{ contributions.count }} Record{{ contributions.count|pluralize }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

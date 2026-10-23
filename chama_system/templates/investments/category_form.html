@@ -1,0 +1,653 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} — Investment Categories{% endblock %}
+
+{% block extra_css %}
+<style>
+    .inv-form-card {
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+    }
+    .inv-card-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #edf2f7;
+        padding: 1.35rem 2rem;
+    }
+    .inv-card-body {
+        padding: 2.25rem 2.25rem;
+    }
+    .form-label {
+        margin-bottom: 0.65rem;
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+    .form-text {
+        margin-top: 0.45rem;
+        font-size: 0.82rem;
+        color: #64748b;
+    }
+    .form-control, .form-select {
+        padding: 0.75rem 1.1rem;
+        font-size: 0.95rem;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .input-group-text {
+        padding: 0.75rem 1.15rem;
+        border-color: #cbd5e1;
+        color: #64748b;
+        background-color: #f8fafc;
+    }
+    .section-well {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 1.35rem 1.5rem;
+    }
+    .color-swatch-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1.5px #cbd5e1;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-size: 0.88rem;
+        padding: 0;
+    }
+    .color-swatch-btn:hover {
+        transform: scale(1.15);
+    }
+    .color-swatch-btn.active {
+        box-shadow: 0 0 0 2px #0f172a, 0 0 0 4.5px rgba(15, 23, 42, 0.2);
+        transform: scale(1.1);
+    }
+    .icon-chip-btn {
+        padding: 0.55rem 0.95rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #334155;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+    .icon-chip-btn:hover {
+        border-color: #2563eb;
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+    .icon-chip-btn.active {
+        border-color: #2563eb;
+        background: #2563eb;
+        color: #ffffff;
+    }
+    .preview-cat-icon {
+        width: 62px;
+        height: 62px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.95rem;
+        transition: all 0.2s ease;
+    }
+    .preview-section-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        color: #64748b;
+        margin-bottom: 0.65rem;
+    }
+    .btn-action-primary {
+        padding: 0.75rem 1.85rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        border-radius: 8px;
+    }
+    .btn-action-secondary {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.95rem;
+        font-weight: 500;
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-3 px-md-4 px-xl-5">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}" class="text-decoration-none">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'investments:list' %}" class="text-decoration-none">Investments</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'investments:category_list' %}" class="text-decoration-none">Categories</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ action }}</li>
+                </ol>
+            </nav>
+            <h2 class="h3 fw-bold text-dark mb-0">
+                <i class="bi bi-tag-fill text-primary me-2"></i>{{ action }}
+            </h2>
+            <p class="text-muted small mb-0">Define category grouping for investment products and asset types.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'investments:category_list' %}" class="btn btn-outline-secondary px-3 py-2">
+                <i class="bi bi-arrow-left me-1"></i> Back to Categories
+            </a>
+            {% if object and object.pk %}
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill font-monospace small">
+                <i class="bi bi-layers me-1"></i> {{ total_linked_types }} Linked Product{{ total_linked_types|pluralize }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4 g-xl-5">
+        <!-- Form Column (Left: 7 cols) -->
+        <div class="col-xl-7 col-lg-7">
+            <div class="inv-form-card">
+                <div class="inv-card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0 fw-bold text-dark fs-6">
+                            <i class="bi bi-sliders text-primary me-2"></i>Category Configuration
+                        </h5>
+                        <div class="text-muted small mt-0.5">Configure category name, theme color, icon, and display preferences.</div>
+                    </div>
+                    <span class="badge bg-light text-dark border px-3 py-1.5 rounded-pill">Step 1 of 1</span>
+                </div>
+                
+                <div class="inv-card-body">
+                    <form method="post" id="categoryForm" novalidate>
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger shadow-sm border-0 mb-4 p-3 rounded-3" role="alert">
+                            {% for error in form.non_field_errors %}
+                            <div class="small fw-medium"><i class="bi bi-exclamation-triangle-fill me-1.5"></i> {{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Section 1: Basic Info -->
+                        <div class="mb-4">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                Category Name <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text border-end-0"><i class="bi bi-type fs-5"></i></span>
+                                {{ form.name }}
+                            </div>
+                            <div class="form-text">The primary classification title (e.g., Real Estate, Stocks &amp; Equities, Fixed Deposits).</div>
+                            {% if form.name.errors %}
+                            <div class="text-danger small mt-1.5 fw-medium">{{ form.name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                Description
+                            </label>
+                            {{ form.description }}
+                            <div class="form-text">Brief context on asset classes or investment items included in this category.</div>
+                            {% if form.description.errors %}
+                            <div class="text-danger small mt-1.5 fw-medium">{{ form.description.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <hr class="my-4 text-muted opacity-25">
+
+                        <!-- Section 2: Visual Branding -->
+                        <div class="mb-4">
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-palette text-primary me-1.5"></i> Theme Color Palette</span>
+                                <span class="small font-monospace text-muted px-2 py-0.5 bg-light rounded border" id="color-hex-label">#2563eb</span>
+                            </label>
+                            
+                            <div class="section-well mb-3">
+                                <div class="text-muted small fw-semibold mb-2.5">Preset Financial Themes:</div>
+                                <!-- Curated Swatches -->
+                                <div class="d-flex flex-wrap gap-3 mb-3" id="color-swatches">
+                                    <button type="button" class="color-swatch-btn" data-color="#2563eb" style="background-color: #2563eb;" title="Sapphire Blue"></button>
+                                    <button type="button" class="color-swatch-btn" data-color="#059669" style="background-color: #059669;" title="Emerald Green"></button>
+                                    <button type="button" class="color-swatch-btn" data-color="#7c3aed" style="background-color: #7c3aed;" title="Royal Violet"></button>
+                                    <button type="button" class="color-swatch-btn" data-color="#d97706" style="background-color: #d97706;" title="Amber Gold"></button>
+                                    <button type="button" class="color-swatch-btn" data-color="#e11d48" style="background-color: #e11d48;" title="Ruby Crimson"></button>
+                                    <button type="button" class="color-swatch-btn" data-color="#0891b2" style="background-color: #0891b2;" title="Ocean Cyan"></button>
+                                    <button type="button" class="color-swatch-btn" data-color="#4f46e5" style="background-color: #4f46e5;" title="Electric Indigo"></button>
+                                    <button type="button" class="color-swatch-btn" data-color="#0d9488" style="background-color: #0d9488;" title="Teal Forest"></button>
+                                    <button type="button" class="color-swatch-btn" data-color="#b45309" style="background-color: #b45309;" title="Warm Bronze"></button>
+                                    <button type="button" class="color-swatch-btn" data-color="#334155" style="background-color: #334155;" title="Slate Navy"></button>
+                                </div>
+
+                                <div class="d-flex align-items-center gap-3 pt-2 border-top">
+                                    <div style="width: 52px; height: 42px; position: relative;">
+                                        {{ form.color_code }}
+                                    </div>
+                                    <div class="text-muted small">
+                                        Click a preset swatch above or use the custom color wheel to choose an exact hex code.
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if form.color_code.errors %}
+                            <div class="text-danger small mt-1.5 fw-medium">{{ form.color_code.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Icon Selector -->
+                        <div class="mb-4">
+                            <label for="{{ form.icon.id_for_label }}" class="form-label">
+                                <i class="bi bi-star text-primary me-1.5"></i> Category Icon
+                            </label>
+                            <div class="input-group mb-3">
+                                <span class="input-group-text border-end-0" id="input-icon-preview">
+                                    <i class="bi bi-briefcase text-primary fs-5" id="input-icon-el"></i>
+                                </span>
+                                {{ form.icon }}
+                            </div>
+                            {% if form.icon.errors %}
+                            <div class="text-danger small mt-1.5 fw-medium">{{ form.icon.errors.0 }}</div>
+                            {% endif %}
+
+                            <!-- Categorized Icon Picker Chips -->
+                            <div class="section-well">
+                                <div class="text-muted small fw-semibold mb-3">Popular Asset Category Icons:</div>
+                                
+                                <div class="d-flex flex-column gap-3" id="icon-picker-groups">
+                                    <!-- Group 1: Real Estate & Land -->
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="text-muted small fw-semibold" style="font-size: 0.8rem; min-width: 95px;">Property:</span>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-building"><i class="bi bi-building"></i> Building</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-houses"><i class="bi bi-houses"></i> Houses</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-geo-alt"><i class="bi bi-geo-alt"></i> Land / Plot</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-tree"><i class="bi bi-tree"></i> Agriculture</button>
+                                    </div>
+
+                                    <!-- Group 2: Stocks & Equities -->
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="text-muted small fw-semibold" style="font-size: 0.8rem; min-width: 95px;">Equities:</span>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-graph-up-arrow"><i class="bi bi-graph-up-arrow"></i> Stocks</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-pie-chart"><i class="bi bi-pie-chart"></i> Mutual Funds</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-bar-chart-line"><i class="bi bi-bar-chart-line"></i> Analytics</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-currency-exchange"><i class="bi bi-currency-exchange"></i> Forex</button>
+                                    </div>
+
+                                    <!-- Group 3: Fixed Income & Banking -->
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="text-muted small fw-semibold" style="font-size: 0.8rem; min-width: 95px;">Banking:</span>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-bank"><i class="bi bi-bank"></i> Fixed Deposit</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-piggy-bank"><i class="bi bi-piggy-bank"></i> Savings</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-cash-stack"><i class="bi bi-cash-stack"></i> Treasury Bills</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-safe"><i class="bi bi-safe"></i> Vault / Safe</button>
+                                    </div>
+
+                                    <!-- Group 4: Business & Ventures -->
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="text-muted small fw-semibold" style="font-size: 0.8rem; min-width: 95px;">Ventures:</span>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-briefcase"><i class="bi bi-briefcase"></i> Business</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-shop"><i class="bi bi-shop"></i> Retail</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-truck"><i class="bi bi-truck"></i> Logistics</button>
+                                        <button type="button" class="icon-chip-btn" data-icon="bi-trophy"><i class="bi bi-trophy"></i> Special Project</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4 text-muted opacity-25">
+
+                        <!-- Section 3: Order & Status -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.display_order.id_for_label }}" class="form-label">
+                                    Display Order
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text border-end-0"><i class="bi bi-sort-numeric-down fs-5"></i></span>
+                                    {{ form.display_order }}
+                                </div>
+                                <div class="form-text">Lower numbers (e.g. 0, 1, 2) appear first in menus and lists.</div>
+                                {% if form.display_order.errors %}
+                                <div class="text-danger small mt-1.5 fw-medium">{{ form.display_order.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Category Status</label>
+                                <div class="p-3 rounded-3 border bg-light d-flex align-items-center justify-content-between" style="min-height: 52px;">
+                                    <div class="form-check form-switch mb-0">
+                                        {{ form.is_active }}
+                                        <label class="form-check-label fw-semibold text-dark small" for="{{ form.is_active.id_for_label }}" id="status-toggle-label">
+                                            Active Category
+                                        </label>
+                                    </div>
+                                    <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1.5 small" id="status-pill">Active</span>
+                                </div>
+                                <div class="form-text">Inactive categories are hidden from new investment dropdowns.</div>
+                            </div>
+                        </div>
+
+                        <!-- Actions Footer -->
+                        <div class="d-flex justify-content-between align-items-center pt-4 border-top gap-3">
+                            <a href="{% url 'investments:category_list' %}" class="btn btn-outline-secondary btn-action-secondary">
+                                <i class="bi bi-x-lg me-1"></i> Cancel
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-action-primary shadow-sm">
+                                    <i class="bi bi-check2-circle me-1.5"></i> Save Category
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Preview & Context Column (Right: 5 cols) -->
+        <div class="col-xl-5 col-lg-5">
+            <div class="d-flex flex-column gap-4">
+                
+                <!-- Live Visual Multi-Preview Card -->
+                <div class="inv-form-card">
+                    <div class="inv-card-header bg-light d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 fw-bold text-dark fs-6">
+                                <i class="bi bi-eye text-primary me-2"></i>Live Component Preview
+                            </h5>
+                            <div class="text-muted small mt-0.5">Real-time rendering across the Chama portal.</div>
+                        </div>
+                        <span class="badge bg-primary text-white rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">Live Sync</span>
+                    </div>
+                    
+                    <div class="inv-card-body">
+                        <!-- 1. Category Grid Card Preview -->
+                        <div class="preview-section-title">1. Category Grid Card View</div>
+                        <div class="p-4 rounded-3 border bg-white shadow-sm mb-4" id="preview-grid-card">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="preview-cat-icon" id="preview-icon-box" style="background: #2563eb15; color: #2563eb; border: 1px solid #2563eb30;">
+                                    <i class="bi bi-briefcase" id="preview-icon-el"></i>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1.5" id="preview-card-status">Active</span>
+                                </div>
+                            </div>
+                            <h5 class="fw-bold text-dark mb-1.5 fs-5" id="preview-title">Category Name</h5>
+                            <p class="text-muted small mb-3.5" id="preview-desc" style="min-height: 40px; line-height: 1.5;">Category description will appear here...</p>
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                                <span class="small text-muted"><i class="bi bi-layers text-primary me-1.5"></i> {{ total_linked_types|default:"0" }} Product Template{{ total_linked_types|pluralize }}</span>
+                                <span class="small text-muted font-monospace" id="preview-order-badge">Order: #0</span>
+                            </div>
+                        </div>
+
+                        <!-- 2. Investment Table Badge Preview -->
+                        <div class="preview-section-title">2. Table &amp; Detail Badge View</div>
+                        <div class="p-3.5 rounded-3 border bg-light mb-4">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span class="small text-muted fw-medium">Example Table Record:</span>
+                                <span class="badge rounded-pill px-3.5 py-2 fw-semibold" id="preview-badge" style="background: #2563eb15; color: #2563eb; border: 1px solid #2563eb35; font-size: 0.85rem;">
+                                    <i class="bi bi-briefcase me-1.5" id="preview-badge-icon"></i><span id="preview-badge-text">Category Name</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 3. Form Dropdown Select Preview -->
+                        <div class="preview-section-title">3. Investment Form Dropdown Option</div>
+                        <div class="p-3.5 rounded-3 border bg-light">
+                            <label class="form-label small text-muted mb-1.5">Asset Selection Preview:</label>
+                            <div class="bg-white p-3 rounded border small text-dark d-flex align-items-center justify-content-between shadow-xs">
+                                <span>
+                                    <i class="bi bi-briefcase me-2" id="preview-select-icon" style="color: #2563eb; font-size: 1rem;"></i>
+                                    <strong>Commercial Land 50x100</strong> <span class="text-muted" id="preview-select-cat">([Category Name])</span>
+                                </span>
+                                <span class="badge bg-light text-muted border px-2 py-1">8.5% p.a.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Linked Products Card (If editing or creating) -->
+                <div class="inv-form-card">
+                    <div class="inv-card-header bg-light d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 fw-bold text-dark fs-6">
+                                <i class="bi bi-layers text-primary me-2"></i>Linked Product Templates
+                            </h5>
+                            <div class="text-muted small mt-0.5">Templates grouped under this category.</div>
+                        </div>
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-1 font-monospace">
+                            {{ total_linked_types }} template{{ total_linked_types|pluralize }}
+                        </span>
+                    </div>
+                    <div class="inv-card-body">
+                        {% if linked_types %}
+                        <div class="list-group list-group-flush">
+                            {% for p_type in linked_types %}
+                            <div class="list-group-item px-3 py-3 d-flex justify-content-between align-items-center border-0 rounded-3 mb-2 hover-bg-light bg-light">
+                                <div>
+                                    <div class="fw-semibold text-dark small mb-0.5">{{ p_type.name }}</div>
+                                    <div class="text-muted" style="font-size: 0.78rem;">
+                                        Expected: {{ p_type.expected_return_rate }}% p.a. &bull; {{ p_type.investments.count }} Active Investment{{ p_type.investments.count|pluralize }}
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <a href="{% url 'investments:type_edit' p_type.pk %}" class="btn btn-sm btn-outline-secondary px-2.5 py-1" title="Edit Template">
+                                        <i class="bi bi-pencil" style="font-size: 0.8rem;"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="pt-3 text-center border-top mt-2">
+                            <a href="{% url 'investments:type_add' %}" class="btn btn-sm btn-outline-primary w-100 py-2 fw-semibold">
+                                <i class="bi bi-plus-lg me-1"></i> Add Another Product Template
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4 px-3 text-muted">
+                            <i class="bi bi-inbox fs-1 text-muted opacity-50 mb-2 d-block"></i>
+                            <div class="small fw-semibold text-dark mb-1">No Product Templates Linked Yet</div>
+                            <p class="text-muted small mb-3">Create product templates (e.g. "Residential Land", "NSE Bluechips") under this category.</p>
+                            <a href="{% url 'investments:type_add' %}" class="btn btn-sm btn-outline-primary px-3 py-1.5 fw-medium">
+                                <i class="bi bi-plus-lg me-1"></i> Create Product Template
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Best Practice / Policy Card -->
+                <div class="card border-0 rounded-3 p-3.5 text-muted small" style="background: #f8fafc; border: 1px dashed #cbd5e1 !important;">
+                    <div class="d-flex gap-3">
+                        <i class="bi bi-lightbulb text-warning fs-4"></i>
+                        <div>
+                            <span class="fw-bold text-dark">Category Management Tip:</span>
+                            <div class="mt-1 text-muted" style="line-height: 1.55;">
+                                Consistent theme colors and distinct icons help committee members rapidly recognize asset types in portfolio distribution charts and monthly audit reports.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('id_name');
+    const descInput = document.getElementById('id_description');
+    const iconInput = document.getElementById('id_icon');
+    const colorInput = document.getElementById('id_color_code');
+    const orderInput = document.getElementById('id_display_order');
+    const activeInput = document.getElementById('id_is_active');
+    const colorHexLabel = document.getElementById('color-hex-label');
+
+    // Preview elements
+    const previewTitle = document.getElementById('preview-title');
+    const previewDesc = document.getElementById('preview-desc');
+    const previewIconBox = document.getElementById('preview-icon-box');
+    const previewIconEl = document.getElementById('preview-icon-el');
+    const inputIconEl = document.getElementById('input-icon-el');
+    const previewBadge = document.getElementById('preview-badge');
+    const previewBadgeIcon = document.getElementById('preview-badge-icon');
+    const previewBadgeText = document.getElementById('preview-badge-text');
+    const previewSelectCat = document.getElementById('preview-select-cat');
+    const previewSelectIcon = document.getElementById('preview-select-icon');
+    const previewOrderBadge = document.getElementById('preview-order-badge');
+    const previewCardStatus = document.getElementById('preview-card-status');
+    const statusPill = document.getElementById('status-pill');
+    const statusToggleLabel = document.getElementById('status-toggle-label');
+
+    // Swatches and icon chips
+    const swatches = document.querySelectorAll('#color-swatches .color-swatch-btn');
+    const iconChips = document.querySelectorAll('#icon-picker-groups .icon-chip-btn');
+
+    function updatePreview() {
+        const name = (nameInput && nameInput.value.trim()) || 'Category Name';
+        const desc = (descInput && descInput.value.trim()) || 'Category description will appear here...';
+        let icon = (iconInput && iconInput.value.trim()) || 'bi-briefcase';
+        if (!icon.startsWith('bi-') && !icon.startsWith('fa-')) {
+            icon = 'bi-' + icon;
+        }
+        const color = (colorInput && colorInput.value) || '#2563eb';
+        const order = (orderInput && orderInput.value) || '0';
+        const isActive = activeInput ? activeInput.checked : true;
+
+        if (colorHexLabel) colorHexLabel.textContent = color.toUpperCase();
+
+        // Title & Description
+        if (previewTitle) previewTitle.textContent = name;
+        if (previewDesc) previewDesc.textContent = desc;
+
+        // Order badge
+        if (previewOrderBadge) previewOrderBadge.textContent = 'Order: #' + order;
+
+        // Status badges
+        if (previewCardStatus) {
+            previewCardStatus.textContent = isActive ? 'Active' : 'Inactive';
+            previewCardStatus.className = isActive 
+                ? 'badge bg-success-subtle text-success rounded-pill px-3 py-1.5' 
+                : 'badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1.5';
+        }
+        if (statusPill) {
+            statusPill.textContent = isActive ? 'Active' : 'Inactive';
+            statusPill.className = isActive 
+                ? 'badge bg-success-subtle text-success rounded-pill px-3 py-1.5 small' 
+                : 'badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1.5 small';
+        }
+        if (statusToggleLabel) {
+            statusToggleLabel.textContent = isActive ? 'Active Category' : 'Inactive Category';
+        }
+
+        // Icon Box styling
+        if (previewIconBox) {
+            previewIconBox.style.background = color + '18';
+            previewIconBox.style.color = color;
+            previewIconBox.style.borderColor = color + '35';
+        }
+        if (previewIconEl) {
+            previewIconEl.className = 'bi ' + icon;
+        }
+        if (inputIconEl) {
+            inputIconEl.className = 'bi ' + icon + ' fs-5';
+            inputIconEl.style.color = color;
+        }
+
+        // Badge styling
+        if (previewBadge) {
+            previewBadge.style.background = color + '15';
+            previewBadge.style.color = color;
+            previewBadge.style.borderColor = color + '35';
+        }
+        if (previewBadgeIcon) {
+            previewBadgeIcon.className = 'bi ' + icon + ' me-1.5';
+        }
+        if (previewBadgeText) {
+            previewBadgeText.textContent = name;
+        }
+
+        // Dropdown selection preview
+        if (previewSelectCat) {
+            previewSelectCat.textContent = '(' + name + ')';
+        }
+        if (previewSelectIcon) {
+            previewSelectIcon.className = 'bi ' + icon + ' me-2';
+            previewSelectIcon.style.color = color;
+        }
+
+        // Synchronize active states for swatches
+        swatches.forEach(btn => {
+            if (btn.dataset.color.toLowerCase() === color.toLowerCase()) {
+                btn.classList.add('active');
+                btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = '';
+            }
+        });
+
+        // Synchronize active states for icon chips
+        iconChips.forEach(chip => {
+            if (chip.dataset.icon === icon) {
+                chip.classList.add('active');
+            } else {
+                chip.classList.remove('active');
+            }
+        });
+    }
+
+    // Color Swatch clicks
+    swatches.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const selectedColor = this.dataset.color;
+            if (colorInput) {
+                colorInput.value = selectedColor;
+            }
+            updatePreview();
+        });
+    });
+
+    // Icon Chip clicks
+    iconChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+            const selectedIcon = this.dataset.icon;
+            if (iconInput) {
+                iconInput.value = selectedIcon;
+            }
+            updatePreview();
+        });
+    });
+
+    // Input event listeners
+    if (nameInput) nameInput.addEventListener('input', updatePreview);
+    if (descInput) descInput.addEventListener('input', updatePreview);
+    if (iconInput) iconInput.addEventListener('input', updatePreview);
+    if (colorInput) colorInput.addEventListener('input', updatePreview);
+    if (orderInput) orderInput.addEventListener('input', updatePreview);
+    if (activeInput) activeInput.addEventListener('change', updatePreview);
+
+    // Initial render
+    updatePreview();
+});
+</script>
+{% endblock %}

@@ -1,303 +1,1031 @@
 {% extends 'base.html' %}
-{% block title %}Meeting — {{ meeting.date }}{% endblock %}
-{% block page_title %}Meeting — {{ meeting.date }}{% endblock %}
+{% load finance_tags %}
+{% block title %}Meeting — {{ meeting.date|date:"M. d, Y"|default:meeting.date }}{% endblock %}
+{% block page_title %}Meeting Overview{% endblock %}
 
 {% block extra_css %}
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
 <style>
-    /* Read-only minutes preview on detail page */
+    /* ── Root Page Variables & Tokens ── */
+    :root {
+        --meeting-primary: #2563eb;
+        --meeting-primary-light: #eff6ff;
+        --meeting-success: #10b981;
+        --meeting-success-light: #ecfdf5;
+        --meeting-warning: #f59e0b;
+        --meeting-warning-light: #fffbeb;
+        --meeting-danger: #ef4444;
+        --meeting-danger-light: #fef2f2;
+        --meeting-card-border: rgba(226, 232, 240, 0.8);
+    }
+
+    /* ── Hero & Header Styling ── */
+    .meeting-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid var(--meeting-card-border);
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        padding: 1.5rem 1.75rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .meeting-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: {% if meeting.status == 'held' %}#10b981{% elif meeting.status == 'cancelled' %}#ef4444{% else %}#2563eb{% endif %};
+    }
+    .calendar-badge {
+        width: 54px;
+        height: 58px;
+        border-radius: 12px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .calendar-badge .cal-month {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #2563eb;
+        letter-spacing: 0.5px;
+    }
+    .calendar-badge .cal-day {
+        font-size: 1.35rem;
+        font-weight: 800;
+        line-height: 1.1;
+        color: #1e293b;
+    }
+
+    /* ── Metric Stat Cards ── */
+    .stat-metric-card {
+        background: #ffffff;
+        border: 1px solid var(--meeting-card-border);
+        border-radius: 1rem;
+        padding: 1.25rem 1.35rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .stat-metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06);
+    }
+    .stat-icon-wrapper {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    /* ── Content Cards ── */
+    .content-panel {
+        background: #ffffff;
+        border: 1px solid var(--meeting-card-border);
+        border-radius: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    .content-panel-header {
+        padding: 1.1rem 1.35rem;
+        background: #ffffff;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+    .content-panel-body {
+        padding: 1.35rem;
+    }
+
+    /* ── Attendance Filter Pills ── */
+    .att-filter-nav {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+    }
+    .att-filter-btn {
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+        transition: all 0.15s ease;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .att-filter-btn:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+    .att-filter-btn.active {
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #2563eb;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+    }
+    .att-filter-btn.active .badge-count {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+    }
+    .badge-count {
+        background: #e2e8f0;
+        color: #475569;
+        font-size: 0.7rem;
+        padding: 0.1rem 0.45rem;
+        border-radius: 9999px;
+    }
+
+    /* ── Member Avatar & Table Rows ── */
+    .member-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        color: #3730a3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+        border: 1px solid rgba(199, 210, 254, 0.6);
+    }
+    .member-avatar.gold {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        border-color: rgba(253, 230, 138, 0.6);
+    }
+
+    .attendance-table tbody tr {
+        transition: background-color 0.15s ease;
+    }
+    .attendance-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    /* ── Status Selectors ── */
+    .status-select-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .status-badge-interactive {
+        cursor: pointer;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        border-radius: 9999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
+    }
+    .status-badge-interactive:hover {
+        filter: brightness(0.95);
+        transform: scale(1.02);
+    }
+
+    /* Status Themes */
+    .status-present {
+        background: #f0fdf4;
+        color: #16a34a;
+        border-color: #bbf7d0;
+    }
+    .status-late {
+        background: #fffbeb;
+        color: #d97706;
+        border-color: #fde68a;
+    }
+    .status-apology {
+        background: #eff6ff;
+        color: #2563eb;
+        border-color: #bfdbfe;
+    }
+    .status-absent {
+        background: #fff1f2;
+        color: #e11d48;
+        border-color: #fecdd3;
+    }
+
+    /* ── Treasury Ledger Snapshot ── */
+    .ledger-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.65rem 0;
+        border-bottom: 1px dashed #f1f5f9;
+        font-size: 0.85rem;
+    }
+    .ledger-row:last-child {
+        border-bottom: none;
+    }
+    .ledger-highlight {
+        background: #f0fdf4;
+        border-radius: 8px;
+        padding: 0.75rem 0.85rem;
+        border: 1px solid #bbf7d0;
+        margin-top: 0.5rem;
+    }
+
+    /* ── Minutes Preview ── */
     .ql-snow.ql-container { border: none; }
-    .ql-editor { padding: 0; font-size: 0.875rem; }
+    .ql-editor { padding: 0; font-size: 0.875rem; color: #334155; line-height: 1.6; }
     .ql-snow.ql-toolbar { display: none; }
+    .minutes-preview-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 1.1rem;
+        position: relative;
+        max-height: 140px;
+        overflow: hidden;
+    }
+    .minutes-preview-fade {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 45px;
+        background: linear-gradient(transparent, #f8fafc);
+        pointer-events: none;
+    }
+
+    /* ── Toast Notification for Quick Actions ── */
+    .toast-container {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 1080;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-{% if meeting.status == 'held' %}
-<div class="alert alert-success py-2 mb-3" style="font-size:0.875rem;">
-    <i class="bi bi-lock-fill me-2"></i>This meeting is <strong>held</strong> — status and penalties are locked.
-</div>
-{% endif %}
-<div class="row g-3">
+<div class="container-fluid px-0">
 
-    <!-- Left: summary + minutes -->
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">Meeting Info</div>
-            <div class="card-body p-0">
-                <table class="table table-sm table-borderless mb-0">
-                    <tr><td class="text-muted ps-3">Date</td><td class="fw-semibold pe-3">{{ meeting.date }}</td></tr>
-                    <tr><td class="text-muted ps-3">Venue</td><td class="pe-3">{{ meeting.venue|default:"—" }}</td></tr>
-                    <tr><td class="text-muted ps-3">Status</td><td class="pe-3">
-                        {% if meeting.status == 'held' %}<span class="badge" style="background:#f0fdf4;color:#16a34a;">Held</span>
-                        {% elif meeting.status == 'scheduled' %}<span class="badge" style="background:#eff6ff;color:#2563eb;">Scheduled</span>
-                        {% else %}<span class="badge" style="background:#fff1f2;color:#e11d48;">Cancelled</span>{% endif %}
-                    </td></tr>
-                    <tr><td class="text-muted ps-3">Attendance</td><td class="pe-3">{{ attendance.count }} recorded</td></tr>
-                    <tr><td class="text-muted ps-3">Penalties</td><td class="pe-3 text-danger fw-semibold">KES {{ meeting.total_penalties|floatformat:2 }}</td></tr>
-                </table>
+    <!-- ── 1. Status Locked Notice (If Held) ── -->
+    {% if meeting.status == 'held' %}
+    <div class="alert alert-success d-flex align-items-center justify-content-between p-3 mb-3 rounded-4 shadow-sm border border-success-subtle" style="background:#ecfdf5;">
+        <div class="d-flex align-items-center">
+            <div class="rounded-circle p-2 bg-success text-white me-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                <i class="bi bi-shield-lock-fill"></i>
+            </div>
+            <div>
+                <strong class="text-success-emphasis">Meeting Finalized & Held</strong>
+                <div class="text-muted small">The attendance ledger, financial records, and disciplinary penalties for this session are officially locked.</div>
             </div>
         </div>
-
-        {% if meeting.agenda %}
-        <div class="card mb-3">
-            <div class="card-header">Agenda</div>
-            <div class="card-body" style="font-size:0.875rem;white-space:pre-wrap;">{{ meeting.agenda }}</div>
-        </div>
-        {% endif %}
-
-        <!-- Minutes card -->
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-journal-text me-2"></i>Minutes</span>
-                <div class="d-flex gap-1">
-                    <a href="{% url 'meetings:minutes' meeting.pk %}" class="btn btn-sm btn-outline-warning">
-                        <i class="bi bi-pencil me-1"></i>View / Edit
-                    </a>
-                    <a href="{% url 'meetings:minutes_pdf' meeting.pk %}" class="btn btn-sm btn-outline-danger" title="Download PDF">
-                        <i class="bi bi-filetype-pdf"></i>
-                    </a>
-                </div>
-            </div>
-            {% if meeting.minutes %}
-            <div class="card-body p-3" style="font-size:0.875rem;">
-                <div id="minutesPreview" style="max-height:80px;overflow:hidden;position:relative;">
-                    <div class="ql-snow"><div class="ql-editor" style="padding:0;">{{ meeting.minutes|safe }}</div></div>
-                    <div style="position:absolute;bottom:0;left:0;right:0;height:30px;background:linear-gradient(transparent,white);"></div>
-                </div>
-                <a href="{% url 'meetings:minutes' meeting.pk %}" class="small text-primary mt-1 d-inline-block">Read full minutes →</a>
-            </div>
-            {% else %}
-            <div class="card-body">
-                <p class="text-muted small mb-0">No minutes yet. <a href="{% url 'meetings:minutes' meeting.pk %}">Click here to add.</a></p>
-            </div>
-            {% endif %}
-        </div>
-
-        <div class="d-flex gap-2 flex-wrap">
-            {% if meeting.status != 'held' %}
-            <a href="{% url 'meetings:edit' meeting.pk %}" class="btn btn-outline-warning btn-sm">
-                <i class="bi bi-pencil me-1"></i>Edit Meeting
+        <div class="d-flex gap-2">
+            <a href="{% url 'meetings:minutes_pdf' meeting.pk %}" class="btn btn-sm btn-outline-success fw-semibold">
+                <i class="bi bi-filetype-pdf me-1"></i>Signed Minutes PDF
             </a>
-            {% endif %}
-            <a href="{% url 'meetings:list' %}" class="btn btn-outline-secondary btn-sm">Back</a>
         </div>
     </div>
+    {% endif %}
 
-    <!-- Right: attendance + penalties -->
-    <div class="col-md-8">
-
-        <!-- Attendance -->
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-person-check me-2"></i>Attendance</span>
-                {% if meeting.status != 'held' %}
-                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#attendanceModal">
-                    <i class="bi bi-plus me-1"></i>Record Attendance
-                </button>
-                {% endif %}
-            </div>
-            <div class="table-responsive">
-                <table class="table table-sm mb-0">
-                    <thead><tr><th>Member</th><th>Status</th><th></th></tr></thead>
-                    <tbody id="attendanceBody">
-                        {% for a in attendance %}
-                        <tr>
-                            <td class="fw-semibold">{{ a.member.name }}</td>
-                            <td>
-                                {% if a.status == 'present' %}
-                                    <span class="badge" style="background:#f0fdf4;color:#16a34a;">Present</span>
-                                {% elif a.status == 'late' %}
-                                    <span class="badge" style="background:#fffbeb;color:#d97706;">Late</span>
-                                {% elif a.status == 'absent_apology' %}
-                                    <span class="badge" style="background:#eff6ff;color:#2563eb;">Absent w/ Apology</span>
-                                {% else %}
-                                    <span class="badge" style="background:#fff1f2;color:#e11d48;">Absent No Apology</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if meeting.status != 'held' %}
-                                <button class="btn btn-xs btn-outline-secondary btn-sm py-0 px-1"
-                                        onclick="quickEdit({{ a.member.id }}, '{{ a.member.name }}', '{{ a.status }}')">
-                                    <i class="bi bi-pencil" style="font-size:.7rem;"></i>
-                                </button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="3" class="text-center text-muted py-3">No attendance recorded yet.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Penalties -->
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-exclamation-triangle me-2"></i>Meeting Penalties</span>
-                {% if meeting.status != 'held' %}
-                <div class="d-flex gap-1">
-                    {% if rules %}
-                    <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#absentPenaltyModal"
-                            title="Auto-apply penalty to all absent-without-apology members">
-                        <i class="bi bi-lightning me-1"></i>Auto Absent
-                    </button>
-                    {% endif %}
-                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#penaltyModal">
-                        <i class="bi bi-plus me-1"></i>Add Penalty
-                    </button>
+    <!-- ── 2. Meeting Hero Header & Quick Action Toolbar ── -->
+    <div class="meeting-hero">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <!-- Left: Calendar badge + Titles + Meta -->
+            <div class="d-flex align-items-center gap-3">
+                <div class="calendar-badge shadow-sm">
+                    <span class="cal-month">{{ meeting.date|date:"M" }}</span>
+                    <span class="cal-day">{{ meeting.date|date:"d" }}</span>
                 </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                        <h4 class="fw-bold mb-0 text-dark">Meeting — {{ meeting.date|date:"l, F j, Y"|default:meeting.date }}</h4>
+                        {% if meeting.status == 'held' %}
+                            <span class="badge rounded-pill" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;font-size:0.75rem;padding:0.35rem 0.75rem;">
+                                <i class="bi bi-check-circle-fill me-1"></i>Held & Closed
+                            </span>
+                        {% elif meeting.status == 'scheduled' %}
+                            <span class="badge rounded-pill" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;font-size:0.75rem;padding:0.35rem 0.75rem;">
+                                <span class="spinner-grow spinner-grow-sm me-1" style="width:0.45rem;height:0.45rem;" role="status"></span>Scheduled Active
+                            </span>
+                        {% else %}
+                            <span class="badge rounded-pill" style="background:#fff1f2;color:#e11d48;border:1px solid #fecdd3;font-size:0.75rem;padding:0.35rem 0.75rem;">
+                                <i class="bi bi-x-circle-fill me-1"></i>Cancelled
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex align-items-center gap-3 text-muted small flex-wrap">
+                        <span><i class="bi bi-geo-alt-fill text-danger me-1"></i><strong>Venue:</strong> {{ meeting.venue|default:"Main Chama Headquarters" }}</span>
+                        <span><i class="bi bi-clock-history text-primary me-1"></i><strong>Created:</strong> {{ meeting.created_at|date:"M. d, Y" }}</span>
+                        <span><i class="bi bi-people text-secondary me-1"></i><strong>Quorum:</strong> {{ meeting.attendance_summary.present }}/{{ all_members|length }} Present</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Action Buttons Strip -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="{% url 'meetings:list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-arrow-left me-1"></i>All Meetings
+                </a>
+
+                {% if meeting.status != 'held' %}
+                <a href="{% url 'meetings:edit' meeting.pk %}" class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-pencil me-1"></i>Edit Details
+                </a>
                 {% endif %}
+
+                <div class="btn-group shadow-sm">
+                    <a href="{% url 'meetings:minutes' meeting.pk %}" class="btn btn-sm btn-primary rounded-start-pill px-3">
+                        <i class="bi bi-journal-text me-1"></i>Minutes & Agenda
+                    </a>
+                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split rounded-end-pill pe-3" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="visually-hidden">Toggle Export</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3" style="font-size:0.85rem;">
+                        <li>
+                            <a class="dropdown-item py-2 text-danger" href="{% url 'meetings:minutes_pdf' meeting.pk %}">
+                                <i class="bi bi-filetype-pdf me-2"></i>Download Signed PDF
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2 text-primary" href="{% url 'meetings:minutes_docx' meeting.pk %}">
+                                <i class="bi bi-filetype-docx me-2"></i>Download Word (DOCX)
+                            </a>
+                        </li>
+                        {% if meeting.status != 'held' %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item py-2 text-warning" href="{% url 'meetings:edit_minutes' meeting.pk %}">
+                                <i class="bi bi-pencil-square me-2"></i>Direct Minutes Editor
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-sm mb-0">
-                    <thead><tr><th>Member</th><th>Reason</th><th>Amount</th><th></th></tr></thead>
-                    <tbody>
-                        {% for p in penalties %}
-                        <tr>
-                            <td class="fw-semibold">{{ p.member.name }}</td>
-                            <td>{{ p.reason }}</td>
-                            <td style="color:#e11d48;">KES {{ p.amount|floatformat:2 }}</td>
-                            <td>
-                                {% if meeting.status != 'held' %}
-                                <form method="post" action="{% url 'meetings:delete_penalty' p.pk %}" class="d-inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1"
-                                            onclick="return confirm('Remove this penalty?')">
-                                        <i class="bi bi-trash" style="font-size:.75rem;"></i>
-                                    </button>
-                                </form>
-                                {% else %}
-                                <span class="text-muted small">—</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="4" class="text-center text-muted py-3">No penalties for this meeting.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                    {% if penalties %}
-                    <tfoot class="table-light">
-                        <tr>
-                            <td colspan="2" class="text-end fw-semibold">Total</td>
-                            <td class="fw-bold text-danger">KES {{ meeting.total_penalties|floatformat:2 }}</td>
-                            <td></td>
-                        </tr>
-                    </tfoot>
+        </div>
+    </div>
+
+    <!-- ── 3. Executive 4-Stat Metric Strip ── -->
+    <div class="row g-3 mb-4">
+        <!-- Metric 1: Attendance Rate -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Attendance Rate</div>
+                        <h4 class="fw-bold text-dark mb-0 mt-1" id="statPresentRatio">
+                            {{ meeting.attendance_summary.present }} <span class="text-muted fs-6 fw-normal">/ {{ all_members|length }}</span>
+                        </h4>
+                    </div>
+                    <div class="stat-icon-wrapper" style="background:#ecfdf5;color:#10b981;">
+                        <i class="bi bi-person-check-fill"></i>
+                    </div>
+                </div>
+                <div>
+                    {% widthratio meeting.attendance_summary.present all_members|length 100 as att_percent %}
+                    <div class="progress mb-2" style="height: 6px; border-radius: 9999px; background: #f1f5f9;">
+                        <div class="progress-bar bg-success" role="progressbar" id="attProgressBar" style="width: {{ att_percent|default:'0' }}%;" aria-valuenow="{{ att_percent|default:'0' }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center small text-muted" style="font-size:0.75rem;">
+                        <span id="statLateCount" class="text-warning fw-semibold"><i class="bi bi-clock me-1"></i>{{ meeting.attendance_summary.late }} Late</span>
+                        <span id="statApologyCount" class="text-primary fw-semibold"><i class="bi bi-chat-text me-1"></i>{{ meeting.attendance_summary.absent_apology }} Apology</span>
+                        <span id="statAbsentCount" class="text-danger fw-semibold"><i class="bi bi-x-circle me-1"></i>{{ meeting.attendance_summary.absent_no_apology }} Absent</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 2: Session Collections / Inflows -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Session Collections</div>
+                        <h4 class="fw-bold text-success mb-0 mt-1">KES {{ financial_summary.session_inflows|kes }}</h4>
+                    </div>
+                    <div class="stat-icon-wrapper" style="background:#eff6ff;color:#2563eb;">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                </div>
+                <div class="text-muted small" style="font-size:0.78rem;">
+                    <div class="d-flex justify-content-between">
+                        <span>Shares: <strong>KES {{ financial_summary.session_shares|kes }}</strong></span>
+                        <span>Welfare: <strong>KES {{ financial_summary.session_welfare|kes }}</strong></span>
+                    </div>
+                    <div class="text-muted mt-1" style="font-size:0.72rem;">Period: {{ financial_summary.period_name }} Cycle</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 3: Session Loans Disbursed -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Loans Disbursed</div>
+                        <h4 class="fw-bold text-primary mb-0 mt-1">KES {{ financial_summary.session_loans|kes }}</h4>
+                    </div>
+                    <div class="stat-icon-wrapper" style="background:#fef3c7;color:#d97706;">
+                        <i class="bi bi-wallet2"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center text-muted small" style="font-size:0.78rem;">
+                    <span>Issued during cycle:</span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis fw-bold">{{ financial_summary.session_loans_count }} Loan(s)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 4: Session Fines & Penalties -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-metric-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;">Disciplinary Fines</div>
+                        <h4 class="fw-bold text-danger mb-0 mt-1">KES {{ meeting.total_penalties|kes }}</h4>
+                    </div>
+                    <div class="stat-icon-wrapper" style="background:#fef2f2;color:#ef4444;">
+                        <i class="bi bi-exclamation-octagon-fill"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center text-muted small" style="font-size:0.78rem;">
+                    <span>Fines assessed:</span>
+                    <span class="badge bg-danger-subtle text-danger fw-bold">{{ penalties|length }} Member(s)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 4. Main Two-Column Dashboard Layout ── -->
+    <div class="row g-4">
+
+        <!-- ── Left Column (5 / 12 on lg): Agenda, Treasury Snapshot, Minutes Preview ── -->
+        <div class="col-12 col-lg-5">
+
+            <!-- Agenda Card -->
+            <div class="content-panel">
+                <div class="content-panel-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-list-task text-primary fs-5"></i>
+                        <h6 class="fw-bold mb-0 text-dark">Meeting Agenda</h6>
+                    </div>
+                    {% if meeting.agenda %}
+                    <button class="btn btn-xs btn-outline-secondary py-1 px-2 rounded-pill" onclick="navigator.clipboard.writeText(`{{ meeting.agenda|escapejs }}`); showToast('Agenda copied to clipboard!', 'info');" title="Copy Agenda">
+                        <i class="bi bi-clipboard me-1"></i>Copy
+                    </button>
                     {% endif %}
-                </table>
+                </div>
+                <div class="content-panel-body">
+                    {% if meeting.agenda %}
+                    <div class="p-3 bg-light rounded-3 text-secondary border border-light-subtle" style="font-size:0.875rem;line-height:1.6;white-space:pre-wrap;">{{ meeting.agenda }}</div>
+                    {% else %}
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-journal-x fs-3 opacity-50 mb-1 d-block"></i>
+                        <p class="small mb-1">No agenda items recorded for this meeting.</p>
+                        {% if meeting.status != 'held' %}
+                        <a href="{% url 'meetings:edit' meeting.pk %}" class="small text-primary fw-semibold">Add agenda items →</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
+
+            <!-- Immutable Verified Treasury Snapshot -->
+            <div class="content-panel">
+                <div class="content-panel-header bg-light-subtle">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-fill-check text-success fs-5"></i>
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark">Treasury Snapshot</h6>
+                            <span class="text-muted" style="font-size:0.7rem;">Cumulative Ledger Position</span>
+                        </div>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1" style="font-size:0.7rem;">
+                        <i class="bi bi-lock-fill me-1"></i>Verified Ledger
+                    </span>
+                </div>
+                <div class="content-panel-body p-3">
+                    <div class="ledger-row">
+                        <span class="text-muted d-flex align-items-center gap-2">
+                            <span class="rounded-circle bg-primary" style="width:8px;height:8px;display:inline-block;"></span>
+                            Share Capital
+                            <span class="badge bg-light text-muted border fw-normal" style="font-size:0.68rem;">{{ financial_summary.cumulative_shares_count }} txns</span>
+                        </span>
+                        <span class="fw-bold text-primary">KES {{ financial_summary.cumulative_shares|kes }}</span>
+                    </div>
+
+                    <div class="ledger-row">
+                        <span class="text-muted d-flex align-items-center gap-2">
+                            <span class="rounded-circle bg-danger" style="width:8px;height:8px;display:inline-block;"></span>
+                            Welfare Fund
+                            <span class="badge bg-light text-muted border fw-normal" style="font-size:0.68rem;">{{ financial_summary.cumulative_welfare_count }} txns</span>
+                        </span>
+                        <span class="fw-bold text-danger">KES {{ financial_summary.cumulative_welfare|kes }}</span>
+                    </div>
+
+                    <div class="ledger-row">
+                        <span class="text-muted d-flex align-items-center gap-2">
+                            <span class="rounded-circle bg-info" style="width:8px;height:8px;display:inline-block;"></span>
+                            Registration Fee Fund
+                            <span class="badge bg-light text-muted border fw-normal" style="font-size:0.68rem;">{{ financial_summary.cumulative_reg_fees_count }} txns</span>
+                        </span>
+                        <span class="fw-bold text-dark">KES {{ financial_summary.cumulative_reg_fees|kes }}</span>
+                    </div>
+
+                    <div class="ledger-row">
+                        <span class="text-muted d-flex align-items-center gap-2">
+                            <span class="rounded-circle bg-warning" style="width:8px;height:8px;display:inline-block;"></span>
+                            Session Inflows ({{ financial_summary.period_name }})
+                        </span>
+                        <span class="fw-bold text-secondary">KES {{ financial_summary.session_inflows|kes }}</span>
+                    </div>
+
+                    <div class="ledger-highlight d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold text-success d-block" style="font-size:0.85rem;">Total Treasury Balance</span>
+                            <span class="text-muted" style="font-size:0.7rem;">Consolidated liquid asset reserve</span>
+                        </div>
+                        <div class="text-end">
+                            <h5 class="fw-bold text-success mb-0">KES {{ financial_summary.cumulative_total_capital|kes }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Minutes & Proceedings Preview Card -->
+            <div class="content-panel">
+                <div class="content-panel-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-file-earmark-richtext text-primary fs-5"></i>
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark">Session Minutes</h6>
+                            <span class="text-muted" style="font-size:0.7rem;">Official Record of Proceedings</span>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <a href="{% url 'meetings:minutes' meeting.pk %}" class="btn btn-xs btn-outline-primary py-1 px-2 rounded-pill" title="View or Edit Full Minutes">
+                            <i class="bi bi-pencil-square me-1"></i>View / Edit
+                        </a>
+                        <a href="{% url 'meetings:minutes_pdf' meeting.pk %}" class="btn btn-xs btn-outline-danger py-1 px-2 rounded-pill" title="Download Signed PDF">
+                            <i class="bi bi-filetype-pdf"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="content-panel-body">
+                    {% if meeting.minutes %}
+                    <div class="minutes-preview-box">
+                        <div class="ql-snow"><div class="ql-editor">{{ meeting.minutes|safe }}</div></div>
+                        <div class="minutes-preview-fade"></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <a href="{% url 'meetings:minutes' meeting.pk %}" class="small text-primary fw-semibold text-decoration-none">
+                            Read complete minutes document →
+                        </a>
+                        <span class="text-muted small" style="font-size:0.72rem;"><i class="bi bi-check-all text-success me-1"></i>Recorded</span>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-journal-text fs-3 opacity-50 mb-1 d-block"></i>
+                        <p class="small mb-2">No minutes have been drafted yet for this session.</p>
+                        <a href="{% url 'meetings:minutes' meeting.pk %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            <i class="bi bi-plus-lg me-1"></i>Draft Minutes Now
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── Right Column (7 / 12 on lg): Attendance Register & Penalties ── -->
+        <div class="col-12 col-lg-7">
+
+            <!-- ── ATTENDANCE REGISTER CARD ── -->
+            <div class="content-panel">
+                <div class="content-panel-header flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-lines-fill text-primary fs-5"></i>
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark">Attendance Register</h6>
+                            <span class="text-muted" style="font-size:0.7rem;">{{ attendance.count }} recorded out of {{ all_members|length }} members</span>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        {% if meeting.status != 'held' %}
+                        <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#attendanceModal">
+                            <i class="bi bi-ui-checks-grid me-1"></i>Bulk Record
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Interactive Filters & Search Header -->
+                <div class="p-3 bg-light-subtle border-bottom">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-12 col-md-5">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" id="memberSearchInput" class="form-control border-start-0" placeholder="Filter member name or ID..." onkeyup="filterAttendanceTable()">
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-7">
+                            <div class="att-filter-nav justify-content-md-end">
+                                <button type="button" class="att-filter-btn active" data-status-filter="all" onclick="setAttendanceFilter('all', this)">
+                                    All <span class="badge-count" id="filterCountAll">{{ all_members|length }}</span>
+                                </button>
+                                <button type="button" class="att-filter-btn" data-status-filter="present" onclick="setAttendanceFilter('present', this)">
+                                    <span class="text-success">●</span> Present <span class="badge-count" id="filterCountPresent">{{ meeting.attendance_summary.present }}</span>
+                                </button>
+                                <button type="button" class="att-filter-btn" data-status-filter="late" onclick="setAttendanceFilter('late', this)">
+                                    <span class="text-warning">●</span> Late <span class="badge-count" id="filterCountLate">{{ meeting.attendance_summary.late }}</span>
+                                </button>
+                                <button type="button" class="att-filter-btn" data-status-filter="absent_apology" onclick="setAttendanceFilter('absent_apology', this)">
+                                    <span class="text-primary">●</span> Apology <span class="badge-count" id="filterCountApology">{{ meeting.attendance_summary.absent_apology }}</span>
+                                </button>
+                                <button type="button" class="att-filter-btn" data-status-filter="absent_no_apology" onclick="setAttendanceFilter('absent_no_apology', this)">
+                                    <span class="text-danger">●</span> Absent <span class="badge-count" id="filterCountAbsent">{{ meeting.attendance_summary.absent_no_apology }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Content -->
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0 attendance-table" id="attendanceTable">
+                        <thead class="table-light sticky-top" style="z-index: 2; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <tr>
+                                <th class="ps-3 py-2">Member</th>
+                                <th class="py-2">Attendance Status</th>
+                                <th class="py-2 text-end pe-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody">
+                            {% for a in attendance %}
+                            <tr class="att-row" data-member-name="{{ a.member.name|lower }}" data-member-id="{{ a.member.id }}" data-status="{{ a.status }}">
+                                <td class="ps-3 py-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="member-avatar">
+                                            {{ a.member.name|slice:":2"|upper }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold text-dark small">{{ a.member.name }}</div>
+                                            <div class="text-muted" style="font-size:0.7rem;">ID: #{{ a.member.id }} · {{ a.member.phone|default:"No phone" }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-2">
+                                    {% if meeting.status == 'held' %}
+                                        {% if a.status == 'present' %}
+                                            <span class="status-badge-interactive status-present"><i class="bi bi-check-circle-fill"></i> Present</span>
+                                        {% elif a.status == 'late' %}
+                                            <span class="status-badge-interactive status-late"><i class="bi bi-clock-fill"></i> Late</span>
+                                        {% elif a.status == 'absent_apology' %}
+                                            <span class="status-badge-interactive status-apology"><i class="bi bi-envelope-paper-fill"></i> Absent w/ Apology</span>
+                                        {% else %}
+                                            <span class="status-badge-interactive status-absent"><i class="bi bi-x-circle-fill"></i> Absent No Apology</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <!-- Interactive Status Selector Dropdown -->
+                                        <div class="dropdown">
+                                            <button class="status-badge-interactive dropdown-toggle {% if a.status == 'present' %}status-present{% elif a.status == 'late' %}status-late{% elif a.status == 'absent_apology' %}status-apology{% else %}status-absent{% endif %}"
+                                                    type="button"
+                                                    id="btnStatus_{{ a.member.id }}"
+                                                    data-bs-toggle="dropdown"
+                                                    aria-expanded="false">
+                                                {% if a.status == 'present' %}<i class="bi bi-check-circle-fill"></i> Present
+                                                {% elif a.status == 'late' %}<i class="bi bi-clock-fill"></i> Late
+                                                {% elif a.status == 'absent_apology' %}<i class="bi bi-envelope-paper-fill"></i> Absent w/ Apology
+                                                {% else %}<i class="bi bi-x-circle-fill"></i> Absent No Apology{% endif %}
+                                            </button>
+                                            <ul class="dropdown-menu shadow border-0 rounded-3" style="font-size:0.8rem;">
+                                                <li>
+                                                    <a class="dropdown-item py-2 d-flex align-items-center gap-2 text-success" href="javascript:void(0)" onclick="updateSingleAttendance({{ a.member.id }}, 'present', '{{ a.member.name|escapejs }}')">
+                                                        <i class="bi bi-check-circle-fill"></i> Mark Present
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item py-2 d-flex align-items-center gap-2 text-warning" href="javascript:void(0)" onclick="updateSingleAttendance({{ a.member.id }}, 'late', '{{ a.member.name|escapejs }}')">
+                                                        <i class="bi bi-clock-fill"></i> Mark Late
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item py-2 d-flex align-items-center gap-2 text-primary" href="javascript:void(0)" onclick="updateSingleAttendance({{ a.member.id }}, 'absent_apology', '{{ a.member.name|escapejs }}')">
+                                                        <i class="bi bi-envelope-paper-fill"></i> Absent with Apology
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger" href="javascript:void(0)" onclick="updateSingleAttendance({{ a.member.id }}, 'absent_no_apology', '{{ a.member.name|escapejs }}')">
+                                                        <i class="bi bi-x-circle-fill"></i> Absent without Apology
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-2 text-end pe-3">
+                                    {% if meeting.status != 'held' %}
+                                    <button class="btn btn-xs btn-outline-danger py-0 px-2 rounded-pill" onclick="openPenaltyForMember({{ a.member.id }}, '{{ a.member.name|escapejs }}')" title="Fine this member for attendance infraction">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Fine
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">
+                                    <i class="bi bi-people fs-2 opacity-50 mb-1 d-block"></i>
+                                    No attendance has been recorded for this meeting.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── MEETING PENALTIES & DISCIPLINE CARD ── -->
+            <div class="content-panel">
+                <div class="content-panel-header flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-exclamation-octagon text-danger fs-5"></i>
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark">Meeting Penalties</h6>
+                            <span class="text-muted" style="font-size:0.7rem;">Disciplinary fines issued during this session</span>
+                        </div>
+                    </div>
+                    {% if meeting.status != 'held' %}
+                    <div class="d-flex gap-2 flex-wrap">
+                        {% if rules %}
+                        <button class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#absentPenaltyModal" title="Auto-apply penalty to all absent members">
+                            <i class="bi bi-lightning-charge-fill me-1"></i>Auto Absent
+                        </button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#penaltyModal">
+                            <i class="bi bi-plus-lg me-1"></i>Add Penalty
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
+                        <thead class="table-light" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <tr>
+                                <th class="ps-3 py-2">Member</th>
+                                <th class="py-2">Infraction / Reason</th>
+                                <th class="py-2">Amount</th>
+                                <th class="py-2 text-end pe-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in penalties %}
+                            <tr>
+                                <td class="ps-3 py-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="member-avatar gold">
+                                            {{ p.member.name|slice:":2"|upper }}
+                                        </div>
+                                        <div class="fw-semibold text-dark">{{ p.member.name }}</div>
+                                    </div>
+                                </td>
+                                <td class="py-2">
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">
+                                        {{ p.reason }}
+                                    </span>
+                                </td>
+                                <td class="py-2 fw-bold text-danger">KES {{ p.amount|kes }}</td>
+                                <td class="py-2 text-end pe-3">
+                                    {% if meeting.status != 'held' %}
+                                    <form method="post" action="{% url 'meetings:delete_penalty' p.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-2 rounded-pill" onclick="return confirm('Remove penalty of KES {{ p.amount }} for {{ p.member.name|escapejs }}?')" title="Delete penalty">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <i class="bi bi-check2-circle text-success fs-2 mb-1 d-block"></i>
+                                    No disciplinary penalties recorded for this meeting.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        {% if penalties %}
+                        <tfoot class="table-light border-top">
+                            <tr>
+                                <td colspan="2" class="ps-3 py-2 fw-bold text-dark text-end">Total Penalties Assessed:</td>
+                                <td class="py-2 fw-bold text-danger">KES {{ meeting.total_penalties|kes }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+
         </div>
 
     </div>
+
 </div>
 
-<!-- Attendance Modal -->
-<div class="modal fade" id="attendanceModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Record Attendance</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- ── MODAL 1: Bulk Record Attendance Modal ── -->
+<div class="modal fade" id="attendanceModal" tabindex="-1" aria-labelledby="attendanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom px-4 py-3 bg-light-subtle">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle p-2 bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width:34px;height:34px;">
+                        <i class="bi bi-person-check-fill"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="attendanceModalLabel">Bulk Attendance Register</h5>
+                        <div class="text-muted small">Update all member attendance records simultaneously</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <table class="table table-sm">
-                    <thead><tr><th>Member</th><th>Status</th></tr></thead>
-                    <tbody id="attendanceFormBody">
-                        {% for m in all_members %}
-                        {% with current=attendance|dictsort:"member_id" %}
-                        <tr>
-                            <td>{{ m.name }}</td>
-                            <td>
-                                <select class="form-select form-select-sm att-select"
-                                        data-member="{{ m.id }}">
-                                    <option value="present"          {% for a in attendance %}{% if a.member_id == m.id and a.status == 'present' %}selected{% endif %}{% endfor %}>Present</option>
-                                    <option value="late"             {% for a in attendance %}{% if a.member_id == m.id and a.status == 'late' %}selected{% endif %}{% endfor %}>Late</option>
-                                    <option value="absent_apology"   {% for a in attendance %}{% if a.member_id == m.id and a.status == 'absent_apology' %}selected{% endif %}{% endfor %}>Absent with Apology</option>
-                                    <option value="absent_no_apology"{% for a in attendance %}{% if a.member_id == m.id and a.status == 'absent_no_apology' %}selected{% endif %}{% endfor %}>Absent without Apology</option>
-                                </select>
-                            </td>
-                        </tr>
-                        {% endwith %}
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="modal-body p-4">
+                <!-- Fast Bulk Selection Preset Bar -->
+                <div class="d-flex align-items-center justify-content-between p-2 mb-3 bg-light rounded-3 flex-wrap gap-2">
+                    <div class="small fw-semibold text-muted">Quick Presets:</div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-xs btn-outline-success py-1 px-2 rounded-pill" onclick="setBulkAttendanceValue('present')">
+                            <i class="bi bi-check-all me-1"></i>All Present
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-warning py-1 px-2 rounded-pill" onclick="setBulkAttendanceValue('late')">
+                            <i class="bi bi-clock me-1"></i>All Late
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-danger py-1 px-2 rounded-pill" onclick="setBulkAttendanceValue('absent_no_apology')">
+                            <i class="bi bi-x-circle me-1"></i>All Absent
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <input type="text" id="modalMemberSearch" class="form-control form-control-sm" placeholder="Search members in modal..." onkeyup="filterModalMembers()">
+                </div>
+
+                <div class="table-responsive" style="max-height: 380px;">
+                    <table class="table table-sm align-middle" id="modalAttendanceTable">
+                        <thead class="table-light sticky-top">
+                            <tr style="font-size:0.75rem;text-transform:uppercase;">
+                                <th class="ps-2">Member</th>
+                                <th>Attendance Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceFormBody">
+                            {% for m in all_members %}
+                            <tr class="modal-member-row" data-name="{{ m.name|lower }}">
+                                <td class="ps-2 py-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="member-avatar" style="width:28px;height:28px;font-size:0.7rem;">
+                                            {{ m.name|slice:":2"|upper }}
+                                        </div>
+                                        <span class="fw-semibold small">{{ m.name }}</span>
+                                    </div>
+                                </td>
+                                <td class="py-2">
+                                    <select class="form-select form-select-sm att-select rounded-pill" data-member="{{ m.id }}">
+                                        <option value="present" {% for a in attendance %}{% if a.member_id == m.id and a.status == 'present' %}selected{% endif %}{% endfor %}>🟢 Present</option>
+                                        <option value="late" {% for a in attendance %}{% if a.member_id == m.id and a.status == 'late' %}selected{% endif %}{% endfor %}>🟡 Late</option>
+                                        <option value="absent_apology" {% for a in attendance %}{% if a.member_id == m.id and a.status == 'absent_apology' %}selected{% endif %}{% endfor %}>🔵 Absent with Apology</option>
+                                        <option value="absent_no_apology" {% for a in attendance %}{% if a.member_id == m.id and a.status == 'absent_no_apology' %}selected{% endif %}{% endfor %}>🔴 Absent without Apology</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="saveAttendanceBtn">Save Attendance</button>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <div class="modal-footer border-top px-4 py-3 bg-light-subtle d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 shadow-sm" id="saveAttendanceBtn">
+                    <i class="bi bi-check2-circle me-1"></i>Save Attendance Register
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Penalty Modal -->
-<div class="modal fade" id="penaltyModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Add Penalty</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- ── MODAL 2: Add Penalty Modal ── -->
+<div class="modal fade" id="penaltyModal" tabindex="-1" aria-labelledby="penaltyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom px-4 py-3 bg-light-subtle">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle p-2 bg-danger-subtle text-danger d-flex align-items-center justify-content-center" style="width:34px;height:34px;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="penaltyModalLabel">Issue Meeting Penalty</h5>
+                        <div class="text-muted small">Record disciplinary fine for this session</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="{% url 'meetings:add_penalty' meeting.pk %}">
                 {% csrf_token %}
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Member</label>
+                        <label class="form-label fw-bold small text-dark">Member to Fine <span class="text-danger">*</span></label>
                         {{ penalty_form.member }}
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Penalty Type</label>
+                        <label class="form-label fw-bold small text-dark">Penalty Rule Preset</label>
                         {{ penalty_form.rule }}
-                        <div class="text-muted small mt-1">Select a preset or leave blank for custom.</div>
+                        <div class="text-muted small mt-1" style="font-size:0.75rem;">Selecting a preset automatically populates the standard fine amount and description.</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Amount (KES)</label>
-                        {{ penalty_form.amount }}
+                        <label class="form-label fw-bold small text-dark">Amount (KES) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted fw-semibold">KES</span>
+                            {{ penalty_form.amount }}
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Reason</label>
+                        <label class="form-label fw-bold small text-dark">Reason / Description <span class="text-danger">*</span></label>
                         {{ penalty_form.reason }}
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-danger">Record Penalty</button>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <div class="modal-footer border-top px-4 py-3 bg-light-subtle d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-danger rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-check-circle me-1"></i>Record Penalty
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-<!-- Auto Absent Penalty Modal -->
+
+<!-- ── MODAL 3: Auto Absent Penalty Modal ── -->
 {% if meeting.status != 'held' and rules %}
-<div class="modal fade" id="absentPenaltyModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-lightning me-2 text-warning"></i>Auto-Apply Absent Penalty</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="absentPenaltyModal" tabindex="-1" aria-labelledby="absentPenaltyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom px-4 py-3 bg-light-subtle">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle p-2 bg-warning-subtle text-warning d-flex align-items-center justify-content-center" style="width:34px;height:34px;">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="absentPenaltyModalLabel">Auto-Apply Absent Penalties</h5>
+                        <div class="text-muted small">Batch penalty for unexcused absenteeism</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="{% url 'meetings:apply_absent_penalties' meeting.pk %}">
                 {% csrf_token %}
-                <div class="modal-body">
-                    <p class="text-muted small mb-3">
-                        This will apply the selected penalty to all members marked
-                        <strong>Absent without Apology</strong> who don't already have a penalty for this meeting.
-                    </p>
-                    <label class="form-label fw-semibold small">Penalty Rule</label>
-                    <select name="rule_id" class="form-select" required>
-                        <option value="">— Select Rule —</option>
-                        {% for rule in rules %}
-                        <option value="{{ rule.id }}">{{ rule.name }} — KES {{ rule.default_amount }}</option>
-                        {% endfor %}
-                    </select>
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-warning-subtle text-warning-emphasis rounded-3 small mb-3 border border-warning-subtle">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        This action will automatically assess the selected fine against all members currently marked
+                        <strong>Absent without Apology</strong> ({{ meeting.attendance_summary.absent_no_apology }} member(s)) who have not already been fined.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">Select Applicable Rule <span class="text-danger">*</span></label>
+                        <select name="rule_id" class="form-select rounded-3" required>
+                            <option value="">— Select Rule Preset —</option>
+                            {% for rule in rules %}
+                            <option value="{{ rule.id }}">{{ rule.name }} — KES {{ rule.default_amount|kes }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-warning">
-                        <i class="bi bi-lightning me-1"></i>Apply Penalties
+                <div class="modal-footer border-top px-4 py-3 bg-light-subtle d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-lightning-charge me-1"></i>Execute Batch Penalties
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                 </div>
             </form>
         </div>
@@ -305,6 +1033,17 @@
 </div>
 {% endif %}
 
+<!-- ── Toast Feedback Notification Container ── -->
+<div class="toast-container" id="toastPlacement">
+    <div id="actionToast" class="toast align-items-center text-white bg-dark border-0 shadow-lg rounded-3" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2" id="toastMessage">
+                <i class="bi bi-check2-circle text-success fs-5"></i> Action completed successfully.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -315,16 +1054,223 @@ const RULES = JSON.parse(document.getElementById('rules-data').textContent);
 const SAVE_URL = "{% url 'meetings:save_attendance' meeting.pk %}";
 const CSRF = "{{ csrf_token }}";
 
-// ── Penalty rule auto-fill ────────────────────────────────────────
-document.getElementById('id_rule').addEventListener('change', function () {
-    const rule = RULES.find(r => r.id == this.value);
-    if (rule) {
-        document.getElementById('id_amount').value = rule.default_amount;
-        document.getElementById('id_reason').value = rule.name;
+// ── Toast Utility ────────────────────────────────────────────────
+function showToast(message, type = 'success') {
+    const toastEl = document.getElementById('actionToast');
+    const toastMsg = document.getElementById('toastMessage');
+    
+    let icon = '<i class="bi bi-check2-circle text-success fs-5"></i>';
+    if (type === 'error') {
+        icon = '<i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>';
+    } else if (type === 'info') {
+        icon = '<i class="bi bi-info-circle-fill text-primary fs-5"></i>';
     }
+    
+    toastMsg.innerHTML = `${icon} <span>${message}</span>`;
+    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+    toast.show();
+}
+
+// ── Form Input Styling enhancements ──────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    // Add form-select / form-control classes if Django form didn't attach them
+    const memberSelect = document.getElementById('id_member');
+    if (memberSelect) memberSelect.classList.add('form-select', 'rounded-3');
+    
+    const ruleSelect = document.getElementById('id_rule');
+    if (ruleSelect) ruleSelect.classList.add('form-select', 'rounded-3');
+    
+    const amountInput = document.getElementById('id_amount');
+    if (amountInput) amountInput.classList.add('form-control', 'rounded-3');
+    
+    const reasonInput = document.getElementById('id_reason');
+    if (reasonInput) reasonInput.classList.add('form-control', 'rounded-3');
 });
 
-// ── Save attendance via AJAX ──────────────────────────────────────
+// ── Penalty rule auto-fill ────────────────────────────────────────
+const ruleElem = document.getElementById('id_rule');
+if (ruleElem) {
+    ruleElem.addEventListener('change', function () {
+        const rule = RULES.find(r => r.id == this.value);
+        if (rule) {
+            const amtElem = document.getElementById('id_amount');
+            const reasonElem = document.getElementById('id_reason');
+            if (amtElem) amtElem.value = rule.default_amount;
+            if (reasonElem) reasonElem.value = rule.name;
+        }
+    });
+}
+
+// ── Open Penalty Modal pre-filled for a specific member ──────────
+function openPenaltyForMember(memberId, memberName) {
+    const memberSelect = document.getElementById('id_member');
+    if (memberSelect) {
+        memberSelect.value = memberId;
+    }
+    const modalEl = document.getElementById('penaltyModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+// ── Single Attendance Live Switcher (No Full Page Reload) ─────────
+function updateSingleAttendance(memberId, newStatus, memberName) {
+    const btn = document.getElementById(`btnStatus_${memberId}`);
+    if (btn) {
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> Updating...`;
+        btn.disabled = true;
+    }
+
+    fetch(SAVE_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify([{ member_id: memberId, status: newStatus }]),
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('Server returned ' + r.status);
+        return r.json();
+    })
+    .then(json => {
+        if (json.ok) {
+            // Update row dataset
+            const row = document.querySelector(`tr.att-row[data-member-id="${memberId}"]`);
+            if (row) {
+                row.setAttribute('data-status', newStatus);
+            }
+            // Update button visual
+            if (btn) {
+                btn.disabled = false;
+                btn.className = 'status-badge-interactive dropdown-toggle ';
+                if (newStatus === 'present') {
+                    btn.className += 'status-present';
+                    btn.innerHTML = `<i class="bi bi-check-circle-fill"></i> Present`;
+                } else if (newStatus === 'late') {
+                    btn.className += 'status-late';
+                    btn.innerHTML = `<i class="bi bi-clock-fill"></i> Late`;
+                } else if (newStatus === 'absent_apology') {
+                    btn.className += 'status-apology';
+                    btn.innerHTML = `<i class="bi bi-envelope-paper-fill"></i> Absent w/ Apology`;
+                } else {
+                    btn.className += 'status-absent';
+                    btn.innerHTML = `<i class="bi bi-x-circle-fill"></i> Absent No Apology`;
+                }
+            }
+            // Update counts on filter tabs & metric card
+            recalculateAttendanceCounts();
+            showToast(`Attendance updated for ${memberName}!`);
+        } else {
+            showToast('Error: ' + (json.error || 'Failed to update'), 'error');
+            if (btn) btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        showToast('Network error: ' + err.message, 'error');
+        if (btn) btn.disabled = false;
+    });
+}
+
+// ── Recalculate Live Attendance Counts ────────────────────────────
+function recalculateAttendanceCounts() {
+    const rows = document.querySelectorAll('tr.att-row');
+    let present = 0, late = 0, apology = 0, absent = 0, total = rows.length;
+
+    rows.forEach(r => {
+        const s = r.getAttribute('data-status');
+        if (s === 'present') present++;
+        else if (s === 'late') late++;
+        else if (s === 'absent_apology') apology++;
+        else if (s === 'absent_no_apology') absent++;
+    });
+
+    // Update filter badge counts
+    const fAll = document.getElementById('filterCountAll');
+    const fPres = document.getElementById('filterCountPresent');
+    const fLate = document.getElementById('filterCountLate');
+    const fApol = document.getElementById('filterCountApology');
+    const fAbs = document.getElementById('filterCountAbsent');
+
+    if (fAll) fAll.textContent = total;
+    if (fPres) fPres.textContent = present;
+    if (fLate) fLate.textContent = late;
+    if (fApol) fApol.textContent = apology;
+    if (fAbs) fAbs.textContent = absent;
+
+    // Update Stat Card
+    const ratioEl = document.getElementById('statPresentRatio');
+    if (ratioEl) ratioEl.innerHTML = `${present} <span class="text-muted fs-6 fw-normal">/ ${total}</span>`;
+    
+    const lateEl = document.getElementById('statLateCount');
+    if (lateEl) lateEl.innerHTML = `<i class="bi bi-clock me-1"></i>${late} Late`;
+
+    const apolEl = document.getElementById('statApologyCount');
+    if (apolEl) apolEl.innerHTML = `<i class="bi bi-chat-text me-1"></i>${apology} Apology`;
+
+    const absEl = document.getElementById('statAbsentCount');
+    if (absEl) absEl.innerHTML = `<i class="bi bi-x-circle me-1"></i>${absent} Absent`;
+
+    const progBar = document.getElementById('attProgressBar');
+    if (progBar && total > 0) {
+        const pct = Math.round((present / total) * 100);
+        progBar.style.width = `${pct}%`;
+        progBar.setAttribute('aria-valuenow', pct);
+    }
+}
+
+// ── Filter Attendance Table by Status Pill ────────────────────────
+let currentStatusFilter = 'all';
+function setAttendanceFilter(status, btn) {
+    currentStatusFilter = status;
+    document.querySelectorAll('.att-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    filterAttendanceTable();
+}
+
+// ── Search & Filter Attendance Table Rows ─────────────────────────
+function filterAttendanceTable() {
+    const searchVal = (document.getElementById('memberSearchInput').value || '').trim().toLowerCase();
+    const rows = document.querySelectorAll('tr.att-row');
+
+    rows.forEach(row => {
+        const name = row.getAttribute('data-member-name') || '';
+        const id = row.getAttribute('data-member-id') || '';
+        const status = row.getAttribute('data-status') || '';
+
+        const matchesSearch = !searchVal || name.includes(searchVal) || id.includes(searchVal);
+        const matchesStatus = currentStatusFilter === 'all' || status === currentStatusFilter;
+
+        if (matchesSearch && matchesStatus) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// ── Bulk Modal Helpers ────────────────────────────────────────────
+function setBulkAttendanceValue(status) {
+    document.querySelectorAll('.att-select').forEach(sel => {
+        sel.value = status;
+    });
+}
+
+function filterModalMembers() {
+    const q = (document.getElementById('modalMemberSearch').value || '').trim().toLowerCase();
+    document.querySelectorAll('.modal-member-row').forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        if (!q || name.includes(q)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// ── Save Bulk Attendance ──────────────────────────────────────────
 const saveBtn = document.getElementById('saveAttendanceBtn');
 if (saveBtn) {
     saveBtn.addEventListener('click', function () {
@@ -334,7 +1280,8 @@ if (saveBtn) {
             status: s.value,
         }));
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
+        saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Saving...`;
+        
         fetch(SAVE_URL, {
             method: 'POST',
             headers: {
@@ -354,46 +1301,15 @@ if (saveBtn) {
             } else {
                 alert('Error: ' + (json.error || 'Unknown error'));
                 saveBtn.disabled = false;
-                saveBtn.textContent = 'Save Attendance';
+                saveBtn.innerHTML = `<i class="bi bi-check2-circle me-1"></i>Save Attendance Register`;
             }
         })
         .catch(err => {
             alert('Failed to save attendance: ' + err.message);
             saveBtn.disabled = false;
-            saveBtn.textContent = 'Save Attendance';
+            saveBtn.innerHTML = `<i class="bi bi-check2-circle me-1"></i>Save Attendance Register`;
         });
     });
-}
-
-// ── Quick-edit a single attendance row ────────────────────────────
-function quickEdit(memberId, memberName, currentStatus) {
-    const statuses = [
-        ['present', 'Present'],
-        ['late', 'Late'],
-        ['absent_apology', 'Absent with Apology'],
-        ['absent_no_apology', 'Absent without Apology'],
-    ];
-    const confirmed = confirm(`Change attendance for ${memberName}?\n(Click OK then pick status in the prompt)`);
-    if (!confirmed) return;
-    const newStatus = prompt(
-        `Status for ${memberName}:\n1=Present  2=Late  3=Absent w/Apology  4=Absent No Apology`,
-        statuses.findIndex(([v]) => v === currentStatus) + 1
-    );
-    const map = { '1': 'present', '2': 'late', '3': 'absent_apology', '4': 'absent_no_apology' };
-    const status = map[newStatus];
-    if (!status) return;
-    fetch(SAVE_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': CSRF,
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify([{ member_id: memberId, status }]),
-    })
-    .then(r => r.json())
-    .then(() => location.reload())
-    .catch(err => alert('Failed: ' + err.message));
 }
 </script>
 {% endblock %}

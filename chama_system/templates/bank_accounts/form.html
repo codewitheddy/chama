@@ -1,0 +1,729 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}{% if is_edit %}Edit Bank Account{% else %}Add Bank Account{% endif %}{% endblock %}
+{% block page_title %}{% if is_edit %}Edit Bank Account: {{ account_form.instance.bank_name }}{% else %}Add Bank Account{% endif %}{% endblock %}
+
+{% block content %}
+<!-- Top Context Bar & Metrics Ribbon -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}" class="text-decoration-none">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'bank_accounts:list' %}" class="text-decoration-none">Bank Accounts</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{% if is_edit %}Edit Account #{{ account_form.instance.pk }}{% else %}Add Account{% endif %}</li>
+        </ol>
+    </nav>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        {% if total_bank_balance is not None %}
+        <span class="badge bg-white text-dark border px-3 py-2 shadow-xs d-flex align-items-center gap-2" style="border-radius:8px;font-weight:500;font-size:0.85rem;">
+            <i class="bi bi-bank text-primary"></i>
+            <span>Total Bank Balance: <strong class="text-primary">KES {{ total_bank_balance|kes }}</strong></span>
+        </span>
+        {% endif %}
+        {% if active_count is not None %}
+        <span class="badge bg-white text-dark border px-3 py-2 shadow-xs d-flex align-items-center gap-2" style="border-radius:8px;font-weight:500;font-size:0.85rem;">
+            <i class="bi bi-check-circle text-success"></i>
+            <span>Active Accounts: <strong class="text-success">{{ active_count }}</strong></span>
+        </span>
+        {% endif %}
+        {% if accounts_count is not None %}
+        <span class="badge bg-white text-muted border px-3 py-2 shadow-xs d-flex align-items-center gap-1" style="border-radius:8px;font-weight:500;font-size:0.85rem;">
+            <i class="bi bi-collection"></i>
+            <span>{{ accounts_count }} registered</span>
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4 justify-content-center">
+    <!-- Main Form Column -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;background:#ffffff;">
+            <!-- Header -->
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="icon-box rounded-3 text-white shadow-xs" style="background:linear-gradient(135deg,#2563eb,#3b82f6);width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-bank2 fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 fw-bold text-dark" style="font-size:1.05rem;">
+                            {% if is_edit %}Edit Bank Account Details{% else %}Register New Bank Account{% endif %}
+                        </h6>
+                        <div class="text-muted small">Configure institutional bank accounts, Paybills, or SACCO accounts</div>
+                    </div>
+                </div>
+                <span class="badge px-3 py-1.5" style="background:#dbeafe;color:#1e40af;font-size:0.75rem;font-weight:600;border-radius:6px;">
+                    <i class="bi bi-shield-check me-1"></i>Chama Treasury
+                </span>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="post" id="bankAccountForm" novalidate>
+                    {% csrf_token %}
+                    {% with form=account_form %}
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger p-3 mb-4 d-flex align-items-center gap-2" style="border-radius:8px;">
+                        <i class="bi bi-exclamation-octagon-fill fs-5 flex-shrink-0"></i>
+                        <div>{{ form.non_field_errors }}</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Quick Bank / Institution Presets -->
+                    <div class="mb-4 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <label class="form-label fw-semibold small text-muted text-uppercase mb-0" style="letter-spacing:0.5px;font-size:0.75rem;">
+                                <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Quick Bank Presets
+                            </label>
+                            <span class="text-muted small" style="font-size:0.75rem;">Click to pre-fill bank</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2" id="bankPresetPills">
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="KCB Bank" data-acc="KCB Chama Main Account" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                🟢 KCB Bank
+                            </button>
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="Equity Bank" data-acc="Equity Chama Operating Account" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                🟤 Equity Bank
+                            </button>
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="Co-operative Bank" data-acc="Co-op Chama Savings Account" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                🟢 Co-op Bank
+                            </button>
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="NCBA Bank" data-acc="NCBA Group Account" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                🔵 NCBA Bank
+                            </button>
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="Absa Bank" data-acc="Absa Chama Account" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                🔴 Absa Bank
+                            </button>
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="Stanbic Bank" data-acc="Stanbic Investment Account" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                🔵 Stanbic Bank
+                            </button>
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="Diamond Trust Bank (DTB)" data-acc="DTB Chama Account" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                🟡 DTB Bank
+                            </button>
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="Family Bank" data-acc="Family Bank Account" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                🟠 Family Bank
+                            </button>
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="M-Pesa Business / Paybill" data-acc="Chama M-Pesa Paybill / Till" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                📱 M-Pesa Paybill / Till
+                            </button>
+                            <button type="button" class="btn btn-sm bank-preset-btn py-1.5 px-3" data-bank="SACCO Account" data-acc="SACCO Operating Account" style="border-radius:20px;font-size:0.82rem;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;transition:all 0.15s ease;">
+                                🏛️ SACCO Account
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 1. Bank Name & Account Name Row -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="{{ form.bank_name.id_for_label }}" class="form-label fw-semibold text-dark small mb-2">
+                                Bank / Institution Name <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted px-3"><i class="bi bi-bank2"></i></span>
+                                <input type="text" name="bank_name" id="{{ form.bank_name.id_for_label }}"
+                                       value="{{ form.bank_name.value|default:'' }}"
+                                       list="bank-suggestions"
+                                       class="form-control border-start-0 ps-2 py-2 {% if form.bank_name.errors %}is-invalid{% endif %}"
+                                       placeholder="e.g. KCB Bank, Equity Bank, Co-op Bank"
+                                       autocomplete="off"
+                                       required>
+                                {% if form.bank_name.value %}
+                                <button type="button" class="btn btn-light border border-start-0 text-muted px-3" id="btnClearBank" title="Clear input">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                            <datalist id="bank-suggestions">
+                                <option value="KCB Bank">
+                                <option value="Equity Bank">
+                                <option value="Co-operative Bank">
+                                <option value="NCBA Bank">
+                                <option value="Absa Bank Kenya">
+                                <option value="Stanbic Bank Kenya">
+                                <option value="Diamond Trust Bank (DTB)">
+                                <option value="I&M Bank">
+                                <option value="Family Bank">
+                                <option value="Standard Chartered Bank">
+                                <option value="Sidian Bank">
+                                <option value="Prime Bank">
+                                <option value="Postbank">
+                                <option value="M-Pesa Business / Paybill">
+                                <option value="M-Pesa Buy Goods Till">
+                                <option value="Stima SACCO">
+                                <option value="Harambee SACCO">
+                                <option value="Kenya Police SACCO">
+                                <option value="Mwalimu National SACCO">
+                            </datalist>
+                            {% if form.bank_name.errors %}
+                            <div class="text-danger small mt-1.5">{{ form.bank_name.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text text-muted mt-1.5" style="font-size:0.8rem;">Commercial bank, SACCO, or mobile money institution.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.account_name.id_for_label }}" class="form-label fw-semibold text-dark small mb-2">
+                                Account Name <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted px-3"><i class="bi bi-person-badge"></i></span>
+                                <input type="text" name="account_name" id="{{ form.account_name.id_for_label }}"
+                                       value="{{ form.account_name.value|default:'' }}"
+                                       class="form-control border-start-0 ps-2 py-2 {% if form.account_name.errors %}is-invalid{% endif %}"
+                                       placeholder="e.g. Finance Wise Chama Account"
+                                       required>
+                            </div>
+                            {% if form.account_name.errors %}
+                            <div class="text-danger small mt-1.5">{{ form.account_name.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text text-muted mt-1.5" style="font-size:0.8rem;">Official registered title of the account.</div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Account Number & Branch Row -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="{{ form.account_number.id_for_label }}" class="form-label fw-semibold text-dark small mb-2">
+                                Account Number / Till / Paybill <span class="text-muted fw-normal">(optional)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted px-3"><i class="bi bi-credit-card-2-front"></i></span>
+                                <input type="text" name="account_number" id="{{ form.account_number.id_for_label }}"
+                                       value="{{ form.account_number.value|default:'' }}"
+                                       class="form-control border-start-0 ps-2 py-2 {% if form.account_number.errors %}is-invalid{% endif %}"
+                                       placeholder="e.g. 1234567890 or Paybill 247247">
+                            </div>
+                            {% if form.account_number.errors %}
+                            <div class="text-danger small mt-1.5">{{ form.account_number.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text text-muted mt-1.5" style="font-size:0.8rem;">Bank account number or mobile Paybill business number.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.branch.id_for_label }}" class="form-label fw-semibold text-dark small mb-2">
+                                Branch Name <span class="text-muted fw-normal">(optional)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted px-3"><i class="bi bi-geo-alt"></i></span>
+                                <input type="text" name="branch" id="{{ form.branch.id_for_label }}"
+                                       value="{{ form.branch.value|default:'' }}"
+                                       class="form-control border-start-0 ps-2 py-2 {% if form.branch.errors %}is-invalid{% endif %}"
+                                       placeholder="e.g. Moi Avenue Branch, Westlands, CBD">
+                            </div>
+                            {% if form.branch.errors %}
+                            <div class="text-danger small mt-1.5">{{ form.branch.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text text-muted mt-1.5" style="font-size:0.8rem;">Branch location where the account is domiciled.</div>
+                        </div>
+                    </div>
+
+                    <!-- Fund Category / Purpose -->
+                    <div class="mb-4">
+                        <label for="{{ form.fund_type.id_for_label }}" class="form-label fw-semibold text-dark small mb-2">
+                            Fund Category / Purpose <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 text-muted px-3"><i class="bi bi-tag-fill"></i></span>
+                            <select name="fund_type" id="{{ form.fund_type.id_for_label }}"
+                                    class="form-select border-start-0 ps-2 py-2 {% if form.fund_type.errors %}is-invalid{% endif %}" required>
+                                {% for val, label in form.fields.fund_type.choices %}
+                                <option value="{{ val }}" {% if form.fund_type.value == val %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if form.fund_type.errors %}
+                        <div class="text-danger small mt-1.5">{{ form.fund_type.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text text-muted mt-1.5" style="font-size:0.8rem;">
+                            <strong>General / Lending Fund:</strong> Counts towards Group loanable funds and lending wealth.<br>
+                            <strong>Welfare Fund:</strong> Completely segregated in the Welfare Module for emergency aid — never commingled with member loans.
+                        </div>
+                    </div>
+
+                    <!-- 3. Active Status Card / Switch -->
+                    <div class="mb-4 p-3 rounded-3" style="background:#f8fafc;border:1px solid #e2e8f0;">
+                        <div class="form-check form-switch d-flex align-items-center gap-3 ps-0 mb-0">
+                            <input class="form-check-input ms-0 mt-0" type="checkbox" role="switch" name="is_active" id="{{ form.is_active.id_for_label }}"
+                                   {% if form.is_active.value or not is_edit %}checked{% endif %} style="width:2.4em;height:1.25em;cursor:pointer;">
+                            <label class="form-check-label text-dark fw-semibold small mb-0" for="{{ form.is_active.id_for_label }}" style="cursor:pointer;">
+                                Active Account
+                                <span class="text-muted fw-normal d-block" style="font-size:0.78rem;">
+                                    Active bank accounts can be chosen as fund sources for expense payouts, investments, and recorded deposits.
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    {% endwith %}
+
+                    {% if not is_edit and opening_form %}
+                    <!-- Opening Balance Section (New Accounts Only) -->
+                    <div class="mb-4 p-4 rounded-3" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="icon-box rounded-2 text-white" style="background:#16a34a;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
+                                    <i class="bi bi-cash-stack"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark" style="font-size:0.95rem;">Opening Balance</h6>
+                                    <small class="text-muted">Initial balance currently in the bank account</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-success-subtle text-success px-2.5 py-1" style="font-size:0.75rem;">Optional</span>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ opening_form.opening_balance.id_for_label }}" class="form-label fw-semibold text-dark small mb-2">
+                                    Opening Balance Amount (KES)
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white text-success fw-bold px-3" style="border-color:#86efac;">KES</span>
+                                    <input type="number" name="opening_balance" id="{{ opening_form.opening_balance.id_for_label }}"
+                                           value="{{ opening_form.opening_balance.value|default:'0' }}"
+                                           step="0.01" min="0"
+                                           class="form-control fw-bold text-dark fs-5 py-2 ps-2 {% if opening_form.opening_balance.errors %}is-invalid{% endif %}"
+                                           placeholder="0.00"
+                                           style="border-color:#86efac;letter-spacing:0.3px;">
+                                </div>
+                                <!-- Live Words / Formatted Helper -->
+                                <div id="openingWordsHelper" class="text-muted small mt-2 d-none" style="font-size:0.78rem;font-style:italic;color:#166534 !important;">
+                                    <i class="bi bi-info-circle me-1"></i><span id="openingWordsText"></span>
+                                </div>
+
+                                {% if opening_form.opening_balance.errors %}
+                                <div class="text-danger small mt-1.5">{{ opening_form.opening_balance.errors.0 }}</div>
+                                {% endif %}
+
+                                <!-- Quick Amount Helper Chips -->
+                                <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-1">
+                                    <button type="button" class="btn btn-sm py-1 px-2.5 quick-opening-btn" style="font-size:0.76rem;border-radius:12px;background:#ffffff;color:#166534;border:1px solid #86efac;" data-add="5000">+5K</button>
+                                    <button type="button" class="btn btn-sm py-1 px-2.5 quick-opening-btn" style="font-size:0.76rem;border-radius:12px;background:#ffffff;color:#166534;border:1px solid #86efac;" data-add="10000">+10K</button>
+                                    <button type="button" class="btn btn-sm py-1 px-2.5 quick-opening-btn" style="font-size:0.76rem;border-radius:12px;background:#ffffff;color:#166534;border:1px solid #86efac;" data-add="25000">+25K</button>
+                                    <button type="button" class="btn btn-sm py-1 px-2.5 quick-opening-btn" style="font-size:0.76rem;border-radius:12px;background:#ffffff;color:#166534;border:1px solid #86efac;" data-add="50000">+50K</button>
+                                    <button type="button" class="btn btn-sm py-1 px-2.5 quick-opening-btn" style="font-size:0.76rem;border-radius:12px;background:#ffffff;color:#166534;border:1px solid #86efac;" data-add="100000">+100K</button>
+                                    <button type="button" class="btn btn-sm py-1 px-2.5 quick-opening-btn" style="font-size:0.76rem;border-radius:12px;background:#ffffff;color:#166534;border:1px solid #86efac;" data-add="250000">+250K</button>
+                                    <button type="button" class="btn btn-sm py-1 px-2.5" style="font-size:0.76rem;border-radius:12px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;" id="btnClearOpening">Clear</button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label for="{{ opening_form.date.id_for_label }}" class="form-label fw-semibold text-dark small mb-0">
+                                        Opening Date
+                                    </label>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-success" style="font-size:0.78rem;" id="btnSetOpeningToday">
+                                            Today
+                                        </button>
+                                        <span class="text-muted" style="font-size:0.78rem;">·</span>
+                                        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-secondary" style="font-size:0.78rem;" id="btnSetOpeningYesterday">
+                                            Yesterday
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white text-muted border-end-0 px-3" style="border-color:#86efac;"><i class="bi bi-calendar3"></i></span>
+                                    <input type="date" name="date" id="{{ opening_form.date.id_for_label }}"
+                                           value="{{ opening_form.date.value|date:'Y-m-d'|default:'' }}"
+                                           class="form-control border-start-0 ps-2 py-2 {% if opening_form.date.errors %}is-invalid{% endif %}"
+                                           style="border-color:#86efac;">
+                                </div>
+                                {% if opening_form.date.errors %}
+                                <div class="text-danger small mt-1.5">{{ opening_form.date.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text text-muted mt-1.5" style="font-size:0.8rem;">Date the opening balance was validated.</div>
+                            </div>
+                        </div>
+
+                        <!-- Notes Field with Snippets -->
+                        <div>
+                            <label for="{{ opening_form.notes.id_for_label }}" class="form-label fw-semibold text-dark small mb-2">
+                                Opening Notes <span class="text-muted fw-normal">(optional)</span>
+                            </label>
+                            <textarea name="notes" id="{{ opening_form.notes.id_for_label }}" rows="2"
+                                      class="form-control p-2.5 {% if opening_form.notes.errors %}is-invalid{% endif %}"
+                                      style="border-color:#86efac;"
+                                      placeholder="e.g. Account opened, initial deposit from group cash pool">{{ opening_form.notes.value|default:'' }}</textarea>
+                            {% if opening_form.notes.errors %}
+                            <div class="text-danger small mt-1.5">{{ opening_form.notes.errors.0 }}</div>
+                            {% endif %}
+
+                            <!-- Quick Note Chips -->
+                            <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-1">
+                                <span class="text-muted small fw-semibold" style="font-size:0.75rem;"><i class="bi bi-tag me-1"></i>Quick tags:</span>
+                                <button type="button" class="btn btn-sm py-1 px-2.5 note-tag-btn" style="font-size:0.76rem;border-radius:12px;background:#ffffff;border:1px solid #86efac;color:#166534;" data-tag="Initial Chama Deposit">+ Initial Deposit</button>
+                                <button type="button" class="btn btn-sm py-1 px-2.5 note-tag-btn" style="font-size:0.76rem;border-radius:12px;background:#ffffff;border:1px solid #86efac;color:#166534;" data-tag="Account Opened via Cash Pool">+ Account Opened</button>
+                                <button type="button" class="btn btn-sm py-1 px-2.5 note-tag-btn" style="font-size:0.76rem;border-radius:12px;background:#ffffff;border:1px solid #86efac;color:#166534;" data-tag="Migrated from Previous Financial Year">+ Year-End Carryover</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Form Action Buttons -->
+                    <div class="d-flex gap-3 align-items-center pt-3 border-top mt-4">
+                        <button type="submit" class="btn btn-primary px-4 py-2.5 shadow-sm d-flex align-items-center gap-2" id="btnSubmitForm" style="border-radius:8px;font-weight:600;">
+                            <i class="bi bi-check2-circle fs-5"></i>
+                            <span>{% if is_edit %}Update Bank Account{% else %}Register Bank Account{% endif %}</span>
+                        </button>
+                        <a href="{% url 'bank_accounts:list' %}" class="btn btn-outline-secondary px-4 py-2.5" style="border-radius:8px;">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side Information & Live Preview Column -->
+    <div class="col-lg-5">
+        <!-- Live Virtual Bank Card Preview -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-credit-card-2-front fs-5 text-primary"></i>
+                    <strong class="text-dark">Live Account Card Preview</strong>
+                </div>
+                <span class="badge bg-primary-subtle text-primary px-2.5 py-1" style="font-size:0.75rem;">Interactive</span>
+            </div>
+            <div class="card-body p-4">
+                <!-- Virtual ATM / Bank Card Graphic -->
+                <div class="p-4 rounded-4 text-white position-relative shadow" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#334155 100%);border:1px solid rgba(255,255,255,0.1);min-height:200px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <!-- Card Top Row: EMV Chip & Bank Name -->
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="d-flex align-items-center gap-2">
+                            <!-- Chip Graphic -->
+                            <div style="width:38px;height:28px;background:linear-gradient(135deg,#f59e0b,#fbbf24);border-radius:5px;border:1px solid #d97706;display:flex;align-items:center;justify-content:center;">
+                                <i class="bi bi-cpu text-dark" style="font-size:0.9rem;"></i>
+                            </div>
+                            <i class="bi bi-reception-4 fs-5 opacity-75"></i>
+                        </div>
+                        <div class="text-end">
+                            <span class="fw-bold fs-6 text-uppercase" id="cardBankName" style="letter-spacing:1px;color:#f8fafc;">
+                                {{ account_form.bank_name.value|default:'CHAMA BANK' }}
+                            </span>
+                            <div class="small opacity-75" style="font-size:0.7rem;" id="cardBranch">
+                                {{ account_form.branch.value|default:'Headquarters' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card Middle: Account Number -->
+                    <div class="my-3">
+                        <div class="text-muted small text-uppercase" style="font-size:0.68rem;letter-spacing:1px;color:#94a3b8 !important;">Account / Paybill No.</div>
+                        <div class="fw-bold" id="cardAccNumber" style="font-size:1.15rem;letter-spacing:2.5px;font-family:monospace;color:#ffffff;">
+                            {{ account_form.account_number.value|default:'•••• •••• •••• ••••' }}
+                        </div>
+                    </div>
+
+                    <!-- Card Bottom Row: Account Name & Balance -->
+                    <div class="d-flex justify-content-between align-items-end pt-1">
+                        <div style="max-width:60%;">
+                            <div class="text-muted small text-uppercase" style="font-size:0.65rem;letter-spacing:0.8px;color:#94a3b8 !important;">Account Title</div>
+                            <div class="fw-semibold text-truncate" id="cardAccName" style="font-size:0.85rem;color:#f1f5f9;">
+                                {{ account_form.account_name.value|default:'Chama Main Account' }}
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small text-uppercase" style="font-size:0.65rem;letter-spacing:0.8px;color:#94a3b8 !important;">Opening / Balance</div>
+                            <div class="fw-bold" id="cardBalance" style="font-size:0.95rem;color:#4ade80;">
+                                {% if is_edit %}KES {{ account_form.instance.current_balance|kes }}{% else %}KES {{ opening_form.opening_balance.value|default:'0.00'|kes }}{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-3 d-flex align-items-start gap-3 mt-3.5" style="background:#f0fdf4;border:1px solid #bbf7d0;font-size:0.84rem;color:#166534;">
+                    <i class="bi bi-shield-check text-success fs-5 flex-shrink-0 mt-0.5"></i>
+                    <div style="line-height:1.45;">
+                        <strong>Reconciliation Ready:</strong> Once registered, you can track deposits, link expense payments directly to this account, and generate financial audit statements.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bank Reconciliation & Rules Guide -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #e2e8f0;background:#ffffff;">
+            <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center gap-2" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+                <i class="bi bi-info-circle fs-5 text-primary"></i>
+                <strong class="text-dark">Bank Account Management Guide</strong>
+            </div>
+            <div class="card-body p-4" style="font-size:0.875rem;color:#475569;">
+                <ul class="list-unstyled mb-0 d-flex flex-column gap-3.5">
+                    <li class="d-flex align-items-start gap-3">
+                        <div class="p-2 rounded bg-primary-subtle text-primary mt-0.5 flex-shrink-0" style="background:#dbeafe;color:#1d4ed8;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
+                            <i class="bi bi-credit-card"></i>
+                        </div>
+                        <div>
+                            <strong class="text-dark d-block mb-0.5">Direct Expense Fund Source:</strong>
+                            <div class="text-muted small" style="line-height:1.4;">When recording chama expenses, selecting this bank account automatically deducts the funds from its running balance.</div>
+                        </div>
+                    </li>
+                    <li class="d-flex align-items-start gap-3">
+                        <div class="p-2 rounded bg-teal-subtle text-teal mt-0.5 flex-shrink-0" style="background:#ccfbf1;color:#0f766e;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <div>
+                            <strong class="text-dark d-block mb-0.5">Top-Ups & Interest Tracking:</strong>
+                            <div class="text-muted small" style="line-height:1.4;">Record manual deposits, M-Pesa sweeps, or bank interest dividends directly into this account's ledger at any time.</div>
+                        </div>
+                    </li>
+                    <li class="d-flex align-items-start gap-3">
+                        <div class="p-2 rounded bg-purple-subtle text-purple mt-0.5 flex-shrink-0" style="background:#f3e8ff;color:#7e22ce;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
+                            <i class="bi bi-lock"></i>
+                        </div>
+                        <div>
+                            <strong class="text-dark d-block mb-0.5">Audit Trail & Security:</strong>
+                            <div class="text-muted small" style="line-height:1.4;">Every transaction and opening balance is logged with timestamps and treasurer credentials for full financial transparency.</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        {% if existing_accounts %}
+        <!-- Existing Registered Accounts Mini Card -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius:14px;border:1px solid #e2e8f0;background:#ffffff;overflow:hidden;">
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom" style="background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-building text-primary"></i>
+                    <span class="small fw-bold text-dark">Existing Registered Accounts</span>
+                </div>
+                <a href="{% url 'bank_accounts:list' %}" class="small text-decoration-none fw-semibold">View All</a>
+            </div>
+            <div class="list-group list-group-flush" style="font-size:0.85rem;">
+                {% for acc in existing_accounts %}
+                <div class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center hover-bg-light">
+                    <div>
+                        <div class="fw-semibold text-dark">{{ acc.bank_name }} — {{ acc.account_name|truncatechars:22 }}</div>
+                        <div class="text-muted mt-0.5" style="font-size:0.75rem;">
+                            <i class="bi bi-credit-card me-1"></i>{{ acc.account_number|default:'No Acct No.' }}
+                            {% if acc.branch %} · {{ acc.branch }}{% endif %}
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="fw-bold" style="color:#2563eb;">KES {{ acc.current_balance|kes }}</span>
+                        <div>
+                            {% if acc.is_active %}
+                            <span class="badge" style="background:#f0fdf4;color:#16a34a;font-size:0.7rem;">Active</span>
+                            {% else %}
+                            <span class="badge" style="background:#f8fafc;color:#94a3b8;font-size:0.7rem;">Inactive</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const bankNameInput = document.getElementById('{{ account_form.bank_name.id_for_label }}');
+    const accountNameInput = document.getElementById('{{ account_form.account_name.id_for_label }}');
+    const accountNumberInput = document.getElementById('{{ account_form.account_number.id_for_label }}');
+    const branchInput = document.getElementById('{{ account_form.branch.id_for_label }}');
+
+    const openingBalInput = document.getElementById('{{ opening_form.opening_balance.id_for_label }}');
+    const openingDateInput = document.getElementById('{{ opening_form.date.id_for_label }}');
+    const openingNotesInput = document.getElementById('{{ opening_form.notes.id_for_label }}');
+
+    const openingWordsHelper = document.getElementById('openingWordsHelper');
+    const openingWordsText = document.getElementById('openingWordsText');
+
+    // Live Card Preview Elements
+    const cardBankName = document.getElementById('cardBankName');
+    const cardBranch = document.getElementById('cardBranch');
+    const cardAccNumber = document.getElementById('cardAccNumber');
+    const cardAccName = document.getElementById('cardAccName');
+    const cardBalance = document.getElementById('cardBalance');
+
+    function formatKes(val) {
+        return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Number to Words in Kenyan Shillings
+    function numberToWordsKsh(num) {
+        if (isNaN(num) || num <= 0) return '';
+        const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+        function convertChunk(n) {
+            let str = '';
+            if (n >= 100) {
+                str += ones[Math.floor(n / 100)] + ' Hundred ';
+                n %= 100;
+            }
+            if (n >= 20) {
+                str += tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+            } else if (n > 0) {
+                str += ones[n];
+            }
+            return str.trim();
+        }
+
+        const intPart = Math.floor(num);
+        if (intPart === 0) return 'Zero Shillings';
+
+        const billions = Math.floor(intPart / 1000000000);
+        const millions = Math.floor((intPart % 1000000000) / 1000000);
+        const thousands = Math.floor((intPart % 1000000) / 1000);
+        const remainder = intPart % 1000;
+
+        let result = '';
+        if (billions) result += convertChunk(billions) + ' Billion ';
+        if (millions) result += convertChunk(millions) + ' Million ';
+        if (thousands) result += convertChunk(thousands) + ' Thousand ';
+        if (remainder) result += convertChunk(remainder);
+
+        return result.trim() + ' Shillings Only';
+    }
+
+    // Update Live Card
+    function updateCardPreview() {
+        if (cardBankName) {
+            cardBankName.textContent = bankNameInput?.value.trim().toUpperCase() || 'CHAMA BANK';
+        }
+        if (cardBranch) {
+            cardBranch.textContent = branchInput?.value.trim() || 'Headquarters';
+        }
+        if (cardAccNumber) {
+            const raw = accountNumberInput?.value.trim();
+            if (raw) {
+                cardAccNumber.textContent = raw;
+            } else {
+                cardAccNumber.textContent = '•••• •••• •••• ••••';
+            }
+        }
+        if (cardAccName) {
+            cardAccName.textContent = accountNameInput?.value.trim() || 'Chama Main Account';
+        }
+        if (cardBalance) {
+            const bal = parseFloat(openingBalInput?.value || '0') || 0;
+            cardBalance.textContent = `KES ${formatKes(bal)}`;
+        }
+
+        // Amount in words
+        if (openingBalInput) {
+            const bal = parseFloat(openingBalInput.value || '0') || 0;
+            if (bal > 0 && openingWordsHelper && openingWordsText) {
+                openingWordsText.textContent = numberToWordsKsh(bal);
+                openingWordsHelper.classList.remove('d-none');
+            } else if (openingWordsHelper) {
+                openingWordsHelper.classList.add('d-none');
+            }
+        }
+    }
+
+    bankNameInput?.addEventListener('input', updateCardPreview);
+    accountNameInput?.addEventListener('input', updateCardPreview);
+    accountNumberInput?.addEventListener('input', updateCardPreview);
+    branchInput?.addEventListener('input', updateCardPreview);
+    openingBalInput?.addEventListener('input', updateCardPreview);
+
+    // Initial card update
+    updateCardPreview();
+
+    // 1. Bank Preset Pills
+    document.querySelectorAll('.bank-preset-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const bank = this.dataset.bank;
+            const acc = this.dataset.acc;
+
+            if (bankNameInput) bankNameInput.value = bank;
+            if (accountNameInput && (!accountNameInput.value || accountNameInput.value.includes('Chama'))) {
+                accountNameInput.value = acc;
+            }
+
+            // Highlight active pill
+            document.querySelectorAll('.bank-preset-btn').forEach(b => {
+                b.style.background = '#f8fafc';
+                b.style.color = '#334155';
+                b.style.borderColor = '#cbd5e1';
+                b.style.fontWeight = 'normal';
+            });
+            this.style.background = 'linear-gradient(135deg, #2563eb, #1d4ed8)';
+            this.style.color = '#ffffff';
+            this.style.borderColor = '#2563eb';
+            this.style.fontWeight = '600';
+
+            updateCardPreview();
+
+            if (accountNumberInput && !accountNumberInput.value) {
+                accountNumberInput.focus();
+            }
+        });
+    });
+
+    // 2. Clear Bank Button
+    document.getElementById('btnClearBank')?.addEventListener('click', function () {
+        if (bankNameInput) {
+            bankNameInput.value = '';
+            bankNameInput.focus();
+            updateCardPreview();
+        }
+    });
+
+    // 3. Quick Opening Balance Buttons
+    document.querySelectorAll('.quick-opening-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const add = parseFloat(this.dataset.add) || 0;
+            const current = parseFloat(openingBalInput?.value || '0') || 0;
+            if (openingBalInput) {
+                openingBalInput.value = (current + add).toFixed(2);
+                updateCardPreview();
+            }
+        });
+    });
+
+    document.getElementById('btnClearOpening')?.addEventListener('click', function () {
+        if (openingBalInput) {
+            openingBalInput.value = '0.00';
+            updateCardPreview();
+            openingBalInput.focus();
+        }
+    });
+
+    // 4. Date helper buttons
+    function formatDate(d) {
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    if (openingDateInput && !openingDateInput.value) {
+        openingDateInput.value = formatDate(new Date());
+    }
+
+    document.getElementById('btnSetOpeningToday')?.addEventListener('click', function () {
+        if (openingDateInput) {
+            openingDateInput.value = formatDate(new Date());
+        }
+    });
+
+    document.getElementById('btnSetOpeningYesterday')?.addEventListener('click', function () {
+        if (openingDateInput) {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            openingDateInput.value = formatDate(y);
+        }
+    });
+
+    // 5. Note Tag Snippet Buttons
+    document.querySelectorAll('.note-tag-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const tag = this.dataset.tag;
+            if (openingNotesInput) {
+                const currentVal = openingNotesInput.value.trim();
+                if (currentVal.length > 0) {
+                    openingNotesInput.value = currentVal + ' | ' + tag;
+                } else {
+                    openingNotesInput.value = tag;
+                }
+                openingNotesInput.focus();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

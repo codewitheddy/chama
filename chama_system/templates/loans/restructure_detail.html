@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+{% load finance_tags %}
+{% block title %}Restructure Proposal #{{ restructure.pk }} — Loan #{{ loan.pk }}{% endblock %}
+{% block page_title %}Restructure Proposal #{{ restructure.pk }}{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1 small">
+                <li class="breadcrumb-item"><a href="{% url 'loans:list' %}" class="text-decoration-none">Loans</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'loans:detail' loan.pk %}" class="text-decoration-none">Loan #{{ loan.pk }}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'loans:restructure_list' %}" class="text-decoration-none">Restructures</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Proposal #{{ restructure.pk }}</li>
+            </ol>
+        </nav>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-arrow-repeat text-primary me-2"></i>Restructure Proposal #{{ restructure.pk }}
+            </h5>
+            {% if restructure.status == 'PENDING' %}
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1">
+                <i class="bi bi-clock me-1"></i>Pending Review
+            </span>
+            {% elif restructure.status == 'APPROVED' %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                <i class="bi bi-check-circle me-1"></i>Approved & Applied
+            </span>
+            {% elif restructure.status == 'REJECTED' %}
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">
+                <i class="bi bi-x-circle me-1"></i>Rejected
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        {% if restructure.status == 'PENDING' %}
+        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal">
+            <i class="bi bi-check-lg me-1"></i>Approve Restructure
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+            <i class="bi bi-x-lg me-1"></i>Reject
+        </button>
+        {% endif %}
+        <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Loan #{{ loan.pk }}
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Left: Restructure & Loan Details -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-file-earmark-text text-primary me-2"></i>Proposal Details
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <table class="table table-sm table-borderless mb-0 small">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted" style="width: 40%;">Borrower</td>
+                            <td class="fw-bold text-dark">{{ loan.borrower_name }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Restructure Type</td>
+                            <td><span class="badge bg-light text-dark border">{{ restructure.get_restructure_type_display }}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Target Loan</td>
+                            <td>
+                                <a href="{% url 'loans:detail' loan.pk %}" class="text-decoration-none fw-semibold">
+                                    Loan #{{ loan.pk }} (KES {{ loan.loan_amount|kes }})
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Requested By</td>
+                            <td class="text-dark">{{ restructure.requested_by.get_full_name|default:restructure.requested_by.username }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Requested At</td>
+                            <td class="text-dark">{{ restructure.requested_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        {% if restructure.approved_by %}
+                        <tr>
+                            <td class="text-muted">{% if restructure.status == 'APPROVED' %}Approved By{% else %}Reviewed By{% endif %}</td>
+                            <td class="text-dark">{{ restructure.approved_by.get_full_name|default:restructure.approved_by.username }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Reviewed At</td>
+                            <td class="text-dark">{{ restructure.approved_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Justification Card -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-chat-left-quote text-primary me-2"></i>Reason & Justification
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <p class="small text-dark mb-0 bg-light p-3 rounded-3" style="white-space: pre-wrap;">{{ restructure.reason }}</p>
+                
+                {% if restructure.rejection_reason %}
+                <div class="mt-3">
+                    <span class="fw-bold text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Rejection Reason:</span>
+                    <p class="small text-danger mb-0 bg-danger-subtle p-2 rounded mt-1">{{ restructure.rejection_reason }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Schedule Snapshots Comparison -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-2 border-bottom d-flex justify-content-between align-items-center">
+                <ul class="nav nav-pills card-header-pills small" id="scheduleTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active py-1 px-3" id="new-tab" data-bs-toggle="tab" data-bs-target="#new-schedule" type="button" role="tab">
+                            {% if restructure.status == 'APPROVED' %}Active Schedule{% else %}Proposed Schedule{% endif %}
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-1 px-3" id="old-tab" data-bs-toggle="tab" data-bs-target="#old-schedule" type="button" role="tab">
+                            Previous Schedule (Snapshot)
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body p-0">
+                <div class="tab-content" id="scheduleTabsContent">
+                    <!-- Proposed / New Schedule Tab -->
+                    <div class="tab-pane fade show active" id="new-schedule" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr class="small text-muted text-uppercase" style="font-size:0.7rem;">
+                                        <th>#</th>
+                                        <th>Due Date</th>
+                                        <th class="text-end">Principal</th>
+                                        <th class="text-end">Interest</th>
+                                        <th class="text-end pe-3">Installment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in restructure.new_schedule_snapshot %}
+                                    <tr class="small">
+                                        <td class="fw-semibold text-secondary">{{ s.installment_number }}</td>
+                                        <td>
+                                            {{ s.due_date }}
+                                            {% if s.description %}
+                                            <span class="text-muted d-block" style="font-size:0.68rem;">{{ s.description }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">KES {{ s.principal_amount|floatformat:2 }}</td>
+                                        <td class="text-end">KES {{ s.interest_amount|floatformat:2 }}</td>
+                                        <td class="text-end pe-3 fw-bold text-dark">KES {{ s.total_installment|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4 small">
+                                            {% if restructure.restructure_type == 'WRITE_OFF' %}
+                                            <i class="bi bi-slash-circle text-danger me-1"></i>Loan written off (0 remaining installments).
+                                            {% else %}
+                                            No installments generated.
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Previous Schedule Tab -->
+                    <div class="tab-pane fade" id="old-schedule" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr class="small text-muted text-uppercase" style="font-size:0.7rem;">
+                                        <th>#</th>
+                                        <th>Due Date</th>
+                                        <th class="text-end">Principal</th>
+                                        <th class="text-end">Interest</th>
+                                        <th class="text-end">Paid</th>
+                                        <th class="text-end pe-3">Installment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in restructure.old_schedule_snapshot %}
+                                    <tr class="small text-muted">
+                                        <td class="fw-semibold">{{ s.installment_number }}</td>
+                                        <td>{{ s.due_date }}</td>
+                                        <td class="text-end">KES {{ s.principal_amount }}</td>
+                                        <td class="text-end">KES {{ s.interest_amount }}</td>
+                                        <td class="text-end">KES {{ s.paid_amount }}</td>
+                                        <td class="text-end pe-3 fw-semibold">KES {{ s.total_installment }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4 small">
+                                            No previous schedule snapshot recorded for this loan.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top py-2 small text-muted">
+                <i class="bi bi-shield-check text-success me-1"></i>All audit snapshots and previous schedule records are preserved intact for regulatory compliance.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Approve Restructure -->
+{% if restructure.status == 'PENDING' %}
+<div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-white">
+                <h6 class="modal-title fw-bold">
+                    <i class="bi bi-check-circle me-2"></i>Confirm Loan Restructure Approval
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="mb-3 text-dark">
+                    Are you sure you want to approve and apply <strong>Restructure Proposal #{{ restructure.pk }}</strong> for <strong>Loan #{{ loan.pk }}</strong>?
+                </p>
+                <div class="alert alert-warning py-2 small mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i>This action will supersede existing repayment schedules, create new installments, and update the loan status inside a single database transaction.
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'loans:restructure_approve' restructure.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-success">
+                        <i class="bi bi-check-lg me-1"></i>Confirm & Apply Restructure
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Reject Restructure -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h6 class="modal-title fw-bold">
+                    <i class="bi bi-x-circle me-2"></i>Reject Restructure Proposal
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'loans:restructure_reject' restructure.pk %}">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <p class="mb-3 text-dark">
+                        Please provide a reason for rejecting Restructure Proposal #{{ restructure.pk }}:
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-dark" for="id_rejection_reason">Rejection Reason <span class="text-danger">*</span></label>
+                        {{ reject_form.rejection_reason }}
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-danger">
+                        <i class="bi bi-x-circle me-1"></i>Confirm Rejection
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

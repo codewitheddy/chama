@@ -1,0 +1,529 @@
+{% extends 'base.html' %}
+{% load static finance_tags %}
+
+{% block title %}Bulk Registration Fee Entry{% endblock %}
+{% block page_title %}Bulk Registration Fee Fund Entry{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Payment type mini-toggle */
+    .pt-group { display:flex; gap:0.3rem; flex-wrap:wrap; }
+    .pt-group label { flex:1; min-width:65px; cursor:pointer; margin-bottom:0; }
+    .pt-group input[type=radio] { display:none; }
+    .pt-btn {
+        display:flex; align-items:center; justify-content:center; gap:0.25rem;
+        padding:0.35rem 0.45rem; border:1.5px solid #e2e8f0; border-radius:6px;
+        font-size:0.75rem; font-weight:600; color:#64748b; background:#f8fafc;
+        transition:all 0.12s; white-space:nowrap; user-select:none; text-align:center;
+    }
+    .pt-group input[type=radio]:checked + .pt-btn { border-color:#2563eb; background:#eff6ff; color:#2563eb; }
+    .pt-group input[type=radio][value=mpesa]:checked + .pt-btn { border-color:#16a34a; background:#f0fdf4; color:#16a34a; }
+    .pt-group input[type=radio][value=bank_transfer]:checked + .pt-btn { border-color:#0284c7; background:#f0f9ff; color:#0284c7; }
+    .pt-group input[type=radio][value=cheque]:checked + .pt-btn { border-color:#7c3aed; background:#f5f3ff; color:#7c3aed; }
+
+    /* Row states */
+    .bulk-row { transition:background 0.15s, opacity 0.15s; }
+    .bulk-row.is-skipped td { opacity:0.4; }
+    .bulk-row.is-skipped td:first-child { opacity:1; }
+    .bulk-row.has-error { background:#fff5f5 !important; }
+    .bulk-row.already-paid { background:#f0fdf4 !important; }
+
+    /* Sticky table header */
+    .bulk-table thead th {
+        position:sticky; top:0; z-index:2;
+        background:#f8fafc;
+        font-size:0.72rem; font-weight:700; text-transform:uppercase;
+        letter-spacing:0.5px; color:#475569;
+        padding:10px 10px; border-bottom:2px solid #e2e8f0;
+        white-space:nowrap;
+    }
+    .bulk-table tbody td { padding:8px 10px; vertical-align:middle; border-bottom:1px solid #f1f5f9; }
+    .bulk-table tbody tr:last-child td { border-bottom:none; }
+
+    /* Apply-all bar */
+    .apply-bar {
+        background:#1e293b; border-radius:10px; padding:1rem 1.25rem;
+        display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap; color:#fff;
+    }
+    .apply-bar label { color:#cbd5e1; font-size:0.78rem; font-weight:600; margin-bottom:3px; }
+    .apply-bar .form-control, .apply-bar .form-select { font-size:0.85rem; }
+
+    /* Summary cards */
+    .stat-card-compact {
+        border-radius:10px; border:1px solid #e2e8f0; background:#fff; padding:0.85rem 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="post" id="bulkFeeForm">
+{% csrf_token %}
+
+<!-- Summary Stat Cards -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card-compact shadow-sm d-flex align-items-center gap-3">
+            <div class="icon-box accent-blue" style="width:40px;height:40px;font-size:1.2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#eff6ff;color:#2563eb;">
+                <i class="bi bi-people"></i>
+            </div>
+            <div>
+                <div class="text-muted small">Total Members</div>
+                <div class="fw-bold fs-6">{{ total_members_count }} active</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card-compact shadow-sm d-flex align-items-center gap-3">
+            <div class="icon-box accent-purple" style="width:40px;height:40px;font-size:1.2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#faf5ff;color:#9333ea;">
+                <i class="bi bi-tag"></i>
+            </div>
+            <div>
+                <div class="text-muted small">Current Rate</div>
+                <div class="fw-bold fs-6">
+                    {% if current_rate %}
+                    KES {{ current_rate.amount|kes:0 }}
+                    {% else %}
+                    <span class="text-danger small">Not Configured</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card-compact shadow-sm d-flex align-items-center gap-3">
+            <div class="icon-box accent-amber" style="width:40px;height:40px;font-size:1.2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#fffbeb;color:#d97706;">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+                <div class="text-muted small">Unpaid / Pending</div>
+                <div class="fw-bold fs-6 text-amber">{{ unpaid_members_count }} members</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card-compact shadow-sm d-flex align-items-center gap-3" style="border:1.5px solid #86efac;">
+            <div class="icon-box accent-green" style="width:40px;height:40px;font-size:1.2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#f0fdf4;color:#16a34a;">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+            <div>
+                <div class="text-muted small">Fund Collected</div>
+                <div class="fw-bold fs-6 text-success">KES {{ total_fund_collected|kes:0 }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Header Controls & Navigation -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-receipt text-primary fs-5"></i>
+                <span class="fw-bold">Bulk Registration Fee Entry</span>
+                {% if paid_members_count %}
+                <span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;">
+                    <i class="bi bi-check-circle me-1"></i>{{ paid_members_count }} fully paid
+                </span>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <a href="{% url 'members:fee_payment_list' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-list-ul me-1"></i>Payments List
+                </a>
+                <a href="{% url 'members:fee_payment_add' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-person-plus me-1"></i>Single Entry
+                </a>
+                <a href="{% url 'members:fee_payment_import' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-upload me-1"></i>Import CSV
+                </a>
+                <button type="submit" class="btn btn-sm btn-success px-3 fw-semibold" id="saveBtn">
+                    <i class="bi bi-check-circle me-1"></i>Save All Selected
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Apply-all defaults bar -->
+<div class="apply-bar mb-3 shadow-sm">
+    <div>
+        <label><i class="bi bi-calendar-event me-1"></i>Default Date</label>
+        <input type="date" id="applyDate" class="form-control form-control-sm" value="{{ default_date }}" style="width:145px;">
+    </div>
+    <div>
+        <label><i class="bi bi-cash me-1"></i>Default Amount (KES)</label>
+        <input type="number" id="applyAmount" class="form-control form-control-sm" step="0.01"
+               value="{{ default_amount }}" placeholder="e.g. 1000" style="width:130px;">
+    </div>
+    <div>
+        <label><i class="bi bi-credit-card me-1"></i>Default Method</label>
+        <select id="applyMethod" class="form-select form-select-sm" style="width:135px;">
+            {% for value, label in payment_methods %}
+            <option value="{{ value }}" {% if default_method == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label><i class="bi bi-hash me-1"></i>Receipt Prefix</label>
+        <input type="text" id="applyReceiptPrefix" class="form-control form-control-sm" placeholder="e.g. RC-2026-" style="width:125px;">
+    </div>
+    <button type="button" id="applyAll" class="btn btn-sm btn-primary">
+        <i class="bi bi-arrow-down-circle me-1"></i>Apply to Selected
+    </button>
+    <div class="ms-auto d-flex gap-2 align-items-end flex-wrap">
+        <button type="button" id="selectUnpaidOnly" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-funnel me-1"></i>Select Unpaid Only
+        </button>
+        <button type="button" id="selectAll" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-check2-all me-1"></i>Include All
+        </button>
+        <button type="button" id="skipPaid" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-skip-forward me-1"></i>Skip Fully Paid
+        </button>
+        <button type="button" id="clearAll" class="btn btn-sm btn-outline-secondary text-white">
+            <i class="bi bi-x-circle me-1"></i>Clear
+        </button>
+    </div>
+</div>
+
+<!-- Bulk table card -->
+<div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-semibold"><i class="bi bi-people me-2 text-primary"></i>Active Members</span>
+            <span class="badge bg-light text-dark border">{{ rows|length }} members</span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span class="small fw-semibold text-primary" id="selectionCountBadge">0 members selected</span>
+            <span class="small fw-bold text-success" id="selectionTotalBadge">Total: KES 0.00</span>
+        </div>
+    </div>
+    <div class="table-responsive" style="max-height:68vh; overflow-y:auto;">
+        <table class="bulk-table table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th style="width:40px;">
+                        <input type="checkbox" id="masterCheck" class="form-check-input" title="Toggle all">
+                    </th>
+                    <th style="min-width:180px;">Member</th>
+                    <th style="min-width:130px;">Current Status</th>
+                    <th style="min-width:280px;">Payment Method</th>
+                    <th style="min-width:140px;">Receipt / Ref No.</th>
+                    <th style="min-width:120px;">Amount (KES)</th>
+                    <th style="min-width:140px;">Payment Date</th>
+                    <th style="min-width:160px;">Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr class="bulk-row {% if row.is_fully_paid %}already-paid{% endif %} {% if row.error %}has-error{% endif %}"
+                    id="row_{{ row.member.pk }}" data-pk="{{ row.member.pk }}" data-paid="{{ row.is_fully_paid|lower }}">
+
+                    <!-- Include Checkbox -->
+                    <td>
+                        <input type="hidden" name="{{ row.prefix }}_skip" value="{% if row.skip %}1{% else %}0{% endif %}"
+                               class="skip-hidden" id="skip_hidden_{{ row.member.pk }}">
+                        <input type="checkbox" class="form-check-input row-check"
+                               id="check_{{ row.member.pk }}"
+                               data-pk="{{ row.member.pk }}"
+                               {% if not row.skip %}checked{% endif %}>
+                    </td>
+
+                    <!-- Member info -->
+                    <td>
+                        <div class="fw-semibold">{{ row.member.name }}</div>
+                        <div class="text-muted small" style="font-size:0.75rem;"><i class="bi bi-telephone me-1"></i>{{ row.member.phone }}</div>
+                        {% if row.error %}
+                        <div class="text-danger small mt-1 fw-semibold">
+                            <i class="bi bi-exclamation-circle me-1"></i>{{ row.error }}
+                        </div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Fee status -->
+                    <td>
+                        {% if row.is_fully_paid %}
+                        <span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;">
+                            <i class="bi bi-check-circle-fill me-1"></i>Fully Paid
+                        </span>
+                        <div class="small text-muted mt-1" style="font-size:0.72rem;">Paid: KES {{ row.total_paid|kes }}</div>
+                        {% elif row.total_paid > 0 %}
+                        <span class="badge" style="background:#fffbeb;color:#d97706;border:1px solid #fde68a;">
+                            <i class="bi bi-pie-chart-fill me-1"></i>Partial
+                        </span>
+                        <div class="small text-muted mt-1" style="font-size:0.72rem;">Paid: KES {{ row.total_paid|kes }} / Due: KES {{ row.remaining_due|kes }}</div>
+                        {% else %}
+                        <span class="badge" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">
+                            <i class="bi bi-x-circle-fill me-1"></i>Unpaid
+                        </span>
+                        <div class="small text-muted mt-1" style="font-size:0.72rem;">Due: KES {{ row.remaining_due|kes }}</div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Payment Method -->
+                    <td>
+                        <div class="pt-group">
+                            <label>
+                                <input type="radio" name="{{ row.prefix }}_payment_type"
+                                       value="cash" class="pt-radio" data-pk="{{ row.member.pk }}"
+                                       {% if row.payment_type == 'cash' %}checked{% endif %}>
+                                <div class="pt-btn"><i class="bi bi-cash-coin"></i> Cash</div>
+                            </label>
+                            <label>
+                                <input type="radio" name="{{ row.prefix }}_payment_type"
+                                       value="mpesa" class="pt-radio" data-pk="{{ row.member.pk }}"
+                                       {% if row.payment_type == 'mpesa' %}checked{% endif %}>
+                                <div class="pt-btn"><i class="bi bi-phone"></i> M-Pesa</div>
+                            </label>
+                            <label>
+                                <input type="radio" name="{{ row.prefix }}_payment_type"
+                                       value="bank_transfer" class="pt-radio" data-pk="{{ row.member.pk }}"
+                                       {% if row.payment_type == 'bank_transfer' %}checked{% endif %}>
+                                <div class="pt-btn"><i class="bi bi-bank"></i> Bank</div>
+                            </label>
+                            <label>
+                                <input type="radio" name="{{ row.prefix }}_payment_type"
+                                       value="cheque" class="pt-radio" data-pk="{{ row.member.pk }}"
+                                       {% if row.payment_type == 'cheque' %}checked{% endif %}>
+                                <div class="pt-btn"><i class="bi bi-card-text"></i> Cheque</div>
+                            </label>
+                        </div>
+                    </td>
+
+                    <!-- Receipt / Ref No. -->
+                    <td>
+                        <input type="text" name="{{ row.prefix }}_receipt_number"
+                               id="receipt_{{ row.member.pk }}"
+                               value="{{ row.receipt_number }}"
+                               class="form-control form-control-sm row-receipt"
+                               placeholder="Ref / Receipt #"
+                               data-pk="{{ row.member.pk }}">
+                    </td>
+
+                    <!-- Amount (KES) -->
+                    <td>
+                        <input type="number" name="{{ row.prefix }}_amount"
+                               id="amount_{{ row.member.pk }}"
+                               value="{{ row.amount }}"
+                               step="0.01" min="0.01"
+                               class="form-control form-control-sm text-end fw-semibold row-amount"
+                               style="color:#16a34a;"
+                               placeholder="0.00"
+                               data-pk="{{ row.member.pk }}">
+                    </td>
+
+                    <!-- Payment Date -->
+                    <td>
+                        <input type="date" name="{{ row.prefix }}_date"
+                               id="date_{{ row.member.pk }}"
+                               value="{{ row.date }}"
+                               class="form-control form-control-sm row-date"
+                               data-pk="{{ row.member.pk }}">
+                    </td>
+
+                    <!-- Notes -->
+                    <td>
+                        <input type="text" name="{{ row.prefix }}_notes"
+                               id="notes_{{ row.member.pk }}"
+                               value="{{ row.notes }}"
+                               class="form-control form-control-sm row-notes"
+                               placeholder="Optional notes"
+                               data-pk="{{ row.member.pk }}">
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="bi bi-people" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                        No active members found in the system.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3">
+        <div class="text-muted small">
+            <i class="bi bi-shield-check text-success me-1"></i>Records will be securely saved and linked to each member's profile automatically.
+        </div>
+        <button type="submit" class="btn btn-success px-4 fw-semibold">
+            <i class="bi bi-check-circle me-1"></i>Save All Selected
+        </button>
+    </div>
+</div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rowChecks = document.querySelectorAll('.row-check');
+    const masterCheck = document.getElementById('masterCheck');
+    const applyAllBtn = document.getElementById('applyAll');
+    const selectAllBtn = document.getElementById('selectAll');
+    const skipPaidBtn = document.getElementById('skipPaid');
+    const selectUnpaidOnlyBtn = document.getElementById('selectUnpaidOnly');
+    const clearAllBtn = document.getElementById('clearAll');
+    const selectionCountBadge = document.getElementById('selectionCountBadge');
+    const selectionTotalBadge = document.getElementById('selectionTotalBadge');
+
+    function formatKes(amount) {
+        return parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function updateRowState(cb) {
+        const pk = cb.dataset.pk;
+        const row = document.getElementById('row_' + pk);
+        const hidden = document.getElementById('skip_hidden_' + pk);
+        if (cb.checked) {
+            row.classList.remove('is-skipped');
+            if (hidden) hidden.value = '0';
+        } else {
+            row.classList.add('is-skipped');
+            if (hidden) hidden.value = '1';
+        }
+    }
+
+    function recalculateSummary() {
+        let count = 0;
+        let total = 0;
+        rowChecks.forEach(cb => {
+            if (cb.checked) {
+                count++;
+                const pk = cb.dataset.pk;
+                const amtInput = document.getElementById('amount_' + pk);
+                if (amtInput) {
+                    const val = parseFloat(amtInput.value) || 0;
+                    total += val;
+                }
+            }
+        });
+
+        selectionCountBadge.textContent = `${count} member${count === 1 ? '' : 's'} selected`;
+        selectionTotalBadge.textContent = `Total: KES ${formatKes(total)}`;
+
+        if (rowChecks.length > 0) {
+            const allChecked = Array.from(rowChecks).every(c => c.checked);
+            const someChecked = Array.from(rowChecks).some(c => c.checked);
+            masterCheck.checked = allChecked;
+            masterCheck.indeterminate = (!allChecked && someChecked);
+        }
+    }
+
+    // Initialize row states
+    rowChecks.forEach(cb => {
+        updateRowState(cb);
+        cb.addEventListener('change', function() {
+            updateRowState(this);
+            recalculateSummary();
+        });
+    });
+
+    // Listen for changes on amount inputs to update live total
+    document.querySelectorAll('.row-amount').forEach(inp => {
+        inp.addEventListener('input', recalculateSummary);
+    });
+
+    // Master check toggle
+    if (masterCheck) {
+        masterCheck.addEventListener('change', function() {
+            const isChecked = this.checked;
+            rowChecks.forEach(cb => {
+                cb.checked = isChecked;
+                updateRowState(cb);
+            });
+            recalculateSummary();
+        });
+    }
+
+    // Apply to Selected button
+    if (applyAllBtn) {
+        applyAllBtn.addEventListener('click', function() {
+            const dDate = document.getElementById('applyDate').value;
+            const dAmount = document.getElementById('applyAmount').value;
+            const dMethod = document.getElementById('applyMethod').value;
+            const dPrefix = (document.getElementById('applyReceiptPrefix').value || '').trim();
+
+            let seq = 1;
+            rowChecks.forEach(cb => {
+                if (cb.checked) {
+                    const pk = cb.dataset.pk;
+                    if (dDate) {
+                        const dateInp = document.getElementById('date_' + pk);
+                        if (dateInp) dateInp.value = dDate;
+                    }
+                    if (dAmount) {
+                        const amtInp = document.getElementById('amount_' + pk);
+                        if (amtInp) amtInp.value = dAmount;
+                    }
+                    if (dMethod) {
+                        const radio = document.querySelector(`input[name="member_${pk}_payment_type"][value="${dMethod}"]`);
+                        if (radio) radio.checked = true;
+                    }
+                    if (dPrefix) {
+                        const receiptInp = document.getElementById('receipt_' + pk);
+                        if (receiptInp) {
+                            receiptInp.value = `${dPrefix}${String(seq).padStart(3, '0')}`;
+                            seq++;
+                        }
+                    }
+                }
+            });
+            recalculateSummary();
+        });
+    }
+
+    // Include All
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            rowChecks.forEach(cb => {
+                cb.checked = true;
+                updateRowState(cb);
+            });
+            recalculateSummary();
+        });
+    }
+
+    // Select Unpaid Only
+    if (selectUnpaidOnlyBtn) {
+        selectUnpaidOnlyBtn.addEventListener('click', function() {
+            rowChecks.forEach(cb => {
+                const pk = cb.dataset.pk;
+                const row = document.getElementById('row_' + pk);
+                const isPaid = row && row.dataset.paid === 'true';
+                cb.checked = !isPaid;
+                updateRowState(cb);
+            });
+            recalculateSummary();
+        });
+    }
+
+    // Skip Fully Paid
+    if (skipPaidBtn) {
+        skipPaidBtn.addEventListener('click', function() {
+            rowChecks.forEach(cb => {
+                const pk = cb.dataset.pk;
+                const row = document.getElementById('row_' + pk);
+                const isPaid = row && row.dataset.paid === 'true';
+                if (isPaid) {
+                    cb.checked = false;
+                    updateRowState(cb);
+                }
+            });
+            recalculateSummary();
+        });
+    }
+
+    // Clear All
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+            rowChecks.forEach(cb => {
+                cb.checked = false;
+                updateRowState(cb);
+            });
+            recalculateSummary();
+        });
+    }
+
+    recalculateSummary();
+});
+</script>
+{% endblock %}

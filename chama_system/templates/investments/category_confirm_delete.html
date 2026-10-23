@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Delete Investment Category{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-6 offset-lg-3">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Delete Investment Category
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-danger mb-3">
+                        <strong>Warning:</strong> Deleting this category will impact {{ object.investment_types.count }} investment type(s).
+                    </p>
+
+                    <div class="alert alert-light border">
+                        <h6>Category to Delete:</h6>
+                        <p>
+                            <strong>{{ object.name }}</strong><br>
+                            Investment Types: {{ object.investment_types.count }}<br>
+                            Status: {% if object.is_active %}Active{% else %}Inactive{% endif %}
+                        </p>
+                    </div>
+
+                    {% if object.investment_types.count > 0 %}
+                    <div class="alert alert-warning">
+                        <strong>Note:</strong> This category contains investment types. You can delete empty categories, but types referencing this category cannot be deleted.
+                    </div>
+                    {% endif %}
+
+                    {% if delete_error %}
+                    <div class="alert alert-danger">{{ delete_error }}</div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="delete_reason" class="form-label">Reason for Deletion <span class="text-danger">*</span></label>
+                            <textarea 
+                                name="delete_reason" 
+                                id="delete_reason" 
+                                class="form-control" 
+                                rows="3" 
+                                placeholder="Why are you deleting this category?" 
+                                required>{{ delete_reason_value }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="admin_password" class="form-label">Confirm Your Password <span class="text-danger">*</span></label>
+                            <input 
+                                type="password" 
+                                name="admin_password" 
+                                id="admin_password" 
+                                class="form-control" 
+                                placeholder="Enter your password" 
+                                required>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'investments:category_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-x"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Yes, Delete Category
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Edit{% else %}New{% endif %} Loan Product{% endblock %}
+{% block page_title %}{% if object %}Edit Loan Product — {{ object.name }}{% else %}New Loan Product{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+    <!-- Form -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-box me-2"></i>Product Details</div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Product Name <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Description</label>
+                        {{ form.description }}
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small">Interest Type <span class="text-danger">*</span></label>
+                            {{ form.interest_type }}
+                            {% if form.interest_type.errors %}<div class="text-danger small mt-1">{{ form.interest_type.errors.0 }}</div>{% endif %}
+                            <div id="typeHelp" class="form-text mt-1"></div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small">Interest Frequency <span class="text-danger">*</span></label>
+                            {{ form.interest_frequency }}
+                            {% if form.interest_frequency.errors %}<div class="text-danger small mt-1">{{ form.interest_frequency.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small">Interest Rate (%) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                {{ form.interest_rate }}
+                                <span class="input-group-text">%</span>
+                            </div>
+                            {% if form.interest_rate.errors %}<div class="text-danger small mt-1">{{ form.interest_rate.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small">Default Duration (months)</label>
+                            {{ form.duration_months }}
+                            <div class="form-text">0 = no default pre-fill.</div>
+                            {% if form.duration_months.errors %}<div class="text-danger small mt-1">{{ form.duration_months.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small">Minimum Amount (KES)</label>
+                            {{ form.min_amount }}
+                            <div class="form-text">0 = no minimum.</div>
+                            {% if form.min_amount.errors %}<div class="text-danger small mt-1">{{ form.min_amount.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small">Maximum Amount (KES)</label>
+                            {{ form.max_amount }}
+                            <div class="form-text">0 = no upper limit.</div>
+                            {% if form.max_amount.errors %}<div class="text-danger small mt-1">{{ form.max_amount.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check mb-2">
+                            {{ form.is_emergency }}
+                            <label class="form-check-label fw-semibold small" for="{{ form.is_emergency.id_for_label }}">
+                                Emergency Loan Product
+                            </label>
+                            <div class="form-text">
+                                Marks this as an emergency/interest-free product.
+                                The loan form will show a notice reminding the treasurer to agree on repayment terms with the member.
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            {{ form.is_active }}
+                            <label class="form-check-label fw-semibold small" for="{{ form.is_active.id_for_label }}">
+                                Active (available for selection when issuing loans)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Save Product
+                        </button>
+                        <a href="{% url 'loans:product_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help panel -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-info-circle me-2"></i>Interest Type Guide</div>
+            <div class="card-body" style="font-size:0.875rem;">
+
+                <div class="mb-3 p-3 rounded" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+                    <div class="fw-semibold mb-1" style="color:#16a34a;"><i class="bi bi-dash-circle me-1"></i>Flat Rate</div>
+                    <p class="mb-1 text-muted">Interest is charged <strong>once</strong> on the full principal, regardless of duration.</p>
+                    <p class="mb-0 text-muted" style="font-size:0.8rem;">
+                        Example: KES 10,000 at 10% flat = KES 1,000 interest, total KES 11,000.
+                    </p>
+                </div>
+
+                <div class="mb-3 p-3 rounded" style="background:#eff6ff;border:1px solid #bfdbfe;">
+                    <div class="fw-semibold mb-1" style="color:#2563eb;"><i class="bi bi-graph-down me-1"></i>Reducing Balance – EMI</div>
+                    <p class="mb-1 text-muted">Equal monthly instalments. Interest recalculated each month on the outstanding balance.</p>
+                    <p class="mb-0 text-muted" style="font-size:0.8rem;">
+                        Borrower pays same amount every month. Interest is higher early on.
+                    </p>
+                </div>
+
+                <div class="p-3 rounded" style="background:#f5f3ff;border:1px solid #ddd6fe;">
+                    <div class="fw-semibold mb-1" style="color:#7c3aed;"><i class="bi bi-graph-down-arrow me-1"></i>Reducing Balance – Equal Principal</div>
+                    <p class="mb-1 text-muted">Same principal repaid every month. Interest charged on outstanding balance, so total instalment decreases each month.</p>
+                    <p class="mb-0 text-muted" style="font-size:0.8rem;">
+                        First instalment is highest; last is lowest.
+                    </p>
+                </div>
+
+                <div class="mt-3 p-3 rounded" style="background:#fff7ed;border:1px solid #fed7aa;">
+                    <div class="fw-semibold mb-1" style="color:#d97706;">
+                        <i class="bi bi-lightning-charge-fill me-1"></i>Emergency Loan
+                    </div>
+                    <p class="mb-0 text-muted" style="font-size:0.82rem;">
+                        Set <strong>Interest Rate = 0%</strong> and tick <strong>Emergency Loan Product</strong>
+                        to configure an interest-free emergency product.
+                        The repayment period (duration) can be left at 1 month as a default,
+                        but the treasurer can adjust it freely when issuing the loan.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Live preview -->
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-calculator me-2"></i>Live Preview</div>
+            <div class="card-body" id="previewBox" style="font-size:0.875rem;">
+                <p class="text-muted">Fill in the rate and duration to see a sample calculation on KES 10,000.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const TYPE_HELP = {
+    flat: 'One-off interest on the full principal. Simple and predictable.',
+    reducing_emi: 'Equal monthly instalments. Interest recalculated on outstanding balance.',
+    reducing_principal: 'Equal principal each month. Instalment decreases over time.',
+    emergency: '0% interest rate loan. Principal repaid in full without any interest charges.',
+};
+
+function fmt(n) {
+    return 'KES ' + parseFloat(n).toLocaleString('en-KE', {minimumFractionDigits:2});
+}
+
+function updateHelp() {
+    const v = document.getElementById('id_interest_type').value;
+    document.getElementById('typeHelp').textContent = TYPE_HELP[v] || '';
+    const rateField = document.querySelector('[name=interest_rate]');
+    const emergencyCheckbox = document.getElementById('id_is_emergency');
+    if (v === 'emergency') {
+        if (rateField) rateField.value = '0.00';
+        if (emergencyCheckbox) emergencyCheckbox.checked = true;
+    }
+}
+
+function updatePreview() {
+    const type    = document.getElementById('id_interest_type').value;
+    const rate    = parseFloat(document.querySelector('[name=interest_rate]').value) || 0;
+    const months  = parseInt(document.querySelector('[name=duration_months]').value) || 1;
+    const box     = document.getElementById('previewBox');
+    const P       = 10000;
+
+    if (type === 'emergency') {
+        let html = `<div class="text-muted small mb-2">Sample: KES 10,000 Emergency Loan (0% Interest) for ${months} month${months > 1 ? 's' : ''}</div>`;
+        html += `
+            <div class="d-flex justify-content-between"><span class="text-muted">Interest (0%)</span><strong style="color:#16a34a;">KES 0.00</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Total Payable</span><strong style="color:#2563eb;">KES 10,000.00</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Monthly (est.)</span><span>${fmt(10000 / (months || 1))}</span></div>`;
+        box.innerHTML = html;
+        return;
+    }
+
+    if (!rate || !months) {
+        box.innerHTML = '<p class="text-muted mb-0">Fill in rate and duration to preview.</p>';
+        return;
+    }
+
+    const r = rate / 100;
+    let html = `<div class="text-muted small mb-2">Sample: KES 10,000 at ${rate}% for ${months} months</div>`;
+
+    if (type === 'flat') {
+        const interest = P * r;
+        const total    = P + interest;
+        html += `
+            <div class="d-flex justify-content-between"><span class="text-muted">Interest (once)</span><strong style="color:#16a34a;">${fmt(interest)}</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Total Payable</span><strong style="color:#2563eb;">${fmt(total)}</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Monthly (est.)</span><span>${fmt(total/months)}</span></div>`;
+    } else if (type === 'reducing_emi') {
+        const M = P * r / (1 - Math.pow(1+r, -months));
+        const total    = M * months;
+        const interest = total - P;
+        html += `
+            <div class="d-flex justify-content-between"><span class="text-muted">Monthly Instalment</span><strong style="color:#2563eb;">${fmt(M)}</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Total Interest</span><strong style="color:#16a34a;">${fmt(interest)}</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Total Payable</span><strong>${fmt(total)}</strong></div>`;
+    } else {
+        const pp = P / months;
+        let bal = P, totalInt = 0, firstInst = 0;
+        for (let i = 0; i < months; i++) {
+            const mi = bal * r;
+            if (i === 0) firstInst = pp + mi;
+            totalInt += mi;
+            bal -= pp;
+        }
+        html += `
+            <div class="d-flex justify-content-between"><span class="text-muted">1st Instalment</span><strong style="color:#2563eb;">${fmt(firstInst)}</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Last Instalment</span><span>${fmt(pp + pp * r)}</span></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Total Interest</span><strong style="color:#16a34a;">${fmt(totalInt)}</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Total Payable</span><strong>${fmt(P + totalInt)}</strong></div>`;
+    }
+
+    box.innerHTML = html;
+}
+
+document.getElementById('id_interest_type').addEventListener('change', () => { updateHelp(); updatePreview(); });
+document.querySelector('[name=interest_rate]').addEventListener('input', updatePreview);
+document.querySelector('[name=duration_months]').addEventListener('input', updatePreview);
+updateHelp();
+updatePreview();
+</script>
+{% endblock %}

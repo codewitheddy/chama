@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Delete Collateral{% endblock %}
 {% block page_title %}Delete Collateral{% endblock %}
 
@@ -13,7 +14,7 @@
                 <div class="alert alert-warning py-2 small mb-3">
                     <i class="bi bi-exclamation-triangle me-1"></i>
                     This will permanently delete collateral:
-                    <strong>{{ object.description }}</strong> (KES {{ object.estimated_value|floatformat:2 }}).
+                    <strong>{{ object.description }}</strong> (KES {{ object.estimated_value|kes }}).
                 </div>
                 <form method="post" novalidate>
                     {% csrf_token %}

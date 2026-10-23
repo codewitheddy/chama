@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load finance_tags %}
 {% block title %}Minutes — {{ meeting.date }}{% endblock %}
 {% block page_title %}Meeting Minutes — {{ meeting.date }}{% endblock %}
 
@@ -96,10 +97,116 @@
             </div>
         </div>
 
+        <!-- Immutable System-Verified Treasury & Financial Report Card -->
+        <div class="card mb-3 shadow-sm border-0 no-print">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 border-bottom">
+                <span class="fw-bold small text-dark"><i class="bi bi-shield-check text-success me-1"></i>Official Treasury & Table Banking Report ({{ financial_summary.period_name }})</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:0.7rem;">🔒 System-Verified Ledger (Read-Only)</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" style="font-size:0.85rem;">
+                        <thead class="table-dark">
+                            <tr>
+                                <th colspan="3" class="py-2 px-3 fw-bold">1. Overall Chama Treasury Position (Cumulative to Date)</th>
+                            </tr>
+                        </thead>
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Fund Category</th>
+                                <th class="text-center" style="width:220px;">Transaction Count / Volume</th>
+                                <th class="text-end pe-3" style="width:180px;">Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="ps-3"><strong>Total Share Contributions Collected</strong></td>
+                                <td class="text-center">{{ financial_summary.cumulative_shares_count }}</td>
+                                <td class="text-end fw-bold text-primary pe-3">KES {{ financial_summary.cumulative_shares|kes }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3"><strong>Total Welfare Contributions Collected</strong></td>
+                                <td class="text-center">{{ financial_summary.cumulative_welfare_count }}</td>
+                                <td class="text-end fw-bold text-danger pe-3">KES {{ financial_summary.cumulative_welfare|kes }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3"><strong>Total Registration Fee Fund Collected</strong></td>
+                                <td class="text-center">{{ financial_summary.cumulative_reg_fees_count }}</td>
+                                <td class="text-end fw-bold text-info pe-3">KES {{ financial_summary.cumulative_reg_fees|kes }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3"><strong>Total Loan Repayments Collected</strong></td>
+                                <td class="text-center">{{ financial_summary.cumulative_repayments_count }}</td>
+                                <td class="text-end fw-bold text-success pe-3">KES {{ financial_summary.cumulative_repayments|kes }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3"><strong>Total New Loans Disbursed</strong></td>
+                                <td class="text-center">{{ financial_summary.cumulative_loans_count }}</td>
+                                <td class="text-end fw-bold text-warning pe-3">KES {{ financial_summary.cumulative_loans|kes }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3"><strong>Meeting Penalties / Fines Issued</strong></td>
+                                <td class="text-center">{{ financial_summary.cumulative_penalties_count }}</td>
+                                <td class="text-end fw-bold text-danger pe-3">KES {{ financial_summary.cumulative_penalties|kes }}</td>
+                            </tr>
+                            <tr class="table-success">
+                                <td colspan="2" class="ps-3"><strong>Total Chama Cumulative Treasury Balance</strong></td>
+                                <td class="text-end fw-bold text-success pe-3 fs-6">KES {{ financial_summary.cumulative_total_capital|kes }}</td>
+                            </tr>
+                        </tbody>
+
+                        <thead class="table-dark">
+                            <tr>
+                                <th colspan="3" class="py-2 px-3 fw-bold">2. Meeting Session Table Banking Collections ({{ financial_summary.period_name }})</th>
+                            </tr>
+                        </thead>
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Session Category</th>
+                                <th class="text-center">Transaction Count / Volume</th>
+                                <th class="text-end pe-3">Session Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="ps-3"><strong>Share Contributions (Session)</strong></td>
+                                <td class="text-center">{{ financial_summary.session_shares_count }}</td>
+                                <td class="text-end fw-bold text-primary pe-3">KES {{ financial_summary.session_shares|kes }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3"><strong>Welfare Contributions (Session)</strong></td>
+                                <td class="text-center">{{ financial_summary.session_welfare_count }}</td>
+                                <td class="text-end fw-bold text-danger pe-3">KES {{ financial_summary.session_welfare|kes }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3"><strong>Loan Repayments Received</strong></td>
+                                <td class="text-center">{{ financial_summary.session_repayments_count }}</td>
+                                <td class="text-end fw-bold text-success pe-3">KES {{ financial_summary.session_repayments|kes }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3"><strong>New Loans Disbursed</strong></td>
+                                <td class="text-center">{{ financial_summary.session_loans_count }}</td>
+                                <td class="text-end fw-bold text-warning pe-3">KES {{ financial_summary.session_loans|kes }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3"><strong>Meeting Penalties Issued</strong></td>
+                                <td class="text-center">{{ financial_summary.session_penalties_count }}</td>
+                                <td class="text-end fw-bold text-danger pe-3">KES {{ financial_summary.session_penalties|kes }}</td>
+                            </tr>
+                            <tr class="table-primary">
+                                <td colspan="2" class="ps-3"><strong>Total Session Inflows Collected</strong></td>
+                                <td class="text-end fw-bold text-primary pe-3 fs-6">KES {{ financial_summary.session_inflows|kes }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Minutes content -->
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-journal-text me-2"></i>Minutes</span>
+                <span><i class="bi bi-journal-text me-2"></i>Minutes & Resolutions</span>
             </div>
 
             <!-- Read view -->
@@ -143,8 +250,40 @@
         Venue: {{ meeting.venue|default:"—" }} &nbsp;|&nbsp;
         Attendance: {{ meeting.attendance.count }} members
     </div>
+    
+    <div style="margin-bottom:14pt;">
+        <div style="font-weight:bold; font-size:11pt; margin-bottom:4pt; border-bottom:1px solid #000; padding-bottom:2pt;">
+            Official Treasury & Financial Summary ({{ financial_summary.period_name }})
+        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:9pt;">
+            <tr style="border-bottom:1px solid #ddd;">
+                <td style="padding:3pt 0;"><strong>Share Capital (Cumulative):</strong></td>
+                <td style="text-align:right; padding:3pt 0;">KES {{ financial_summary.cumulative_shares|kes }} ({{ financial_summary.cumulative_shares_count }} deposits)</td>
+            </tr>
+            <tr style="border-bottom:1px solid #ddd;">
+                <td style="padding:3pt 0;"><strong>Welfare Fund (Cumulative):</strong></td>
+                <td style="text-align:right; padding:3pt 0;">KES {{ financial_summary.cumulative_welfare|kes }} ({{ financial_summary.cumulative_welfare_count }} payments)</td>
+            </tr>
+            <tr style="border-bottom:1px solid #ddd;">
+                <td style="padding:3pt 0;"><strong>Registration Fee Fund (Cumulative):</strong></td>
+                <td style="text-align:right; padding:3pt 0;">KES {{ financial_summary.cumulative_reg_fees|kes }} ({{ financial_summary.cumulative_reg_fees_count }} members)</td>
+            </tr>
+            <tr style="border-bottom:1px solid #000; font-weight:bold;">
+                <td style="padding:4pt 0;">Total Chama Treasury Balance:</td>
+                <td style="text-align:right; padding:4pt 0;">KES {{ financial_summary.cumulative_total_capital|kes }}</td>
+            </tr>
+            <tr>
+                <td style="padding:3pt 0;">Meeting Session Inflows ({{ financial_summary.period_name }}):</td>
+                <td style="text-align:right; padding:3pt 0;">KES {{ financial_summary.session_inflows|kes }}</td>
+            </tr>
+        </table>
+    </div>
+
     <div class="ql-snow">
         <div class="ql-editor">{{ meeting.minutes|default:"No minutes recorded."|safe }}</div>
+    </div>
+    <div style="margin-top:30pt; padding-top:10pt; border-top:1px solid #ccc; font-size:9pt; color:#666; text-align:center;">
+        {{ group_name|default:"Finance Wise TBM" }} - Powered by Ropenix Investments Limited ( 018 218 0965 )
     </div>
 </div>
 {% endblock %}
