@@ -595,6 +595,13 @@
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="calcToggleBtn" title="Advanced Calculator">
                     <i class="bi bi-calculator-fill"></i>
                 </button>
+                <!-- Global Check for Updates -->
+                <button type="button" class="btn btn-sm btn-outline-secondary position-relative" id="globalCheckUpdateBtn" title="Check for Updates" onclick="checkForUpdatesManual(event)">
+                    <i class="bi bi-cloud-arrow-down-fill"></i>
+                    <span id="globalUpdateBadge" class="position-absolute top-0 start-100 translate-middle p-1 bg-success border border-light rounded-circle d-none" title="Update Available">
+                        <span class="visually-hidden">New update</span>
+                    </span>
+                </button>
                 <!-- Notification bell -->
                 <a href="{% url 'dashboard:notifications' %}"
                    class="position-relative text-decoration-none"
