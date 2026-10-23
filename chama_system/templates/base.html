@@ -549,6 +549,12 @@
                     <i class="bi bi-cloud-arrow-down me-2"></i>Backup &amp; Restore
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="javascript:void(0)" class="nav-link d-flex align-items-center" onclick="checkForUpdatesManual(event)" title="Check for Application Updates">
+                    <i class="bi bi-arrow-repeat me-2"></i>Check for Updates
+                    <span id="updateNavBadge" class="badge bg-success ms-auto d-none" style="font-size:0.65rem;">New</span>
+                </a>
+            </li>
             {% endif %}
             <!-- <li class="nav-item">
                 <a href="/admin/" class="nav-link">
@@ -563,8 +569,11 @@
                      style="width:32px;height:32px;font-size:0.8rem;font-weight:700;flex-shrink:0;">
                     {{ user.username|first|upper }}
                 </div>
-                <div>
-                    <div class="username">{{ user.username }}</div>
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="username text-truncate">{{ user.username }}</div>
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-1.5 py-0.5" style="font-size:0.65rem;cursor:pointer;" title="Click to check for updates" onclick="checkForUpdatesManual(event)">v{{ app_version|default:'1.1.0' }} <i class="bi bi-arrow-repeat" style="font-size:0.6rem;"></i></span>
+                    </div>
                     <div class="role" style="font-size:0.75rem;">
                         {{ user.profile.get_role_display|default:"User" }}
                         <i class="bi bi-pencil-square ms-1" style="opacity:0.5;font-size:0.7rem;"></i>
@@ -1001,6 +1010,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 })();
 </script>
+{% include 'updater/update_modal.html' %}
 {% block extra_js %}{% endblock %}
 </body>
 </html>

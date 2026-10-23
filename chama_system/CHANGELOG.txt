@@ -1,0 +1,48 @@
+================================================================================
+Finance Wise TBM — Version History & Release Notes
+================================================================================
+
+Version 1.1.0 (October 2026) — Dedicated Welfare Bank Accounts & Smart Upgrades
+--------------------------------------------------------------------------------
+[NEW FEATURES & ENHANCEMENTS]
+• Dedicated Welfare Bank Account Segregation:
+  - Bank accounts now feature a "Fund Purpose" classification:
+    * General / Lending Fund (Core Chama operations)
+    * Welfare Fund (Segregated Emergency & Benevolent reserves)
+    * Registration Fee Fund
+  - Financial safety invariant: Loans, restructuring, and general Chama expenses
+    can strictly only be disbursed from General accounts, preventing accidental
+    commingling of Welfare funds.
+  - Live reconciliation engine: Tracks net Welfare collections vs disbursements
+    and verifies that bank balances match the Welfare fund position exactly.
+
+• Welfare Contributions Management & Direct Deposit:
+  - Enhanced Welfare Contributions page (/welfare/contributions/) with a 5-card
+    live financial KPI summary.
+  - Added Dedicated Welfare Bank Account banner displaying live banked reserves,
+    account details, and real-time reconciliation badges.
+  - Added instant "Deposit Cash to Bank" modal right on the Welfare page,
+    allowing treasurers to record bank deposits with quick amount increments
+    (+500, +1,000, +2,000, +5,000, +10,000) and auto-reconciliation.
+
+• Smart Update & Upgrade Data Preservation:
+  - Complete data isolation: Installer updates strictly contain ZERO databases
+    or user uploads, preventing accidental overwrites.
+  - Interactive Installer: Setup now detects previous installations and asks
+    whether you want to update (preserving all records) or perform a clean reinstall.
+  - Automated migration engine: On update, existing member profiles, loan ledgers,
+    welfare balances, and financial accounts are automatically picked up and updated.
+
+--------------------------------------------------------------------------------
+Version 1.0.0 (September 2026) — Initial Production Release
+--------------------------------------------------------------------------------
+• Core Member & Profile Management with registration fee tracking.
+• Dynamic Loan Management: custom loan products, reducing balance and flat interest,
+  guarantor tracking, late loan penalties, and restructuring.
+• Welfare Fund module: rates, member contributions, support events, and aid disbursements.
+• Investments & Assets tracker with dividend logging and capital growth tracking.
+• Complete Double-Entry Money Movement ledger and Cash Book reports.
+• Automated Database Backup & Recycle Bin restoration.
+• Desktop Windows app packaging with offline embedded Chromium engine.
+
+================================================================================

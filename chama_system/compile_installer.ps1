@@ -28,8 +28,37 @@ if (-not (Test-Path "installer_output")) {
     New-Item -ItemType Directory -Path "installer_output" | Out-Null
 }
 
-$old = "installer_output\FinanceWiseTBM_Setup_v1.0.0.exe"
-if (Test-Path $old) { Remove-Item $old -Force -ErrorAction SilentlyContinue }
+# ── Sanity Check & Cleanup: Guarantee NO data files are in dist payload ──
+Write-Host "  Verifying distribution payload contains no user data..."
+$forbiddenDataFiles = Get-ChildItem -Path "dist\FinanceWiseTBM" -Recurse -Include "*.sqlite3","*.db","*.sqlite","license.key" -File -ErrorAction SilentlyContinue
+if ($forbiddenDataFiles) {
+    Write-Host "  [CLEANUP] Stripping data files found in dist payload:" -ForegroundColor Yellow
+    foreach ($f in $forbiddenDataFiles) {
+        Write-Host "    Removed: $($f.FullName)" -ForegroundColor Yellow
+        Remove-Item $f.FullName -Force -ErrorAction SilentlyContinue
+    }
+}
+
+$userMediaDirs = @(
+    "dist\FinanceWiseTBM\_internal\media",
+    "dist\FinanceWiseTBM\media"
+)
+foreach ($dir in $userMediaDirs) {
+    if (Test-Path $dir) {
+        Write-Host "  [CLEANUP] Stripping media folder from dist payload: $dir" -ForegroundColor Yellow
+        Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+$issContent = Get-Content "installer.iss" -Raw
+if ($issContent -match '#define\s+AppVersion\s+"([^"]+)"') {
+    $version = $matches[1]
+} else {
+    $version = "1.1.0"
+}
+
+$installerExe = "installer_output\FinanceWiseTBM_Setup_v${version}.exe"
+if (Test-Path $installerExe) { Remove-Item $installerExe -Force -ErrorAction SilentlyContinue }
 
 $proc = Start-Process `
     -FilePath $iscc `
@@ -44,9 +73,13 @@ Get-Content "iscc_err.txt" -ErrorAction SilentlyContinue
 Remove-Item "iscc_out.txt","iscc_err.txt" -ErrorAction SilentlyContinue
 
 if ($proc.ExitCode -eq 0) {
-    $sz = [math]::Round((Get-Item $old).Length / 1MB, 1)
-    Write-Host ""
-    Write-Host "  Installer ready: installer_output\FinanceWiseTBM_Setup_v1.0.0.exe  ($sz MB)"
+    if (Test-Path $installerExe) {
+        $sz = [math]::Round((Get-Item $installerExe).Length / 1MB, 1)
+        Write-Host ""
+        Write-Host "  Installer ready: $installerExe  ($sz MB)"
+    } else {
+        Write-Host "  Installer compiled successfully."
+    }
     exit 0
 } else {
     Write-Host "ERROR: ISCC exited with code $($proc.ExitCode)"

@@ -92,3 +92,9 @@ def pending_transfers(request):
     except Exception:
         return {'pending_transfers_count': 0}
 
+
+def app_version(request):
+    """Injects current application version into templates."""
+    from django.conf import settings
+    return {'app_version': getattr(settings, 'APP_VERSION', '1.1.0')}
+

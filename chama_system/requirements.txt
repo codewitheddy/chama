@@ -15,3 +15,5 @@ waitress==3.0.2
 # pywebview — proper embedded window on machines with .NET.
 # Falls back to Edge --app mode or system browser automatically if unavailable.
 pywebview==4.4.1
+# Cryptographic signature verification for secure auto-updates (falls back to pure Python RFC 8032 if not installed)
+cryptography>=42.0.0

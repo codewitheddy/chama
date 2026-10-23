@@ -1,0 +1,466 @@
+<!-- Finance Wise TBM Auto-Update Modal & Notification Component -->
+<div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content shadow-lg border-0" style="border-radius:12px;overflow:hidden;">
+      
+      <!-- Modal Header -->
+      <div class="modal-header text-white" style="background:linear-gradient(135deg, #1e2a3a 0%, #2563eb 100%);padding:1.25rem 1.5rem;">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-circle d-flex align-items-center justify-content-center bg-white text-primary" style="width:36px;height:36px;">
+            <i class="bi bi-cloud-arrow-down-fill fs-5"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="updateModalLabel">Finance Wise TBM Software Update</h5>
+            <small class="text-white-50">Cross-Platform Auto-Update & Integrity Verification</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="updateModalCloseBtn"></button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body p-4" style="background:#f8fafc;">
+        
+        <!-- View: Checking -->
+        <div id="updateViewChecking" class="text-center py-4">
+          <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <h6 class="fw-bold text-dark">Checking for latest stable releases...</h6>
+          <p class="text-muted small mb-0">Querying GitHub REST API and verifying digital release manifests.</p>
+        </div>
+
+        <!-- View: Up to Date -->
+        <div id="updateViewUpToDate" class="text-center py-4 d-none">
+          <div class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center mb-3" style="width:60px;height:60px;">
+            <i class="bi bi-check-circle-fill fs-2"></i>
+          </div>
+          <h5 class="fw-bold text-dark mb-1">You're Up to Date!</h5>
+          <p class="text-muted small mb-3">Finance Wise TBM <span class="badge bg-secondary" id="upToDateVerBadge">v{{ app_version|default:'1.1.0' }}</span> is currently the latest version.</p>
+          <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Close</button>
+        </div>
+
+        <!-- View: Offline / Rate Limited -->
+        <div id="updateViewOffline" class="text-center py-4 d-none">
+          <div class="rounded-circle bg-warning-subtle text-warning d-inline-flex align-items-center justify-content-center mb-3" style="width:60px;height:60px;">
+            <i class="bi bi-wifi-off fs-2"></i>
+          </div>
+          <h5 class="fw-bold text-dark mb-1" id="updateOfflineTitle">Offline Mode</h5>
+          <p class="text-muted small mb-3 px-md-5" id="updateOfflineMsg">
+            Unable to connect to GitHub releases. Your local banking data and offline transactions continue to operate normally.
+          </p>
+          <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Continue Working</button>
+        </div>
+
+        <!-- View: Update Available -->
+        <div id="updateViewAvailable" class="d-none">
+          <div class="d-flex flex-wrap align-items-center justify-content-between p-3 mb-3 bg-white border rounded shadow-sm">
+            <div>
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle mb-1" id="updateChannelBadge">STABLE RELEASE</span>
+              <h5 class="fw-bold text-dark mb-0">Version <span id="updateLatestVerText">1.2.0</span> Available</h5>
+              <small class="text-muted">Currently installed: <strong id="updateCurrentVerText">v{{ app_version|default:'1.1.0' }}</strong></small>
+            </div>
+            <div class="text-end mt-2 mt-sm-0">
+              <span class="badge bg-light text-secondary border px-2 py-1.5 d-block mb-1" id="updateSizeBadge">
+                <i class="bi bi-file-earmark-zip me-1"></i><span id="updateSizeText">-- MB</span>
+              </span>
+              <small class="text-muted" id="updateDateText">Published recently</small>
+            </div>
+          </div>
+
+          <!-- Release Notes -->
+          <div class="mb-3">
+            <label class="form-label fw-bold text-secondary small text-uppercase mb-1">
+              <i class="bi bi-journal-text me-1"></i>What's New in this Release:
+            </label>
+            <div class="p-3 bg-white border rounded" style="max-height:180px;overflow-y:auto;font-size:0.875rem;" id="updateReleaseNotes">
+              Loading release notes...
+            </div>
+          </div>
+
+          <!-- Transaction Safety Banner -->
+          <div class="alert alert-info py-2 px-3 d-flex align-items-center gap-2 mb-3" style="font-size:0.825rem;">
+            <i class="bi bi-shield-check text-info fs-5 flex-shrink-0"></i>
+            <div>
+              <strong>Local Banking Data Safeguard:</strong>
+              Your database, members, loans, and settings in APPDATA are strictly preserved. An automatic verified backup is created prior to updating.
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-2 border-top">
+            <div class="btn-group">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRemindLater">
+                <i class="bi bi-clock me-1"></i>Remind Me Later
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btnSkipVersion">
+                <i class="bi bi-x-circle me-1"></i>Skip This Version
+              </button>
+            </div>
+            <button type="button" class="btn btn-primary px-4 fw-bold" id="btnStartDownload">
+              <i class="bi bi-download me-1"></i>Update Now
+            </button>
+          </div>
+        </div>
+
+        <!-- View: Downloading & Verifying Progress -->
+        <div id="updateViewDownloading" class="py-3 d-none">
+          <div class="text-center mb-3">
+            <h6 class="fw-bold text-dark mb-1" id="updateProgressTitle">Downloading Update Package...</h6>
+            <span class="badge bg-primary-subtle text-primary" id="updateProgressStateBadge">STREAMING HTTPS</span>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress mb-2" style="height:14px;border-radius:8px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                 id="updateProgressBar" 
+                 role="progressbar" 
+                 style="width:0%;" 
+                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+
+          <div class="d-flex justify-content-between text-muted small mb-3">
+            <span id="updateProgressBytes">0 MB / 0 MB</span>
+            <span id="updateProgressPercent" class="fw-bold text-dark">0%</span>
+            <span id="updateProgressSpeed">-- MB/s</span>
+          </div>
+
+          <div class="p-3 bg-white border rounded d-flex align-items-center gap-2 text-muted small">
+            <div class="spinner-border spinner-border-sm text-primary flex-shrink-0" role="status" id="verifySpinner"></div>
+            <span id="updateVerificationStatus">Downloading encrypted distribution package...</span>
+          </div>
+        </div>
+
+        <!-- View: Ready to Install & Restart -->
+        <div id="updateViewReadyToInstall" class="py-3 d-none">
+          <div class="text-center mb-3">
+            <div class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center mb-2" style="width:52px;height:52px;">
+              <i class="bi bi-shield-fill-check fs-3"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">Update Ready for Installation!</h5>
+            <p class="text-muted small mb-0">Integrity and Ed25519 digital signature successfully verified.</p>
+          </div>
+
+          <div class="card border-success-subtle bg-success-subtle p-3 mb-3" style="font-size:0.85rem;">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi bi-check2-circle text-success fs-5 flex-shrink-0 mt-0.5"></i>
+              <div>
+                <strong>Pre-Update Safety Backup:</strong>
+                A verified atomic snapshot of your SQLite database will be generated immediately before file replacement. All member finances and settings are 100% protected.
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-warning py-2 px-3 small mb-3" id="activeTransactionWarning" style="font-size:0.8rem;">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            Please ensure you have saved any open loan forms or bulk contribution entries before restarting.
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 border-top pt-3">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Install Later</button>
+            <button type="button" class="btn btn-success px-4 fw-bold" id="btnExecuteInstall">
+              <i class="bi bi-box-arrow-right me-1"></i>Install &amp; Restart Now
+            </button>
+          </div>
+        </div>
+
+        <!-- View: Error State -->
+        <div id="updateViewError" class="py-3 d-none">
+          <div class="text-center mb-3">
+            <div class="rounded-circle bg-danger-subtle text-danger d-inline-flex align-items-center justify-content-center mb-2" style="width:52px;height:52px;">
+              <i class="bi bi-exclamation-octagon-fill fs-3"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">Update Problem</h5>
+            <p class="text-muted small mb-0">Finance Wise TBM prevented an unsafe or invalid update.</p>
+          </div>
+
+          <div class="alert alert-danger p-3 mb-3" style="font-size:0.875rem;" id="updateErrorMessage">
+            An unknown error occurred during update processing.
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 border-top pt-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Dismiss</button>
+            <button type="button" class="btn btn-primary" id="btnRetryUpdate">
+              <i class="bi bi-arrow-clockwise me-1"></i>Retry
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Inline JavaScript Controller for Auto-Update -->
+<script>
+(function() {
+  let pollInterval = null;
+  let activeVersion = null;
+
+  function getCsrfToken() {
+    const cookieValue = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('csrftoken='))
+      ?.split('=')[1];
+    return cookieValue || '';
+  }
+
+  function showView(viewId) {
+    const views = [
+      'updateViewChecking',
+      'updateViewUpToDate',
+      'updateViewOffline',
+      'updateViewAvailable',
+      'updateViewDownloading',
+      'updateViewReadyToInstall',
+      'updateViewError'
+    ];
+    views.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('d-none');
+    });
+    const target = document.getElementById(viewId);
+    if (target) target.classList.remove('d-none');
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes || bytes <= 0) return '0 MB';
+    const mb = bytes / (1024 * 1024);
+    return mb.toFixed(1) + ' MB';
+  }
+
+  window.checkForUpdatesManual = function(e) {
+    if (e) e.preventDefault();
+    const modalEl = document.getElementById('updateModal');
+    if (!modalEl) return;
+    const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    bsModal.show();
+    showView('updateViewChecking');
+
+    fetch('/updater/check/?force=1')
+      .then(r => r.json())
+      .then(data => handleUpdateCheckResponse(data, true))
+      .catch(err => {
+        showView('updateViewOffline');
+        document.getElementById('updateOfflineTitle').innerText = 'Connection Error';
+        document.getElementById('updateOfflineMsg').innerText = 'Could not reach local updater service: ' + err;
+      });
+  };
+
+  function handleUpdateCheckResponse(data, isManual) {
+    if (data.status === 'offline' || data.status === 'rate_limited') {
+      showView('updateViewOffline');
+      document.getElementById('updateOfflineTitle').innerText = data.status === 'offline' ? 'Offline Mode' : 'Rate Limited';
+      document.getElementById('updateOfflineMsg').innerText = data.error || 'GitHub unavailable.';
+      return;
+    }
+
+    if (data.status === 'update_available') {
+      activeVersion = data.latest_version;
+      document.getElementById('updateLatestVerText').innerText = 'v' + data.latest_version;
+      document.getElementById('updateCurrentVerText').innerText = 'v' + data.current_version;
+      document.getElementById('updateSizeText').innerText = formatBytes(data.download_size);
+      document.getElementById('updateReleaseNotes').innerHTML = data.release_notes ? 
+        '<div style="white-space:pre-wrap;">' + escapeHtml(data.release_notes) + '</div>' : 
+        '<em>General performance and security improvements.</em>';
+
+      // Update nav badge if available
+      const navBadge = document.getElementById('updateNavBadge');
+      if (navBadge) navBadge.classList.remove('d-none');
+
+      showView('updateViewAvailable');
+
+      if (!isManual && !data.is_skipped) {
+        // Show gentle modal on startup if not skipped
+        const modalEl = document.getElementById('updateModal');
+        if (modalEl) {
+          const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+          bsModal.show();
+        }
+      }
+    } else if (data.status === 'up_to_date') {
+      if (isManual) {
+        document.getElementById('upToDateVerBadge').innerText = 'v' + data.current_version;
+        showView('updateViewUpToDate');
+      }
+    } else if (data.status === 'ERROR') {
+      document.getElementById('updateErrorMessage').innerText = data.error || 'Update check encountered an error.';
+      showView('updateViewError');
+    }
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Bind Buttons
+  document.addEventListener('DOMContentLoaded', () => {
+    // 1. Update Now (Start Download)
+    const btnDownload = document.getElementById('btnStartDownload');
+    if (btnDownload) {
+      btnDownload.addEventListener('click', () => {
+        showView('updateViewDownloading');
+        document.getElementById('updateProgressTitle').innerText = 'Downloading Update Package...';
+        document.getElementById('updateProgressBar').style.width = '0%';
+        document.getElementById('updateProgressPercent').innerText = '0%';
+
+        fetch('/updater/download/', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(r => r.json())
+        .then(d => {
+          if (d.status === 'ERROR') {
+            document.getElementById('updateErrorMessage').innerText = d.error || 'Failed to start download.';
+            showView('updateViewError');
+          } else {
+            startPollingProgress();
+          }
+        })
+        .catch(err => {
+          document.getElementById('updateErrorMessage').innerText = 'Download error: ' + err;
+          showView('updateViewError');
+        });
+      });
+    }
+
+    // 2. Poll Download & Verification Progress
+    function startPollingProgress() {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(() => {
+        fetch('/updater/progress/')
+          .then(r => r.json())
+          .then(d => {
+            if (d.state === 'DOWNLOADING') {
+              document.getElementById('updateProgressBar').style.width = d.progress_percent + '%';
+              document.getElementById('updateProgressPercent').innerText = d.progress_percent + '%';
+              document.getElementById('updateProgressBytes').innerText = formatBytes(d.downloaded_bytes) + ' / ' + formatBytes(d.download_size);
+              document.getElementById('updateProgressSpeed').innerText = d.download_speed || '';
+              document.getElementById('updateVerificationStatus').innerText = 'Downloading package...';
+            } else if (d.state === 'VERIFYING') {
+              document.getElementById('updateProgressBar').style.width = '100%';
+              document.getElementById('updateProgressPercent').innerText = '100%';
+              document.getElementById('updateProgressTitle').innerText = 'Verifying Integrity & Digital Signature...';
+              document.getElementById('updateVerificationStatus').innerText = 'Checking Ed25519 cryptographic signature against developer public key...';
+            } else if (d.state === 'READY_TO_INSTALL') {
+              clearInterval(pollInterval);
+              showView('updateViewReadyToInstall');
+            } else if (d.state === 'ERROR') {
+              clearInterval(pollInterval);
+              document.getElementById('updateErrorMessage').innerText = d.error_message || 'Update failed.';
+              showView('updateViewError');
+            }
+          })
+          .catch(() => {});
+      }, 600);
+    }
+
+    // 3. Install & Restart
+    const btnInstall = document.getElementById('btnExecuteInstall');
+    if (btnInstall) {
+      btnInstall.addEventListener('click', () => {
+        btnInstall.disabled = true;
+        btnInstall.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Preparing restart...';
+
+        fetch('/updater/install/', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(r => r.json())
+        .then(d => {
+          if (d.status === 'INSTALLING') {
+            document.body.innerHTML = `
+              <div style="height:100vh;display:flex;align-items:center;justify-content:center;background:#1e2a3a;color:white;font-family:sans-serif;">
+                <div style="text-align:center;padding:2rem;">
+                  <div class="spinner-border text-primary mb-3" style="width:3.5rem;height:3.5rem;" role="status"></div>
+                  <h3 style="font-weight:700;">Restarting Finance Wise TBM...</h3>
+                  <p style="color:#94a3b8;font-size:0.95rem;">Applying verified updates. The application will reopen automatically in a moment.</p>
+                </div>
+              </div>
+            `;
+          } else {
+            btnInstall.disabled = false;
+            btnInstall.innerText = 'Install & Restart Now';
+            document.getElementById('updateErrorMessage').innerText = d.error || 'Installation preparation failed.';
+            showView('updateViewError');
+          }
+        })
+        .catch(err => {
+          btnInstall.disabled = false;
+          btnInstall.innerText = 'Install & Restart Now';
+          document.getElementById('updateErrorMessage').innerText = 'Install handover error: ' + err;
+          showView('updateViewError');
+        });
+      });
+    }
+
+    // 4. Remind Me Later
+    const btnRemindLater = document.getElementById('btnRemindLater');
+    if (btnRemindLater) {
+      btnRemindLater.addEventListener('click', () => {
+        fetch('/updater/remind-later/', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ hours: 24 })
+        });
+        const modalEl = document.getElementById('updateModal');
+        if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+      });
+    }
+
+    // 5. Skip This Version
+    const btnSkipVersion = document.getElementById('btnSkipVersion');
+    if (btnSkipVersion) {
+      btnSkipVersion.addEventListener('click', () => {
+        if (activeVersion) {
+          fetch('/updater/skip/', {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCsrfToken(),
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ version: activeVersion })
+          });
+        }
+        const modalEl = document.getElementById('updateModal');
+        if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+      });
+    }
+
+    // 6. Retry Button
+    const btnRetry = document.getElementById('btnRetryUpdate');
+    if (btnRetry) {
+      btnRetry.addEventListener('click', () => {
+        window.checkForUpdatesManual();
+      });
+    }
+
+    // 7. Silent Startup Check (without opening modal unless ready)
+    setTimeout(() => {
+      fetch('/updater/check/?force=0')
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === 'update_available') {
+            const navBadge = document.getElementById('updateNavBadge');
+            if (navBadge) navBadge.classList.remove('d-none');
+            // If not skipped and remind later not active, show modal
+            if (!data.is_skipped) {
+              handleUpdateCheckResponse(data, false);
+            }
+          }
+        })
+        .catch(() => {});
+    }, 2000);
+  });
+})();
+</script>

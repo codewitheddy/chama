@@ -48,6 +48,15 @@ python -m PyInstaller desktop.spec --noconfirm --clean
 if errorlevel 1 ( echo ERROR: PyInstaller build failed & pause & exit /b 1 )
 echo   Executable ready: dist\FinanceWiseTBM\FinanceWiseTBM.exe
 
+:: Ensure zero database or user data in installer payload
+echo   Sanitizing payload (ensuring zero database or user data in installer payload)...
+del /s /q "dist\FinanceWiseTBM\*.sqlite3" >nul 2>&1
+del /s /q "dist\FinanceWiseTBM\*.db" >nul 2>&1
+del /s /q "dist\FinanceWiseTBM\*.log" >nul 2>&1
+del /s /q "dist\FinanceWiseTBM\license.key" >nul 2>&1
+if exist "dist\FinanceWiseTBM\_internal\media" rmdir /s /q "dist\FinanceWiseTBM\_internal\media" >nul 2>&1
+if exist "dist\FinanceWiseTBM\media" rmdir /s /q "dist\FinanceWiseTBM\media" >nul 2>&1
+
 :: ── Step 5: Build Windows Installer ───────────────────────────────
 echo [5/5] Building Windows Installer...
 powershell -NoProfile -ExecutionPolicy Bypass -File "compile_installer.ps1"
@@ -65,7 +74,7 @@ echo.
 echo  ========================================================
 echo   BUILD COMPLETE
 echo   Portable:  dist\FinanceWiseTBM\FinanceWiseTBM.exe
-echo   Installer: installer_output\FinanceWiseTBM_Setup_v1.0.0.exe
+echo   Installer: installer_output\FinanceWiseTBM_Setup_v1.1.0.exe
 echo  ========================================================
 echo.
 pause

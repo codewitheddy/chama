@@ -4,6 +4,7 @@ from decouple import config
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 DEBUG = config('DEBUG', default=False, cast=bool)
+APP_VERSION = '1.1.0'
 
 # Require explicit secret key in production; keep a dev-only fallback for local setup.
 if DEBUG:
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     'utils',
     'expenses',
     'money_movement',
+    'updater',
 ]
 
 MIDDLEWARE = [
@@ -77,6 +79,7 @@ TEMPLATES = [
                 'utils.context_processors.pending_loan_applications',
                 'utils.context_processors.notification_count',
                 'utils.context_processors.pending_transfers',
+                'utils.context_processors.app_version',
             ],
         },
     },
@@ -199,3 +202,9 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
+
+# ── Auto-Update System Configuration ──────────────────────────────
+GITHUB_REPO_OWNER = config('GITHUB_REPO_OWNER', default='codewitheddy')
+GITHUB_REPO_NAME = config('GITHUB_REPO_NAME', default='chama')
+UPDATE_CHANNEL = config('UPDATE_CHANNEL', default='stable')  # 'stable' or 'beta'
+UPDATER_PUBLIC_KEY = config('UPDATER_PUBLIC_KEY', default='6443eae2622048fc21d49c81c5661b1e1a841295bf1295f6dcdaffadc1387827')

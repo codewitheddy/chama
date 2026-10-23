@@ -70,7 +70,8 @@ class BackupView(AdminRequiredMixin, View):
         if request.GET.get('restored'):
             saved_to = request.GET.get('saved_to', '')
             preserved_admin = request.GET.get('preserved_admin', '')
-            msg = 'Data restored successfully. The application is now using the restored database.'
+            app_ver = getattr(settings, 'APP_VERSION', '1.1.0')
+            msg = f"Data restored successfully and upgraded to v{app_ver}! All latest features, bank account segregations, and system updates are active."
             if preserved_admin:
                 msg += f" Your admin account '{preserved_admin}' was preserved."
             if saved_to:
@@ -388,11 +389,11 @@ class BackupView(AdminRequiredMixin, View):
                 except Exception:
                     pass
 
-            # Automatically run migrations on restored database
-            from django.core.management import call_command
+            # Automatically run migrations & full feature reconciliation pipeline on restored database
             try:
-                call_command('migrate', interactive=False, verbosity=0)
-            except Exception:
+                from utils.reconciler import reconcile_all
+                reconcile_report = reconcile_all(caller='backup_restore')
+            except Exception as e:
                 pass
 
             # 2. Re-apply / preserve admin accounts

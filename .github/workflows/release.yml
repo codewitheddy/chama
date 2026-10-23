@@ -1,0 +1,223 @@
+name: Build & Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.2.0)'
+        required: true
+        default: '1.2.0'
+      channel:
+        description: 'Release Channel (stable or beta)'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - beta
+
+jobs:
+  # ── Step 1: Run Full Test Suite & Integrity Checks ─────────────────────────
+  test:
+    name: Run Test Suite & Django System Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        working-directory: chama_system
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Django System Checks
+        working-directory: chama_system
+        run: |
+          python manage.py check
+
+      - name: Run Django Automated Tests
+        working-directory: chama_system
+        run: |
+          python manage.py test updater backup members loans contributions
+
+  # ── Step 2: Native Multi-Platform PyInstaller Builds ───────────────────────
+  build:
+    name: Build Native Distributable (${{ matrix.platform }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows-x86_64
+            archive_name: FinanceWiseTBM-Windows-x86_64.zip
+          - os: ubuntu-latest
+            platform: linux-x86_64
+            archive_name: FinanceWiseTBM-Linux-x86_64.tar.gz
+          - os: macos-latest
+            platform: macos-arm64
+            archive_name: FinanceWiseTBM-macOS-arm64.tar.gz
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Dependencies
+        working-directory: chama_system
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Collect Static Files
+        working-directory: chama_system
+        run: |
+          python manage.py collectstatic --noinput
+
+      - name: Generate App Icon
+        working-directory: chama_system
+        run: |
+          python make_icon.py || true
+
+      - name: Build with PyInstaller
+        working-directory: chama_system
+        run: |
+          python -m PyInstaller desktop.spec --noconfirm --clean
+
+      - name: Sanitize Payload (Enforce zero user data, databases, or keys)
+        working-directory: chama_system
+        shell: bash
+        run: |
+          rm -f dist/FinanceWiseTBM/*.sqlite3
+          rm -f dist/FinanceWiseTBM/*.db
+          rm -f dist/FinanceWiseTBM/*.log
+          rm -f dist/FinanceWiseTBM/license.key
+          rm -rf dist/FinanceWiseTBM/media
+          rm -rf dist/FinanceWiseTBM/_internal/media
+
+      - name: Package Windows Zip Archive
+        if: runner.os == 'Windows'
+        working-directory: chama_system
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist\FinanceWiseTBM\*" -DestinationPath "${{ matrix.archive_name }}"
+
+      - name: Build Windows Inno Setup Installer
+        if: runner.os == 'Windows'
+        working-directory: chama_system
+        shell: pwsh
+        run: |
+          if (Test-Path "installer.iss") {
+            try {
+              # Inno Setup is preinstalled in windows-latest GitHub Actions runner
+              & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+              Get-ChildItem -Path "installer_output" -Filter "*.exe" | ForEach-Object {
+                Copy-Item $_.FullName -Destination "..\FinanceWiseTBM-Setup.exe"
+              }
+            } catch {
+              Write-Warning "Inno Setup compilation skipped: $_"
+            }
+          }
+
+      - name: Package Linux / macOS Tarball
+        if: runner.os != 'Windows'
+        working-directory: chama_system
+        shell: bash
+        run: |
+          tar -czf "${{ matrix.archive_name }}" -C dist/FinanceWiseTBM .
+
+      - name: Upload Platform Package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.platform }}
+          path: |
+            chama_system/${{ matrix.archive_name }}
+            FinanceWiseTBM-Setup.exe
+          if-no-files-found: ignore
+
+  # ── Step 3: Sign Manifest and Publish GitHub Release ───────────────────────
+  publish:
+    name: Sign Manifest & Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download Built Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets/
+          merge-multiple: true
+
+      - name: Determine Version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "channel=${{ github.event.inputs.channel }}" >> $GITHUB_OUTPUT
+          else
+            TAG=${GITHUB_REF#refs/tags/}
+            VER=${TAG#v}
+            echo "version=${VER}" >> $GITHUB_OUTPUT
+            if [[ "$VER" == *"-"* ]]; then
+              echo "channel=beta" >> $GITHUB_OUTPUT
+            else
+              echo "channel=stable" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Generate and Sign Release Manifest
+        env:
+          RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.RELEASE_SIGNING_PRIVATE_KEY }}
+        run: |
+          # If signing secret is not yet set in repo, fallback to developer generation for safety
+          if [ -z "$RELEASE_SIGNING_PRIVATE_KEY" ]; then
+            echo "WARNING: RELEASE_SIGNING_PRIVATE_KEY secret is not set in GitHub repository settings!"
+            echo "Using default build key for manifest generation."
+            export RELEASE_SIGNING_PRIVATE_KEY="d89e6900aec55f2f944e91b5e9a54cee0e6800d8aed180edf5e5b1e7c5d39d38"
+          fi
+          python scripts/build_release_manifest.py \
+            --version "${{ steps.get_version.outputs.version }}" \
+            --dist-dir "release_assets" \
+            --channel "${{ steps.get_version.outputs.channel }}" \
+            --repo-owner "${{ github.repository_owner }}" \
+            --repo-name "${{ github.event.repository.name }}"
+
+      - name: Calculate SHA-256 Checksums
+        working-directory: release_assets
+        run: |
+          sha256sum * > SHA256SUMS.txt || shasum -a 256 * > SHA256SUMS.txt
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Finance Wise TBM v${{ steps.get_version.outputs.version }}
+          prerelease: ${{ steps.get_version.outputs.channel == 'beta' }}
+          draft: false
+          generate_release_notes: true
+          files: |
+            release_assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

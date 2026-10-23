@@ -53,27 +53,46 @@ os.environ['DB_USER']      = ''
 os.environ['DB_PASSWORD']  = ''
 
 if getattr(sys, 'frozen', False):
-    import pathlib, shutil
-    data_dir = pathlib.Path(os.environ.get('APPDATA', APP_DIR)) / 'FinanceWiseTBM'
+    import pathlib, shutil, platform
+    # Persistent user data directory (isolated from application installation files across Windows, Linux, macOS)
+    sys_name = platform.system().lower()
+    home = pathlib.Path.home()
+    if sys_name == 'windows':
+        appdata = os.environ.get('APPDATA')
+        data_dir = (pathlib.Path(appdata) if appdata else home / 'AppData' / 'Roaming') / 'FinanceWiseTBM'
+    elif sys_name == 'darwin':
+        data_dir = home / 'Library' / 'Application Support' / 'FinanceWiseTBM'
+    else:
+        xdg_data = os.environ.get('XDG_DATA_HOME')
+        base = pathlib.Path(xdg_data) if xdg_data else home / '.local' / 'share'
+        data_dir = base / 'FinanceWiseTBM'
     data_dir.mkdir(parents=True, exist_ok=True)
+
+    target_db = data_dir / 'db.sqlite3'
     media_dir = data_dir / 'media'
     media_dir.mkdir(parents=True, exist_ok=True)
-    os.environ['DESKTOP_DB_PATH'] = str(data_dir / 'db.sqlite3')
-    os.environ['DESKTOP_MEDIA_ROOT'] = str(media_dir)
 
-    # Sync bundled media assets from PyInstaller bundle into persistent media directory if missing
-    bundled_media = pathlib.Path(BASE_DIR) / 'media'
-    if bundled_media.exists() and bundled_media.resolve() != media_dir.resolve():
-        for src_path in bundled_media.rglob('*'):
-            if src_path.is_file():
-                rel = src_path.relative_to(bundled_media)
-                dst_path = media_dir / rel
-                if not dst_path.exists():
-                    dst_path.parent.mkdir(parents=True, exist_ok=True)
-                    try:
-                        shutil.copy2(src_path, dst_path)
-                    except Exception:
-                        pass
+    # ── Update & Upgrade Data Preservation ─────────────────────────
+    # If the user updated from an older installation where data might be in
+    # APP_DIR or LOCALAPPDATA, migrate it once into the safe APPDATA location.
+    if not target_db.exists():
+        legacy_locations = [
+            pathlib.Path(APP_DIR) / 'db.sqlite3',
+            pathlib.Path(APP_DIR) / 'Data' / 'db.sqlite3',
+            pathlib.Path(os.environ.get('LOCALAPPDATA', '')) / 'FinanceWiseTBM' / 'db.sqlite3' if os.environ.get('LOCALAPPDATA') else None,
+            pathlib.Path(os.environ.get('PROGRAMDATA', '')) / 'FinanceWiseTBM' / 'db.sqlite3' if os.environ.get('PROGRAMDATA') else None,
+        ]
+        for candidate in legacy_locations:
+            if candidate and candidate.is_file() and candidate.stat().st_size > 0:
+                try:
+                    shutil.copy2(candidate, target_db)
+                    logging.info(f'Preserved user database from legacy location: {candidate} -> {target_db}')
+                    break
+                except Exception as e:
+                    logging.warning(f'Could not migrate legacy database from {candidate}: {e}')
+
+    os.environ['DESKTOP_DB_PATH'] = str(target_db)
+    os.environ['DESKTOP_MEDIA_ROOT'] = str(media_dir)
 else:
     import pathlib
     data_dir = pathlib.Path(BASE_DIR)
@@ -83,11 +102,28 @@ else:
 import django
 django.setup()
 
-from django.core.management import call_command
+# ── Database Migration & Compatibility Reconciler ─────────────────
+# Ensures legacy databases automatically receive all latest migrations,
+# welfare bank segregation, and system settings seamlessly on startup.
 try:
-    call_command('migrate', verbosity=0, interactive=False)
+    from utils.reconciler import reconcile_all
+    reconcile_all(caller='desktop_startup')
 except Exception as e:
-    logging.warning(f'Migration warning (non-fatal): {e}')
+    logging.warning(f'Reconciler warning (non-fatal): {e}')
+
+# ── Health check endpoint for updater verification ────────────────
+if '--health-check' in sys.argv:
+    from django.core.management import call_command
+    from django.db import connection
+    try:
+        call_command('check', verbosity=0)
+        with connection.cursor() as cur:
+            cur.execute('SELECT 1;')
+        print('HEALTH_OK')
+        sys.exit(0)
+    except Exception as exc:
+        print(f'HEALTH_CHECK_FAILED: {exc}', file=sys.stderr)
+        sys.exit(1)
 
 
 # ── Server helpers ────────────────────────────────────────────────
@@ -401,6 +437,13 @@ def main():
         title = SystemSetting.get('group_name', 'Finance Wise TBM')
     except Exception:
         title = 'Finance Wise TBM'
+
+    # ── Non-blocking background check for updates on startup ───────
+    try:
+        from updater.services import UpdateService
+        UpdateService().check_for_updates_async()
+    except Exception as exc:
+        logging.info(f"Background update check notice: {exc}")
 
     # ── Strategy 1: pywebview on the main thread ──────────────────
     if _pywebview_available():

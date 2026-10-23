@@ -8,7 +8,7 @@
 
 #define AppName      "Finance Wise TBM"
 #define AppPublisher "Finance Wise"
-#define AppVersion   "1.0.0"
+#define AppVersion   "1.1.0"
 #define AppExeName   "FinanceWiseTBM.exe"
 #define AppId        "{{A3F8D2C1-7E4B-4A9F-B2D3-8C5E1F6A0B7D}"
 #define SourceDir    "dist\FinanceWiseTBM"
@@ -30,6 +30,9 @@ VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#AppName}
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription={#AppName} Installer
+
+; Documentation & Changelog
+InfoBeforeFile=CHANGELOG.txt
 
 ; Install location
 DefaultDirName={autopf}\{#AppName}
@@ -71,8 +74,8 @@ Name: "desktopicon";   Description: "Create a &desktop shortcut";      GroupDesc
 Name: "startupicon";   Description: "Start automatically at &login";   GroupDescription: "Additional icons:"; Flags: unchecked
 
 [Files]
-; ── Main application bundle ──────────────────────────────────────
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; ── Main application bundle (strictly no databases, user uploads, logs or keys) ──
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.sqlite3,*.db,*.sqlite,*.log,*.bak,*.tmp,license.key,media\*,backups\*"
 
 ; ── Installer icon ───────────────────────────────────────────────
 Source: "app.ico"; DestDir: "{app}"; Flags: ignoreversion
@@ -112,6 +115,10 @@ Filename: "{app}\{#AppExeName}"; \
 Filename: "taskkill.exe"; Parameters: "/F /IM {#AppExeName}"; Flags: runhidden skipifdoesntexist; RunOnceId: "KillApp"
 
 [Code]
+var
+  UpgradeOptionPage: TInputOptionWizardPage;
+  IsExistingInstallDetected: Boolean;
+
 // ── Pre-install: kill running instance gracefully ────────────────
 function InitializeSetup(): Boolean;
 var
@@ -129,6 +136,88 @@ begin
       Sleep(1500);
     end else begin
       Result := False;
+    end;
+  end;
+end;
+
+// ── Wizard initialization & Upgrade vs Fresh install selection ───
+procedure InitializeWizard();
+var
+  UserDataDir: String;
+  PrevAppDir: String;
+begin
+  UserDataDir := ExpandConstant('{userappdata}\FinanceWiseTBM');
+
+  // Detect whether previous installation or database exists
+  IsExistingInstallDetected := False;
+  if RegKeyExists(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#AppId}_is1') then
+    IsExistingInstallDetected := True;
+  if RegQueryStringValue(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#AppId}_is1', 'InstallLocation', PrevAppDir) then
+    IsExistingInstallDetected := True;
+  if FileExists(UserDataDir + '\db.sqlite3') or DirExists(UserDataDir) then
+    IsExistingInstallDetected := True;
+
+  // Create interactive page if existing installation was found
+  UpgradeOptionPage := CreateInputOptionPage(
+    wpInfoBefore,
+    'Installation Mode',
+    'An existing installation was detected on your computer.',
+    'Setup detected an existing installation or database for {#AppName}.' + #13#10 +
+    'Please choose how you would like Setup to proceed:',
+    True, False);
+
+  UpgradeOptionPage.Add(
+    'Update installed application (Recommended - Preserves all data)' + #13#10 +
+    '   Upgrades app to {#AppVersion}. All members, loans, welfare funds, and settings are preserved.'
+  );
+  UpgradeOptionPage.Add(
+    'Clean fresh install (Erase and destroy previous data)' + #13#10 +
+    '   Permanently deletes previous database, uploads & settings to start completely fresh.'
+  );
+
+  // Default: Update (Preserve Data)
+  UpgradeOptionPage.SelectedValueIndex := 0;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  // If no previous installation or data is detected, skip the upgrade choice page
+  if (UpgradeOptionPage <> nil) and (PageID = UpgradeOptionPage.ID) and (not IsExistingInstallDetected) then
+    Result := True;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if (UpgradeOptionPage <> nil) and (CurPageID = UpgradeOptionPage.ID) then begin
+    if UpgradeOptionPage.SelectedValueIndex = 1 then begin
+      if MsgBox(
+        'WARNING: You have selected "Clean fresh install".' + #13#10#13#10 +
+        'This will PERMANENTLY ERASE all existing Chama financial records, members, loans, and settings!' + #13#10#13#10 +
+        'Are you absolutely sure you want to destroy the existing data and start completely fresh?',
+        mbCriticalError, MB_YESNO) = IDNO then
+      begin
+        Result := False;
+      end;
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  DataDir: String;
+  CommonDir: String;
+begin
+  if CurStep = ssInstall then begin
+    // If the user explicitly chose to destroy previous data:
+    if IsExistingInstallDetected and (UpgradeOptionPage <> nil) and (UpgradeOptionPage.SelectedValueIndex = 1) then begin
+      DataDir := ExpandConstant('{userappdata}\FinanceWiseTBM');
+      CommonDir := ExpandConstant('{commonappdata}\FinanceWiseTBM');
+      if DirExists(DataDir) then
+        DelTree(DataDir, True, True, True);
+      if DirExists(CommonDir) then
+        DelTree(CommonDir, True, True, True);
     end;
   end;
 end;

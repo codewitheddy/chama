@@ -129,6 +129,30 @@
             </div>
         </div>
     </div>
+{% else %}
+<div class="card shadow-sm border-0 mb-3" style="border-radius:14px; background:linear-gradient(135deg, #f8fafc 0%, #fffbeb 100%); border:1.5px dashed #f59e0b;">
+    <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width:44px;height:44px;border-radius:12px;background:#fef3c7;display:flex;align-items:center;justify-content:center;color:#d97706;">
+                    <i class="bi bi-bank2 fs-5"></i>
+                </div>
+                <div>
+                    <h6 class="mb-0 fw-bold text-dark" style="font-size:0.95rem;">Dedicated Welfare Bank Account</h6>
+                    <div class="text-muted small mt-0.5">
+                        Keep welfare funds completely segregated from group lending by designating or adding a bank account for Welfare.
+                    </div>
+                </div>
+            </div>
+            {% if user.profile.role != 'readonly' %}
+            <div class="d-flex gap-2">
+                <a href="{% url 'bank_accounts:list' %}" class="btn btn-sm btn-outline-warning text-dark fw-semibold px-3 py-1.5" style="border-radius:8px;background:#fff;">
+                    <i class="bi bi-gear-fill me-1"></i>Configure Bank Accounts
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 {% endif %}
 
