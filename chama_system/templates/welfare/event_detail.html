@@ -88,6 +88,29 @@
         overflow: hidden;
         display: flex;
     }
+    .action-buttons-group {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        flex-wrap: nowrap;
+    }
+    .event-action-btn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        transition: all 0.15s ease-in-out;
+        flex-shrink: 0;
+    }
+    .event-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
 </style>
 {% endblock %}
 
@@ -357,12 +380,12 @@
             </div>
             {% if user.profile.role != 'readonly' %}
             <div class="col-md-2 text-md-end">
-                <div class="btn-group btn-group-sm">
-                    <a href="{% url 'welfare:disbursement_edit' disbursement.pk %}" class="btn btn-outline-secondary" title="Edit Disbursement">
+                <div class="action-buttons-group">
+                    <a href="{% url 'welfare:disbursement_edit' disbursement.pk %}" class="btn btn-outline-secondary event-action-btn" title="Edit Disbursement">
                         <i class="bi bi-pencil"></i>
                     </a>
                     {% if user.profile.is_admin %}
-                    <a href="{% url 'welfare:disbursement_delete' disbursement.pk %}" class="btn btn-outline-danger" title="Delete Disbursement">
+                    <a href="{% url 'welfare:disbursement_delete' disbursement.pk %}" class="btn btn-outline-danger event-action-btn" title="Delete Disbursement">
                         <i class="bi bi-trash"></i>
                     </a>
                     {% endif %}
@@ -447,12 +470,12 @@
                     </td>
                     <td class="text-end pe-3">
                         {% if user.profile.role != 'readonly' %}
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'welfare:support_edit' sc.pk %}" class="btn btn-outline-secondary" title="Edit Contribution">
+                        <div class="action-buttons-group">
+                            <a href="{% url 'welfare:support_edit' sc.pk %}" class="btn btn-outline-secondary event-action-btn" title="Edit Contribution">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             {% if user.profile.is_admin %}
-                            <a href="{% url 'welfare:support_delete' sc.pk %}" class="btn btn-outline-danger" title="Delete Contribution">
+                            <a href="{% url 'welfare:support_delete' sc.pk %}" class="btn btn-outline-danger event-action-btn" title="Delete Contribution">
                                 <i class="bi bi-trash"></i>
                             </a>
                             {% endif %}
@@ -600,12 +623,12 @@
                     </td>
                     <td class="text-end pe-3">
                         {% if user.profile.role != 'readonly' %}
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'welfare:external_support_edit' es.pk %}" class="btn btn-outline-secondary" title="Edit External Support">
+                        <div class="action-buttons-group">
+                            <a href="{% url 'welfare:external_support_edit' es.pk %}" class="btn btn-outline-secondary event-action-btn" title="Edit External Support">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             {% if user.profile.is_admin %}
-                            <a href="{% url 'welfare:external_support_delete' es.pk %}" class="btn btn-outline-danger" title="Delete External Support">
+                            <a href="{% url 'welfare:external_support_delete' es.pk %}" class="btn btn-outline-danger event-action-btn" title="Delete External Support">
                                 <i class="bi bi-trash"></i>
                             </a>
                             {% endif %}

@@ -123,6 +123,31 @@
         border: 1px solid #e2e8f0;
         background: #ffffff;
     }
+
+    /* Action Buttons Spacing & Styling */
+    .action-buttons-group {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        flex-wrap: nowrap;
+    }
+    .event-action-btn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        transition: all 0.15s ease-in-out;
+        flex-shrink: 0;
+    }
+    .event-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
 </style>
 {% endblock %}
 
@@ -361,7 +386,7 @@
                         <th style="min-width: 130px;">Date Opened</th>
                         <th style="min-width: 120px;">Status</th>
                         <th style="min-width: 200px;">Support Mobilized</th>
-                        <th style="width: 150px;" class="text-end pe-3">Actions</th>
+                        <th style="min-width: 180px;" class="text-end pe-3">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -456,36 +481,36 @@
 
                         <!-- Action Buttons -->
                         <td class="text-end pe-3">
-                            <div class="btn-group btn-group-sm shadow-2xs">
-                                <a href="{% url 'welfare:event_detail' event.pk %}" class="btn btn-outline-primary" title="View Event &amp; Contributions">
+                            <div class="action-buttons-group">
+                                <a href="{% url 'welfare:event_detail' event.pk %}" class="btn btn-outline-primary event-action-btn" title="View Event &amp; Contributions">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {% if user.profile.role != 'readonly' %}
                                 {% if event.status == 'open' %}
-                                <form method="post" action="{% url 'welfare:event_close' event.pk %}" class="d-inline" onsubmit="return confirm('Are you sure you want to close the welfare event for {{ event.beneficiary.name }}?');">
+                                <form method="post" action="{% url 'welfare:event_close' event.pk %}" class="d-inline m-0 p-0" onsubmit="return confirm('Are you sure you want to close the welfare event for {{ event.beneficiary.name }}?');">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <button type="submit" class="btn btn-outline-danger" title="Close &amp; Resolve Event">
+                                    <button type="submit" class="btn btn-outline-danger event-action-btn" title="Close &amp; Resolve Event">
                                         <i class="bi bi-check2-circle"></i>
                                     </button>
                                 </form>
                                 {% else %}
-                                <form method="post" action="{% url 'welfare:event_reopen' event.pk %}" class="d-inline" onsubmit="return confirm('Are you sure you want to reopen the welfare event for {{ event.beneficiary.name }}?');">
+                                <form method="post" action="{% url 'welfare:event_reopen' event.pk %}" class="d-inline m-0 p-0" onsubmit="return confirm('Are you sure you want to reopen the welfare event for {{ event.beneficiary.name }}?');">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <button type="submit" class="btn btn-outline-success" title="Reopen Event">
+                                    <button type="submit" class="btn btn-outline-success event-action-btn" title="Reopen Event">
                                         <i class="bi bi-arrow-counterclockwise"></i>
                                     </button>
                                 </form>
                                 {% endif %}
-                                <a href="{% url 'welfare:event_edit' event.pk %}" class="btn btn-outline-secondary" title="Edit Event Details">
+                                <a href="{% url 'welfare:event_edit' event.pk %}" class="btn btn-outline-secondary event-action-btn" title="Edit Event Details">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <a href="{% url 'welfare:event_export' event.pk %}" class="btn btn-outline-danger" title="Export Event PDF Summary">
+                                <a href="{% url 'welfare:event_export' event.pk %}" class="btn btn-outline-danger event-action-btn" title="Export Event PDF Summary">
                                     <i class="bi bi-filetype-pdf"></i>
                                 </a>
                                 {% if user.profile.is_admin %}
-                                <a href="{% url 'welfare:event_delete' event.pk %}" class="btn btn-outline-danger" title="Delete Event (Admin only)">
+                                <a href="{% url 'welfare:event_delete' event.pk %}" class="btn btn-outline-danger event-action-btn" title="Delete Event (Admin only)">
                                     <i class="bi bi-trash"></i>
                                 </a>
                                 {% endif %}
