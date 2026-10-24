@@ -37,6 +37,19 @@ def check_updates_api(request: HttpRequest) -> JsonResponse:
     channel = request.GET.get("channel", "").strip() or None
     service = _get_service()
     data = service.check_for_updates(channel=channel, force=force)
+
+    # Enrich response with comprehensive app & platform information
+    from .version import get_platform_info, get_installed_version
+    from .github import get_repo_owner, get_repo_name, get_default_channel
+    plat = get_platform_info()
+    data["app_name"] = "Finance Wise TBM"
+    data["installed_version"] = str(get_installed_version())
+    data["repo_owner"] = get_repo_owner()
+    data["repo_name"] = get_repo_name()
+    data["channel"] = channel or get_default_channel()
+    data["platform"] = f"{plat['os'].capitalize()} ({plat['arch']})"
+    if "status" not in data or not data["status"]:
+        data["status"] = "update_available" if data.get("update_available") else "up_to_date"
     return JsonResponse(data)
 
 

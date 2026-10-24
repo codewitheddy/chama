@@ -52,6 +52,7 @@ STATE_ERROR = "ERROR"
 @dataclass
 class UpdateStatus:
     state: str = STATE_IDLE
+    status: str = "idle"
     current_version: str = "1.1.0"
     latest_version: str = "1.1.0"
     update_available: bool = False
@@ -62,6 +63,7 @@ class UpdateStatus:
     progress_percent: float = 0.0
     download_speed: str = ""
     error_message: str = ""
+    error: str = ""
     is_skipped: bool = False
     asset_filename: str = ""
     package_type: str = "archive"
@@ -147,10 +149,24 @@ class UpdateService:
                 self._active_manifest = res["manifest"]
                 self._active_asset = res["asset"]
 
-                if res["error"]:
+                if res.get("status") == "offline":
+                    self.status.state = "OFFLINE"
+                    self.status.status = "offline"
+                    self.status.error_message = res.get("error") or "Offline mode"
+                    self.status.error = self.status.error_message
+                elif res.get("status") == "rate_limited":
+                    self.status.state = "RATE_LIMITED"
+                    self.status.status = "rate_limited"
+                    self.status.error_message = res.get("error") or "Rate limit exceeded"
+                    self.status.error = self.status.error_message
+                elif res.get("error"):
                     self.status.state = STATE_ERROR
+                    self.status.status = "error"
                     self.status.error_message = res["error"]
-                elif res["update_available"]:
+                    self.status.error = res["error"]
+                elif res.get("update_available"):
+                    self.status.state = STATE_AVAILABLE
+                    self.status.status = "update_available"
                     skipped = self.get_skipped_version()
                     remind_until = self.get_remind_later_until()
 
@@ -169,6 +185,7 @@ class UpdateService:
                         self.status.package_type = self._active_asset.package_type
                 else:
                     self.status.state = STATE_UP_TO_DATE
+                    self.status.status = "up_to_date"
 
             return asdict(self.status)
         except Exception as e:

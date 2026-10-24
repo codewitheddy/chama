@@ -11,7 +11,7 @@
           </div>
           <div>
             <h5 class="modal-title fw-bold mb-0" id="updateModalLabel">Finance Wise TBM Software Update</h5>
-            <small class="text-white-50">Cross-Platform Auto-Update & Integrity Verification</small>
+            <small class="text-white-50">Cross-Platform Auto-Update &amp; Integrity Verification</small>
           </div>
         </div>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="updateModalCloseBtn"></button>
@@ -23,20 +23,73 @@
         <!-- View: Checking -->
         <div id="updateViewChecking" class="text-center py-4">
           <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;" role="status">
-            <span class="visually-hidden">Loading...</span>
+            <span class="visually-hidden">Checking...</span>
           </div>
-          <h6 class="fw-bold text-dark">Checking for latest stable releases...</h6>
-          <p class="text-muted small mb-0">Querying GitHub REST API and verifying digital release manifests.</p>
+          <h5 class="fw-bold text-dark mb-1">Checking for Software Updates...</h5>
+          <p class="text-muted small mb-3">Connecting to GitHub Releases and verifying release integrity.</p>
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-1.5 bg-white border rounded-pill shadow-sm small text-muted">
+            <span class="spinner-grow spinner-grow-sm text-primary" role="status"></span>
+            Finance Wise TBM v{{ app_version|default:'1.1.0' }} &bull; codewitheddy/chama
+          </div>
         </div>
 
         <!-- View: Up to Date -->
-        <div id="updateViewUpToDate" class="text-center py-4 d-none">
-          <div class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center mb-3" style="width:60px;height:60px;">
-            <i class="bi bi-check-circle-fill fs-2"></i>
+        <div id="updateViewUpToDate" class="py-2 d-none">
+          <div class="text-center mb-3">
+            <div class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center mb-2" style="width:56px;height:56px;">
+              <i class="bi bi-patch-check-fill fs-2"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">Your Application is Up to Date</h5>
+            <p class="text-muted small mb-0">You are running the latest verified release of Finance Wise TBM.</p>
           </div>
-          <h5 class="fw-bold text-dark mb-1">You're Up to Date!</h5>
-          <p class="text-muted small mb-3">Finance Wise TBM <span class="badge bg-secondary" id="upToDateVerBadge">v{{ app_version|default:'1.1.0' }}</span> is currently the latest version.</p>
-          <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Close</button>
+
+          <!-- Application System Information Card -->
+          <div class="card border-0 shadow-sm rounded-3 p-3 mb-3" style="background:#ffffff;">
+            <h6 class="fw-bold text-secondary text-uppercase small mb-3 border-bottom pb-2">
+              <i class="bi bi-info-circle me-1"></i>Application Information
+            </h6>
+            <div class="row g-2 small">
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Application:</span>
+                <strong class="text-dark" id="infoAppName">Finance Wise TBM</strong>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Installed Version:</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" id="upToDateVerBadge">v{{ app_version|default:'1.1.0' }}</span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Latest Available on GitHub:</span>
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1" id="infoLatestVer">v{{ app_version|default:'1.1.0' }}</span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Release Channel:</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" id="infoChannel">Stable Channel</span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Target Repository:</span>
+                <a href="https://github.com/codewitheddy/chama" target="_blank" class="text-decoration-none fw-medium" id="infoRepoLink">
+                  <i class="bi bi-github me-1"></i><span id="infoRepoText">codewitheddy/chama</span>
+                </a>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Environment / Platform:</span>
+                <span class="text-dark fw-medium" id="infoPlatform">Windows (x86_64)</span>
+              </div>
+              <div class="col-12 mt-2 pt-2 border-top">
+                <span class="text-muted d-block">Local Banking Data Protection:</span>
+                <span class="text-success small fw-medium">
+                  <i class="bi bi-shield-check me-1"></i>Active SQLite database strictly isolated outside app folder in user data directory.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCheckAgain">
+              <i class="bi bi-arrow-clockwise me-1"></i>Check Again
+            </button>
+            <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Close</button>
+          </div>
         </div>
 
         <!-- View: Offline / Rate Limited -->
@@ -48,7 +101,28 @@
           <p class="text-muted small mb-3 px-md-5" id="updateOfflineMsg">
             Unable to connect to GitHub releases. Your local banking data and offline transactions continue to operate normally.
           </p>
-          <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Continue Working</button>
+
+          <div class="card border-0 shadow-sm rounded-3 p-3 mb-3 text-start bg-white small">
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted">Application:</span>
+              <strong class="text-dark">Finance Wise TBM</strong>
+            </div>
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted">Installed Version:</span>
+              <strong class="text-dark">v{{ app_version|default:'1.1.0' }}</strong>
+            </div>
+            <div class="d-flex justify-content-between py-1">
+              <span class="text-muted">Repository:</span>
+              <span>codewitheddy/chama</span>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRetryOffline">
+              <i class="bi bi-arrow-clockwise me-1"></i>Retry
+            </button>
+            <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Continue Working</button>
+          </div>
         </div>
 
         <!-- View: Update Available -->
@@ -241,27 +315,85 @@
       .then(data => handleUpdateCheckResponse(data, true))
       .catch(err => {
         showView('updateViewOffline');
-        document.getElementById('updateOfflineTitle').innerText = 'Connection Error';
-        document.getElementById('updateOfflineMsg').innerText = 'Could not reach local updater service: ' + err;
+        const offTitle = document.getElementById('updateOfflineTitle');
+        const offMsg = document.getElementById('updateOfflineMsg');
+        if (offTitle) offTitle.innerText = 'Connection Error';
+        if (offMsg) offMsg.innerText = 'Could not reach local updater service: ' + err;
       });
   };
 
   function handleUpdateCheckResponse(data, isManual) {
-    if (data.status === 'offline' || data.status === 'rate_limited') {
+    const rawStatus = (data.status || data.state || '').toLowerCase();
+
+    // Dynamically populate app information labels
+    if (data.app_name && document.getElementById('infoAppName')) {
+      document.getElementById('infoAppName').innerText = data.app_name;
+    }
+    const currentVer = data.installed_version || data.current_version || '1.1.0';
+    if (document.getElementById('upToDateVerBadge')) {
+      document.getElementById('upToDateVerBadge').innerText = 'v' + currentVer;
+    }
+    if (document.getElementById('updateCurrentVerText')) {
+      document.getElementById('updateCurrentVerText').innerText = 'v' + currentVer;
+    }
+
+    const latestVer = data.latest_version || currentVer;
+    if (document.getElementById('infoLatestVer')) {
+      document.getElementById('infoLatestVer').innerText = 'v' + latestVer;
+    }
+    if (document.getElementById('updateLatestVerText')) {
+      document.getElementById('updateLatestVerText').innerText = 'v' + latestVer;
+    }
+
+    if (data.channel && document.getElementById('infoChannel')) {
+      document.getElementById('infoChannel').innerText = (data.channel === 'beta' ? 'Beta Channel' : 'Stable Channel');
+    }
+
+    if (data.repo_owner && data.repo_name && document.getElementById('infoRepoText')) {
+      document.getElementById('infoRepoText').innerText = data.repo_owner + '/' + data.repo_name;
+      if (document.getElementById('infoRepoLink')) {
+        document.getElementById('infoRepoLink').href = 'https://github.com/' + data.repo_owner + '/' + data.repo_name;
+      }
+    }
+
+    if (data.platform && document.getElementById('infoPlatform')) {
+      document.getElementById('infoPlatform').innerText = data.platform;
+    }
+
+    // 1. Offline Mode
+    if (rawStatus === 'offline') {
       showView('updateViewOffline');
-      document.getElementById('updateOfflineTitle').innerText = data.status === 'offline' ? 'Offline Mode' : 'Rate Limited';
-      document.getElementById('updateOfflineMsg').innerText = data.error || 'GitHub unavailable.';
+      const offTitle = document.getElementById('updateOfflineTitle');
+      const offMsg = document.getElementById('updateOfflineMsg');
+      if (offTitle) offTitle.innerText = 'Offline Mode';
+      if (offMsg) offMsg.innerText = data.error_message || data.error || 'Internet or GitHub service unreachable. Application running normally in offline mode.';
       return;
     }
 
-    if (data.status === 'update_available') {
+    // 2. Rate Limited
+    if (rawStatus === 'rate_limited') {
+      showView('updateViewOffline');
+      const offTitle = document.getElementById('updateOfflineTitle');
+      const offMsg = document.getElementById('updateOfflineMsg');
+      if (offTitle) offTitle.innerText = 'GitHub Rate Limited';
+      if (offMsg) offMsg.innerText = data.error_message || data.error || 'GitHub API rate limit reached. Please check back later.';
+      return;
+    }
+
+    // 3. Update Available
+    if (data.update_available === true || rawStatus === 'update_available' || rawStatus === 'available') {
       activeVersion = data.latest_version;
-      document.getElementById('updateLatestVerText').innerText = 'v' + data.latest_version;
-      document.getElementById('updateCurrentVerText').innerText = 'v' + data.current_version;
       document.getElementById('updateSizeText').innerText = formatBytes(data.download_size);
       document.getElementById('updateReleaseNotes').innerHTML = data.release_notes ? 
         '<div style="white-space:pre-wrap;">' + escapeHtml(data.release_notes) + '</div>' : 
-        '<em>General performance and security improvements.</em>';
+        '<em>General performance, stability, and security improvements.</em>';
+
+      if (data.release_date && document.getElementById('updateDateText')) {
+        try {
+          const d = new Date(data.release_date);
+          document.getElementById('updateDateText').innerText = d.toLocaleDateString();
+        } catch(e) {}
+      }
 
       // Update nav badges if available
       const navBadge = document.getElementById('updateNavBadge');
@@ -272,21 +404,18 @@
       showView('updateViewAvailable');
 
       if (!isManual && !data.is_skipped) {
-        // Show gentle modal on startup if not skipped
         const modalEl = document.getElementById('updateModal');
         if (modalEl) {
           const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
           bsModal.show();
         }
       }
-    } else if (data.status === 'up_to_date') {
-      if (isManual) {
-        document.getElementById('upToDateVerBadge').innerText = 'v' + data.current_version;
-        showView('updateViewUpToDate');
-      }
-    } else if (data.status === 'ERROR') {
-      document.getElementById('updateErrorMessage').innerText = data.error || 'Update check encountered an error.';
+    } else if (rawStatus === 'error') {
+      document.getElementById('updateErrorMessage').innerText = data.error_message || data.error || 'Update check encountered an error.';
       showView('updateViewError');
+    } else {
+      // 4. Up to Date (Default state when no update is needed)
+      showView('updateViewUpToDate');
     }
   }
 
@@ -298,7 +427,17 @@
 
   // Bind Buttons
   document.addEventListener('DOMContentLoaded', () => {
-    // 1. Update Now (Start Download)
+    // 1. Check Again Buttons
+    const btnCheckAgain = document.getElementById('btnCheckAgain');
+    if (btnCheckAgain) {
+      btnCheckAgain.addEventListener('click', (e) => window.checkForUpdatesManual(e));
+    }
+    const btnRetryOffline = document.getElementById('btnRetryOffline');
+    if (btnRetryOffline) {
+      btnRetryOffline.addEventListener('click', (e) => window.checkForUpdatesManual(e));
+    }
+
+    // 2. Update Now (Start Download)
     const btnDownload = document.getElementById('btnStartDownload');
     if (btnDownload) {
       btnDownload.addEventListener('click', () => {
@@ -330,30 +469,31 @@
       });
     }
 
-    // 2. Poll Download & Verification Progress
+    // 3. Poll Download & Verification Progress
     function startPollingProgress() {
       if (pollInterval) clearInterval(pollInterval);
       pollInterval = setInterval(() => {
         fetch('/updater/progress/')
           .then(r => r.json())
           .then(d => {
-            if (d.state === 'DOWNLOADING') {
+            const curState = (d.state || d.status || '').toUpperCase();
+            if (curState === 'DOWNLOADING') {
               document.getElementById('updateProgressBar').style.width = d.progress_percent + '%';
               document.getElementById('updateProgressPercent').innerText = d.progress_percent + '%';
               document.getElementById('updateProgressBytes').innerText = formatBytes(d.downloaded_bytes) + ' / ' + formatBytes(d.download_size);
               document.getElementById('updateProgressSpeed').innerText = d.download_speed || '';
               document.getElementById('updateVerificationStatus').innerText = 'Downloading package...';
-            } else if (d.state === 'VERIFYING') {
+            } else if (curState === 'VERIFYING') {
               document.getElementById('updateProgressBar').style.width = '100%';
               document.getElementById('updateProgressPercent').innerText = '100%';
               document.getElementById('updateProgressTitle').innerText = 'Verifying Integrity & Digital Signature...';
               document.getElementById('updateVerificationStatus').innerText = 'Checking Ed25519 cryptographic signature against developer public key...';
-            } else if (d.state === 'READY_TO_INSTALL') {
+            } else if (curState === 'READY_TO_INSTALL') {
               clearInterval(pollInterval);
               showView('updateViewReadyToInstall');
-            } else if (d.state === 'ERROR') {
+            } else if (curState === 'ERROR') {
               clearInterval(pollInterval);
-              document.getElementById('updateErrorMessage').innerText = d.error_message || 'Update failed.';
+              document.getElementById('updateErrorMessage').innerText = d.error_message || d.error || 'Update failed.';
               showView('updateViewError');
             }
           })
@@ -361,7 +501,7 @@
       }, 600);
     }
 
-    // 3. Install & Restart
+    // 4. Install & Restart
     const btnInstall = document.getElementById('btnExecuteInstall');
     if (btnInstall) {
       btnInstall.addEventListener('click', () => {
@@ -403,7 +543,7 @@
       });
     }
 
-    // 4. Remind Me Later
+    // 5. Remind Me Later
     const btnRemindLater = document.getElementById('btnRemindLater');
     if (btnRemindLater) {
       btnRemindLater.addEventListener('click', () => {
@@ -420,7 +560,7 @@
       });
     }
 
-    // 5. Skip This Version
+    // 6. Skip This Version
     const btnSkipVersion = document.getElementById('btnSkipVersion');
     if (btnSkipVersion) {
       btnSkipVersion.addEventListener('click', () => {
@@ -439,7 +579,7 @@
       });
     }
 
-    // 6. Retry Button
+    // 7. Retry Button
     const btnRetry = document.getElementById('btnRetryUpdate');
     if (btnRetry) {
       btnRetry.addEventListener('click', () => {
@@ -447,24 +587,23 @@
       });
     }
 
-    // 7. Silent Startup Check (without opening modal unless ready)
+    // 8. Silent Startup Check (without opening modal unless ready)
     setTimeout(() => {
       fetch('/updater/check/?force=0')
         .then(r => r.json())
         .then(data => {
-          if (data.status === 'update_available') {
+          if (data.update_available === true) {
             const navBadge = document.getElementById('updateNavBadge');
             if (navBadge) navBadge.classList.remove('d-none');
             const globalBadge = document.getElementById('globalUpdateBadge');
             if (globalBadge) globalBadge.classList.remove('d-none');
-            // If not skipped and remind later not active, show modal
             if (!data.is_skipped) {
               handleUpdateCheckResponse(data, false);
             }
           }
         })
         .catch(() => {});
-    }, 2000);
+    }, 2500);
   });
 })();
 </script>
