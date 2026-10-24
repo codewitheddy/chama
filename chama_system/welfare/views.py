@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.db import IntegrityError, transaction
 from django.db.models import Sum, Q
+from django.core.paginator import Paginator
 from decimal import Decimal
 from datetime import date
 
@@ -783,6 +784,21 @@ class WelfareEventListView(MemberAccessMixin, ListView):
         years_qs = WelfareEvent.objects.dates('date_opened', 'year', order='DESC')
         ctx['years'] = [d.year for d in years_qs]
 
+        # Elided page range for clean, accessible pagination
+        page_obj = ctx.get('page_obj')
+        paginator = ctx.get('paginator')
+        if page_obj and paginator and paginator.num_pages > 1:
+            try:
+                ctx['page_range'] = paginator.get_elided_page_range(
+                    number=page_obj.number,
+                    on_each_side=2,
+                    on_ends=1,
+                )
+            except Exception:
+                ctx['page_range'] = paginator.page_range
+        elif paginator:
+            ctx['page_range'] = paginator.page_range
+
         return ctx
 
 
@@ -825,13 +841,60 @@ class WelfareEventDetailView(MemberAccessMixin, DetailView):
             ctx['disbursement'] = event.disbursement
         except WelfareDisbursement.DoesNotExist:
             ctx['disbursement'] = None
-        ctx['support_contributions'] = (
-            event.support_contributions.select_related('contributor').order_by('-date')
-        )
-        ctx['external_support'] = (
-            event.external_support.order_by('-date')
-        )
+
+        # Member support contributions with pagination (10 per page)
+        support_qs = event.support_contributions.select_related('contributor').order_by('-date', '-pk')
+        support_paginator = Paginator(support_qs, 10)
+        support_page_num = self.request.GET.get('support_page', 1)
+        support_page_obj = support_paginator.get_page(support_page_num)
+        ctx['support_contributions'] = support_page_obj
+        ctx['support_page_obj'] = support_page_obj
+        ctx['support_paginator'] = support_paginator
+        ctx['support_total_count'] = support_qs.count()
+        ctx['support_total'] = event.support_total
+        if support_paginator.num_pages > 1:
+            try:
+                ctx['support_page_range'] = support_paginator.get_elided_page_range(
+                    number=support_page_obj.number, on_each_side=1, on_ends=1
+                )
+            except Exception:
+                ctx['support_page_range'] = support_paginator.page_range
+        else:
+            ctx['support_page_range'] = support_paginator.page_range
+
+        # External support with pagination (10 per page)
+        ext_qs = event.external_support.order_by('-date', '-pk')
+        ext_paginator = Paginator(ext_qs, 10)
+        ext_page_num = self.request.GET.get('ext_page', 1)
+        ext_page_obj = ext_paginator.get_page(ext_page_num)
+        ctx['external_support'] = ext_page_obj
+        ctx['ext_page_obj'] = ext_page_obj
+        ctx['ext_paginator'] = ext_paginator
+        ctx['external_total_count'] = ext_qs.count()
+        ctx['external_support_total'] = event.external_support_total
+        if ext_paginator.num_pages > 1:
+            try:
+                ctx['ext_page_range'] = ext_paginator.get_elided_page_range(
+                    number=ext_page_obj.number, on_each_side=1, on_ends=1
+                )
+            except Exception:
+                ctx['ext_page_range'] = ext_paginator.page_range
+        else:
+            ctx['ext_page_range'] = ext_paginator.page_range
+
         ctx['event_total'] = event.event_total
+
+        # Funding breakdown percentages for visual metrics
+        total = event.event_total
+        if total and total > Decimal('0'):
+            ctx['pct_disbursed'] = round(float((event.disbursement_amount / total) * 100), 1)
+            ctx['pct_support'] = round(float((event.support_total / total) * 100), 1)
+            ctx['pct_external'] = round(float((event.external_support_total / total) * 100), 1)
+        else:
+            ctx['pct_disbursed'] = 0.0
+            ctx['pct_support'] = 0.0
+            ctx['pct_external'] = 0.0
+
         return ctx
 
 

@@ -1,124 +1,238 @@
 {% extends 'base.html' %}
 {% load finance_tags %}
-{% block title %}Welfare Events{% endblock %}
+{% block title %}Welfare Events — Support &amp; Benevolence Registry{% endblock %}
 {% block page_title %}Welfare Events{% endblock %}
 
 {% block extra_css %}
 <style>
+    .event-card-header {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-bottom: 1px solid #e2e8f0;
+    }
     .event-avatar {
-        width: 40px;
-        height: 40px;
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
         background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
         color: #ffffff;
         font-weight: 700;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
     }
-    .event-avatar.alt-1 { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); box-shadow: 0 2px 6px rgba(109, 40, 217, 0.25); }
-    .event-avatar.alt-2 { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25); }
-    .event-avatar.alt-3 { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25); }
+    .event-avatar.alt-1 { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); box-shadow: 0 2px 8px rgba(109, 40, 217, 0.25); }
+    .event-avatar.alt-2 { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25); }
+    .event-avatar.alt-3 { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 2px 8px rgba(217, 119, 6, 0.25); }
+    .event-avatar.alt-4 { background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); box-shadow: 0 2px 8px rgba(236, 72, 153, 0.25); }
     
+    .event-table-card {
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+        background: #ffffff;
+        overflow: hidden;
+    }
     .event-row {
-        transition: all 0.15s ease-in-out;
+        transition: background-color 0.15s ease-in-out, transform 0.12s ease-in-out;
     }
     .event-row:hover {
         background-color: #f8fafc !important;
-        transform: translateY(-1px);
     }
+    
     .status-pill-btn {
-        border-radius: 20px;
-        padding: 0.35rem 0.85rem;
+        border-radius: 24px;
+        padding: 0.42rem 0.95rem;
         font-size: 0.82rem;
         font-weight: 600;
         transition: all 0.2s ease;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.45rem;
     }
     .status-pill-btn.active {
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+        transform: translateY(-1px);
     }
+    
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #10b981;
+        display: inline-block;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulseAnimation 1.8s infinite;
+    }
+    @keyframes pulseAnimation {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    
     .breakdown-badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
+        font-size: 0.73rem;
+        padding: 0.24rem 0.52rem;
         border-radius: 6px;
         font-weight: 500;
         background: #f1f5f9;
         color: #475569;
         display: inline-flex;
         align-items: center;
-        gap: 0.25rem;
+        gap: 0.3rem;
+        border: 1px solid #e2e8f0;
+    }
+    .breakdown-badge.fund { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+    .breakdown-badge.member { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+    .breakdown-badge.ext { background: #fdf4ff; color: #86198f; border-color: #f5d0fe; }
+
+    .pagination-custom .page-link {
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        margin: 0 2px;
+        border-radius: 8px;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.84rem;
+        font-weight: 500;
+        transition: all 0.15s ease-in-out;
+    }
+    .pagination-custom .page-link:hover {
+        background-color: #f1f5f9;
+        color: #1e293b;
+        border-color: #cbd5e1;
+    }
+    .pagination-custom .page-item.active .page-link {
+        background-color: #2563eb;
+        border-color: #2563eb;
+        color: #ffffff;
+        font-weight: 700;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+    }
+    .pagination-custom .page-item.disabled .page-link {
+        color: #94a3b8;
+        background-color: #f8fafc;
+        border-color: #e2e8f0;
+        cursor: not-allowed;
+    }
+
+    .filter-card {
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Top Stats Row -->
+<!-- Page Header with Subtitle & Primary Actions -->
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+            <i class="bi bi-clipboard2-heart text-danger"></i>
+            Welfare &amp; Benevolence Events
+        </h4>
+        <p class="text-muted small mb-0">
+            Track member welfare emergencies, central fund disbursements, and voluntary group contributions.
+        </p>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        {% if user.profile.role != 'readonly' %}
+        <a href="{% url 'welfare:event_add' %}" class="btn btn-primary btn-sm fw-semibold shadow-sm d-flex align-items-center gap-1.5 px-3 py-2" style="border-radius:8px;">
+            <i class="bi bi-plus-circle-fill"></i>
+            <span>New Welfare Event</span>
+        </a>
+        <a href="{% url 'welfare:rate' %}" class="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-1.5 px-3 py-2" style="border-radius:8px;">
+            <i class="bi bi-sliders"></i>
+            <span>Monthly Rate</span>
+        </a>
+        {% endif %}
+        <a href="{% url 'welfare:dashboard' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1.5 px-3 py-2" style="border-radius:8px;">
+            <i class="bi bi-heart-pulse"></i>
+            <span>Welfare Dashboard</span>
+        </a>
+    </div>
+</div>
+
+<!-- Key Performance Metrics Row -->
 <div class="row g-3 mb-4">
+    <!-- Card 1: Total Events -->
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card shadow-sm border-0">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
             <div class="card-body d-flex align-items-center gap-3 py-3">
-                <div class="icon-box accent-violet shadow-sm">
-                    <i class="bi bi-clipboard2-heart"></i>
+                <div class="icon-box accent-violet shadow-sm" style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;border-radius:12px;">
+                    <i class="bi bi-clipboard2-heart fs-5"></i>
                 </div>
                 <div>
-                    <div class="stat-label">Total Welfare Events</div>
-                    <div class="stat-value">{{ stat_total_events }}</div>
-                    <div class="small text-muted mt-1">{{ stat_open_events }} active · {{ stat_closed_events }} closed</div>
+                    <div class="stat-label" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.4px;">Total Welfare Events</div>
+                    <div class="stat-value text-dark" style="font-size:1.35rem;font-weight:700;">{{ stat_total_events }}</div>
+                    <div class="small text-muted mt-0.5">
+                        <span class="text-warning fw-semibold">{{ stat_open_events }} active</span> · {{ stat_closed_events }} closed
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Card 2: Active Open Cases -->
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card shadow-sm border-0" {% if stat_open_events > 0 %}style="border-left: 4px solid #f59e0b !important;"{% endif %}>
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid {% if stat_open_events > 0 %}#fcd34d{% else %}#e2e8f0{% endif %};background:{% if stat_open_events > 0 %}linear-gradient(135deg,#fffbeb,#fef3c7){% else %}#ffffff{% endif %};">
             <div class="card-body d-flex align-items-center gap-3 py-3">
-                <div class="icon-box accent-amber shadow-sm">
-                    <i class="bi bi-hourglass-split"></i>
+                <div class="icon-box accent-amber shadow-sm" style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#f59e0b;color:#fff;">
+                    <i class="bi bi-hourglass-split fs-5"></i>
                 </div>
                 <div>
-                    <div class="stat-label">Open Active Events</div>
-                    <div class="stat-value text-amber">{{ stat_open_events }}</div>
-                    <div class="small text-muted mt-1">
+                    <div class="stat-label" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.4px;color:{% if stat_open_events > 0 %}#92400e{% else %}#64748b{% endif %};">Open Active Cases</div>
+                    <div class="stat-value" style="font-size:1.35rem;font-weight:700;color:{% if stat_open_events > 0 %}#b45309{% else %}#1e293b{% endif %};">
+                        {{ stat_open_events }}
+                    </div>
+                    <div class="small mt-0.5">
                         {% if stat_open_events > 0 %}
-                        <span class="text-warning fw-semibold"><i class="bi bi-exclamation-circle me-1"></i>Awaiting completion</span>
+                        <span class="text-amber fw-semibold d-inline-flex align-items-center gap-1">
+                            <span class="pulse-dot"></span> In mobilization
+                        </span>
                         {% else %}
-                        All cases resolved
+                        <span class="text-success fw-semibold"><i class="bi bi-check-all me-1"></i>All cases resolved</span>
                         {% endif %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Card 3: Total Mobilized Support -->
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card shadow-sm border-0">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #bbf7d0;background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
             <div class="card-body d-flex align-items-center gap-3 py-3">
-                <div class="icon-box accent-green shadow-sm">
-                    <i class="bi bi-cash-coin"></i>
+                <div class="icon-box accent-green shadow-sm" style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#16a34a;color:#fff;">
+                    <i class="bi bi-cash-coin fs-5"></i>
                 </div>
                 <div>
-                    <div class="stat-label">Total Mobilized Support</div>
-                    <div class="stat-value text-success">KES {{ stat_total_mobilized|kes:0 }}</div>
-                    <div class="small text-muted mt-1">KES {{ stat_total_disbursed|kes:0 }} from fund</div>
+                    <div class="stat-label" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.4px;color:#166534;">Total Mobilized Support</div>
+                    <div class="stat-value" style="font-size:1.35rem;font-weight:700;color:#15803d;font-family:monospace;">KES {{ stat_total_mobilized|kes:0 }}</div>
+                    <div class="small mt-0.5" style="color:#166534;">
+                        KES {{ stat_total_disbursed|kes:0 }} paid from fund
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Card 4: Welfare Fund Reserve -->
     <div class="col-sm-6 col-xl-3">
-        <div class="card stat-card shadow-sm border-0">
+        <div class="card stat-card shadow-sm border-0 h-100" style="border-radius:12px;border:1px solid #bfdbfe;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);">
             <div class="card-body d-flex align-items-center gap-3 py-3">
-                <div class="icon-box accent-blue shadow-sm">
-                    <i class="bi bi-safe2"></i>
+                <div class="icon-box accent-blue shadow-sm" style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#0284c7;color:#fff;">
+                    <i class="bi bi-shield-check fs-5"></i>
                 </div>
                 <div>
-                    <div class="stat-label">Welfare Fund Reserve</div>
-                    <div class="stat-value text-primary">KES {{ stat_welfare_balance|kes:0 }}</div>
-                    <div class="small text-muted mt-1">Available for allocation</div>
+                    <div class="stat-label" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.4px;color:#0369a1;">Welfare Fund Reserve</div>
+                    <div class="stat-value" style="font-size:1.35rem;font-weight:700;color:#0284c7;font-family:monospace;">KES {{ stat_welfare_balance|kes:0 }}</div>
+                    <div class="small mt-0.5" style="color:#0369a1;">
+                        Available emergency pool
+                    </div>
                 </div>
             </div>
         </div>
@@ -136,36 +250,26 @@
         </a>
         <a href="?{% if q %}q={{ q }}&{% endif %}{% if selected_year %}year={{ selected_year }}&{% endif %}{% if selected_sort %}sort={{ selected_sort }}&{% endif %}{% if selected_per_page %}per_page={{ selected_per_page }}&{% endif %}status=open"
            class="status-pill-btn {% if current_status == 'open' %}bg-warning text-dark active{% else %}bg-white text-secondary border{% endif %}">
-            <i class="bi bi-circle-fill text-warning" style="font-size:0.5rem;"></i>
-            <span>Open</span>
+            <span class="pulse-dot"></span>
+            <span>Open &amp; Active</span>
             <span class="badge {% if current_status == 'open' %}bg-white text-dark{% else %}bg-light text-muted border{% endif %} rounded-pill">{{ stat_open_events }}</span>
         </a>
         <a href="?{% if q %}q={{ q }}&{% endif %}{% if selected_year %}year={{ selected_year }}&{% endif %}{% if selected_sort %}sort={{ selected_sort }}&{% endif %}{% if selected_per_page %}per_page={{ selected_per_page }}&{% endif %}status=closed"
            class="status-pill-btn {% if current_status == 'closed' %}bg-secondary text-white active{% else %}bg-white text-secondary border{% endif %}">
-            <i class="bi bi-check-circle" style="font-size:0.75rem;"></i>
-            <span>Closed</span>
+            <i class="bi bi-check2-circle"></i>
+            <span>Closed Cases</span>
             <span class="badge {% if current_status == 'closed' %}bg-white text-secondary{% else %}bg-light text-muted border{% endif %} rounded-pill">{{ stat_closed_events }}</span>
         </a>
     </div>
 
-    <!-- Right Actions -->
-    <div class="d-flex gap-2 align-items-center flex-wrap">
-        {% if user.profile.role != 'readonly' %}
-        <a href="{% url 'welfare:event_add' %}" class="btn btn-primary btn-sm shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i>New Welfare Event
-        </a>
-        <a href="{% url 'welfare:rate' %}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-sliders me-1"></i>Contribution Rate
-        </a>
-        {% endif %}
-        <a href="{% url 'welfare:dashboard' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-heart-pulse me-1"></i>Dashboard
-        </a>
+    <!-- Right Quick Summary Info -->
+    <div class="text-muted small">
+        <i class="bi bi-funnel me-1"></i>Showing <span class="fw-semibold text-dark">{{ paginator.count }}</span> event records
     </div>
 </div>
 
-<!-- Search & Filter Card -->
-<div class="card shadow-sm border-0 mb-3">
+<!-- Search & Multi-Filter Card -->
+<div class="card filter-card shadow-sm border-0 mb-3">
     <div class="card-body p-3">
         <form class="row g-2 align-items-center" method="get" data-ajax-filter>
             <!-- Hidden status input preserved across other filter changes -->
@@ -185,7 +289,7 @@
             <!-- Year Filter -->
             <div class="col-md-2 col-sm-6">
                 <select name="year" class="form-select form-select-sm">
-                    <option value="">All Years</option>
+                    <option value="">All Event Years</option>
                     {% for y in years %}
                     <option value="{{ y }}" {% if selected_year == y|stringformat:"s" %}selected{% endif %}>Year {{ y }}</option>
                     {% endfor %}
@@ -209,10 +313,11 @@
                     <option value="10" {% if selected_per_page == '10' or not selected_per_page %}selected{% endif %}>10 per page</option>
                     <option value="20" {% if selected_per_page == '20' %}selected{% endif %}>20 per page</option>
                     <option value="50" {% if selected_per_page == '50' %}selected{% endif %}>50 per page</option>
+                    <option value="100" {% if selected_per_page == '100' %}selected{% endif %}>100 per page</option>
                 </select>
             </div>
 
-            <!-- Clear Button -->
+            <!-- Clear/Reset Button -->
             <div class="col-md-1 col-sm-6 text-end">
                 <a href="{% url 'welfare:event_list' %}" class="btn btn-sm btn-outline-danger ajax-clear w-100"
                    {% if not q and not current_status and not selected_year and selected_sort == '-date_opened' and selected_per_page == '10' %}style="display:none"{% endif %}
@@ -226,54 +331,60 @@
 
 <!-- Results Container for AJAX Live Filtering & Pagination -->
 <div id="results-container">
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="card event-table-card shadow-sm border-0">
+        <!-- Table Header Bar -->
+        <div class="card-header event-card-header py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-clipboard2-heart text-primary fs-5"></i>
-                <span class="fw-semibold">Welfare Events Registry</span>
-                <span class="badge bg-light text-dark border ms-1">{{ paginator.count }} total</span>
+                <span class="fw-bold text-dark">Welfare Events Registry</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-0.5 ms-1 fw-semibold">
+                    {{ paginator.count }} Total Cases
+                </span>
             </div>
-            {% if page_obj.has_other_pages %}
-            <div class="small text-muted">
-                Page <span class="fw-semibold text-dark">{{ page_obj.number }}</span> of <span class="fw-semibold text-dark">{{ paginator.num_pages }}</span>
+            <div class="small text-muted d-flex align-items-center gap-2">
+                {% if paginator.num_pages > 1 %}
+                <span>Page <strong class="text-dark">{{ page_obj.number }}</strong> of <strong class="text-dark">{{ paginator.num_pages }}</strong></span>
+                <span class="text-muted">&bull;</span>
+                {% endif %}
+                <span>Showing {{ page_obj.start_index|default:0 }}–{{ page_obj.end_index|default:0 }} of {{ paginator.count }}</span>
             </div>
-            {% endif %}
         </div>
 
+        <!-- Events Table -->
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
-                    <tr>
-                        <th style="width: 50px;">#</th>
+                    <tr class="text-uppercase small text-muted" style="letter-spacing:0.5px; font-size:0.75rem;">
+                        <th style="width: 50px;" class="ps-3">#</th>
                         <th style="min-width: 220px;">Beneficiary</th>
-                        <th style="min-width: 240px;">Description &amp; Case Notes</th>
+                        <th style="min-width: 250px;">Description &amp; Case Notes</th>
                         <th style="min-width: 130px;">Date Opened</th>
-                        <th style="min-width: 100px;">Status</th>
-                        <th style="min-width: 180px;">Support Mobilized</th>
-                        <th style="width: 140px;" class="text-end">Actions</th>
+                        <th style="min-width: 120px;">Status</th>
+                        <th style="min-width: 200px;">Support Mobilized</th>
+                        <th style="width: 150px;" class="text-end pe-3">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for event in events %}
                     <tr class="event-row">
                         <!-- Index -->
-                        <td class="text-muted small fw-semibold">
+                        <td class="text-muted small fw-semibold ps-3">
                             {{ page_obj.start_index|add:forloop.counter0 }}
                         </td>
 
                         <!-- Beneficiary -->
                         <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="event-avatar {% cycle '' 'alt-1' 'alt-2' 'alt-3' %}">
+                            <div class="d-flex align-items-center gap-2.5">
+                                <div class="event-avatar {% cycle '' 'alt-1' 'alt-2' 'alt-3' 'alt-4' %}">
                                     {{ event.beneficiary.name|slice:":1"|upper }}
                                 </div>
                                 <div>
-                                    <a href="{% url 'welfare:event_detail' event.pk %}" class="fw-bold text-dark text-decoration-none hover-primary">
+                                    <a href="{% url 'welfare:event_detail' event.pk %}" class="fw-bold text-dark text-decoration-none hover-primary d-inline-block">
                                         {{ event.beneficiary.name }}
                                     </a>
                                     {% if event.beneficiary.phone %}
-                                    <div class="small text-muted d-flex align-items-center gap-1">
-                                        <i class="bi bi-telephone" style="font-size: 0.75rem;"></i>
+                                    <div class="small text-muted d-flex align-items-center gap-1 mt-0.5">
+                                        <i class="bi bi-telephone text-secondary" style="font-size: 0.72rem;"></i>
                                         <span>{{ event.beneficiary.phone }}</span>
                                     </div>
                                     {% endif %}
@@ -284,17 +395,19 @@
                         <!-- Description & Case Notes -->
                         <td>
                             <div class="d-flex align-items-center gap-2 mb-1">
-                                <span class="badge bg-light text-dark border small fw-normal">Event #{{ event.pk }}</span>
+                                <span class="badge bg-light text-secondary border small fw-semibold" style="font-size:0.7rem;">
+                                    Event #{{ event.pk }}
+                                </span>
                             </div>
-                            <div class="text-secondary small text-break" style="max-width: 320px;">
+                            <div class="text-secondary small text-break" style="max-width: 320px; line-height:1.4;">
                                 {{ event.description|truncatechars:120 }}
                             </div>
                         </td>
 
                         <!-- Date Opened -->
                         <td>
-                            <div class="d-flex align-items-center gap-1 text-muted small">
-                                <i class="bi bi-calendar3"></i>
+                            <div class="d-flex align-items-center gap-1.5 text-secondary small fw-medium">
+                                <i class="bi bi-calendar3 text-muted"></i>
                                 <span>{{ event.date_opened|date:"d M Y" }}</span>
                             </div>
                         </td>
@@ -302,45 +415,47 @@
                         <!-- Status -->
                         <td>
                             {% if event.status == 'open' %}
-                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                                <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem; vertical-align: middle;"></i>Open
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1.5 fw-semibold" style="font-size:0.75rem;">
+                                <span class="pulse-dot"></span>
+                                <span>Open Case</span>
                             </span>
                             {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">
-                                <i class="bi bi-check2-circle me-1"></i>Closed
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1.5 fw-semibold" style="font-size:0.75rem;">
+                                <i class="bi bi-check2-circle text-muted"></i>
+                                <span>Closed &amp; Resolved</span>
                             </span>
                             {% endif %}
                         </td>
 
                         <!-- Total Support Mobilized & Breakdown -->
                         <td>
-                            <div class="fw-bold text-success fs-6 mb-1">
+                            <div class="fw-bold text-success fs-6 mb-1 font-monospace">
                                 KES {{ event.event_total|kes }}
                             </div>
                             <div class="d-flex flex-wrap gap-1">
                                 {% if event.disbursement_amount > 0 %}
-                                <span class="breakdown-badge" title="Disbursed from central welfare fund">
-                                    <i class="bi bi-arrow-up-right text-primary"></i>Fund: {{ event.disbursement_amount|kes:0 }}
+                                <span class="breakdown-badge fund" title="Paid from central group welfare fund">
+                                    <i class="bi bi-arrow-up-right"></i>Fund: {{ event.disbursement_amount|kes:0 }}
                                 </span>
                                 {% endif %}
                                 {% if event.support_total > 0 %}
-                                <span class="breakdown-badge" title="Member voluntary contributions">
-                                    <i class="bi bi-people text-success"></i>Members: {{ event.support_total|kes:0 }}
+                                <span class="breakdown-badge member" title="Voluntary member contributions">
+                                    <i class="bi bi-people"></i>Members: {{ event.support_total|kes:0 }}
                                 </span>
                                 {% endif %}
                                 {% if event.external_support_total > 0 %}
-                                <span class="breakdown-badge" title="External non-member supporters">
-                                    <i class="bi bi-globe text-info"></i>Ext: {{ event.external_support_total|kes:0 }}
+                                <span class="breakdown-badge ext" title="External non-member supporters">
+                                    <i class="bi bi-globe"></i>Ext: {{ event.external_support_total|kes:0 }}
                                 </span>
                                 {% endif %}
                                 {% if event.event_total == 0 %}
-                                <span class="text-muted small">No support recorded yet</span>
+                                <span class="text-muted small fst-italic">No support recorded yet</span>
                                 {% endif %}
                             </div>
                         </td>
 
                         <!-- Action Buttons -->
-                        <td class="text-end">
+                        <td class="text-end pe-3">
                             <div class="btn-group btn-group-sm shadow-2xs">
                                 <a href="{% url 'welfare:event_detail' event.pk %}" class="btn btn-outline-primary" title="View Event &amp; Contributions">
                                     <i class="bi bi-eye"></i>
@@ -350,7 +465,7 @@
                                 <form method="post" action="{% url 'welfare:event_close' event.pk %}" class="d-inline" onsubmit="return confirm('Are you sure you want to close the welfare event for {{ event.beneficiary.name }}?');">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <button type="submit" class="btn btn-outline-danger" title="Close Event">
+                                    <button type="submit" class="btn btn-outline-danger" title="Close &amp; Resolve Event">
                                         <i class="bi bi-check2-circle"></i>
                                     </button>
                                 </form>
@@ -363,8 +478,6 @@
                                     </button>
                                 </form>
                                 {% endif %}
-                                {% endif %}
-                                {% if user.profile.role != 'readonly' %}
                                 <a href="{% url 'welfare:event_edit' event.pk %}" class="btn btn-outline-secondary" title="Edit Event Details">
                                     <i class="bi bi-pencil"></i>
                                 </a>
@@ -384,24 +497,24 @@
                     <tr>
                         <td colspan="7" class="text-center py-5">
                             <div class="py-4">
-                                <div class="icon-box accent-violet mx-auto mb-3" style="width: 60px; height: 60px; font-size: 1.8rem;">
+                                <div class="icon-box accent-violet mx-auto mb-3" style="width: 64px; height: 64px; font-size: 2rem; border-radius: 16px; display:flex; align-items:center; justify-content:center;">
                                     <i class="bi bi-clipboard2-x"></i>
                                 </div>
-                                <h6 class="fw-semibold text-dark mb-1">No Welfare Events Found</h6>
-                                <p class="text-muted small mb-3">
+                                <h6 class="fw-bold text-dark mb-1">No Welfare Events Found</h6>
+                                <p class="text-muted small mb-3" style="max-width: 420px; margin: 0 auto;">
                                     {% if q or current_status or selected_year %}
-                                    No records matched your current search filters. Try adjusting or resetting your criteria.
+                                    No records matched your search filters. Try adjusting your search query, year, or resetting filters.
                                     {% else %}
-                                    No welfare events have been recorded in the system yet.
+                                    No welfare events have been created yet. Open a welfare event when a member requires bereavement, medical, or life milestone support.
                                     {% endif %}
                                 </p>
                                 {% if q or current_status or selected_year %}
-                                <a href="{% url 'welfare:event_list' %}" class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
+                                <a href="{% url 'welfare:event_list' %}" class="btn btn-sm btn-outline-secondary px-3 py-1.5" style="border-radius:8px;">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset All Filters
                                 </a>
                                 {% elif user.profile.role != 'readonly' %}
-                                <a href="{% url 'welfare:event_add' %}" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-plus-circle me-1"></i>Create First Welfare Event
+                                <a href="{% url 'welfare:event_add' %}" class="btn btn-sm btn-primary px-3 py-1.5 fw-semibold shadow-sm" style="border-radius:8px;">
+                                    <i class="bi bi-plus-circle-fill me-1"></i>Open First Welfare Event
                                 </a>
                                 {% endif %}
                             </div>
@@ -412,9 +525,10 @@
             </table>
         </div>
 
-        <!-- Enhanced Pagination Footer -->
+        <!-- Enhanced Pagination Footer (Always Clean, Accessible, & Full-Featured) -->
         <div class="card-footer bg-white border-top py-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div class="text-muted small">
+            <!-- Left: Showing Records Counter -->
+            <div class="text-muted small d-flex align-items-center gap-2">
                 {% if paginator.count > 0 %}
                 Showing <span class="fw-semibold text-dark">{{ page_obj.start_index }}</span>
                 to <span class="fw-semibold text-dark">{{ page_obj.end_index }}</span>
@@ -424,61 +538,74 @@
                 {% endif %}
             </div>
 
-            {% if page_obj.has_other_pages %}
-            <nav aria-label="Welfare events pagination">
-                <ul class="pagination pagination-sm mb-0 justify-content-end">
-                    <!-- First page -->
-                    {% if page_obj.number > 1 %}
-                    <li class="page-item">
+            <!-- Right: Interactive Pagination Controls -->
+            {% if paginator.count > 0 %}
+            <nav aria-label="Welfare events pagination navigation">
+                <ul class="pagination pagination-sm pagination-custom mb-0 justify-content-end align-items-center flex-wrap">
+                    <!-- First Page Button -->
+                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                        {% if page_obj.has_previous %}
                         <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if current_status %}status={{ current_status }}&{% endif %}{% if selected_year %}year={{ selected_year }}&{% endif %}{% if selected_sort %}sort={{ selected_sort }}&{% endif %}{% if selected_per_page %}per_page={{ selected_per_page }}&{% endif %}page=1"
-                           title="First page">
+                           title="First Page" aria-label="First">
                             <i class="bi bi-chevron-double-left"></i>
                         </a>
+                        {% else %}
+                        <span class="page-link" aria-disabled="true"><i class="bi bi-chevron-double-left"></i></span>
+                        {% endif %}
                     </li>
-                    {% endif %}
 
-                    <!-- Previous page -->
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
+                    <!-- Previous Page Button -->
+                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                        {% if page_obj.has_previous %}
                         <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if current_status %}status={{ current_status }}&{% endif %}{% if selected_year %}year={{ selected_year }}&{% endif %}{% if selected_sort %}sort={{ selected_sort }}&{% endif %}{% if selected_per_page %}per_page={{ selected_per_page }}&{% endif %}page={{ page_obj.previous_page_number }}"
-                           title="Previous page">
-                            <i class="bi bi-chevron-left"></i>
+                           title="Previous Page" aria-label="Previous">
+                            <i class="bi bi-chevron-left me-0.5"></i>Prev
                         </a>
+                        {% else %}
+                        <span class="page-link" aria-disabled="true"><i class="bi bi-chevron-left me-0.5"></i>Prev</span>
+                        {% endif %}
                     </li>
-                    {% endif %}
 
-                    <!-- Numbered pages -->
-                    {% for num in paginator.page_range %}
-                        {% if page_obj.number == num %}
+                    <!-- Smart Page Numbers / Ellipses -->
+                    {% for p in page_range %}
+                        {% if p == page_obj.number %}
                         <li class="page-item active" aria-current="page">
-                            <span class="page-link fw-bold">{{ num }}</span>
+                            <span class="page-link">{{ p }}</span>
                         </li>
-                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        {% elif p == '…' or p == '...' %}
+                        <li class="page-item disabled">
+                            <span class="page-link text-muted">&hellip;</span>
+                        </li>
+                        {% else %}
                         <li class="page-item">
-                            <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if current_status %}status={{ current_status }}&{% endif %}{% if selected_year %}year={{ selected_year }}&{% endif %}{% if selected_sort %}sort={{ selected_sort }}&{% endif %}{% if selected_per_page %}per_page={{ selected_per_page }}&{% endif %}page={{ num }}">{{ num }}</a>
+                            <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if current_status %}status={{ current_status }}&{% endif %}{% if selected_year %}year={{ selected_year }}&{% endif %}{% if selected_sort %}sort={{ selected_sort }}&{% endif %}{% if selected_per_page %}per_page={{ selected_per_page }}&{% endif %}page={{ p }}">{{ p }}</a>
                         </li>
                         {% endif %}
                     {% endfor %}
 
-                    <!-- Next page -->
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
+                    <!-- Next Page Button -->
+                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                        {% if page_obj.has_next %}
                         <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if current_status %}status={{ current_status }}&{% endif %}{% if selected_year %}year={{ selected_year }}&{% endif %}{% if selected_sort %}sort={{ selected_sort }}&{% endif %}{% if selected_per_page %}per_page={{ selected_per_page }}&{% endif %}page={{ page_obj.next_page_number }}"
-                           title="Next page">
-                            <i class="bi bi-chevron-right"></i>
+                           title="Next Page" aria-label="Next">
+                            Next<i class="bi bi-chevron-right ms-0.5"></i>
                         </a>
+                        {% else %}
+                        <span class="page-link" aria-disabled="true">Next<i class="bi bi-chevron-right ms-0.5"></i></span>
+                        {% endif %}
                     </li>
-                    {% endif %}
 
-                    <!-- Last page -->
-                    {% if page_obj.number < paginator.num_pages %}
-                    <li class="page-item">
+                    <!-- Last Page Button -->
+                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                        {% if page_obj.has_next %}
                         <a class="page-link" href="?{% if q %}q={{ q }}&{% endif %}{% if current_status %}status={{ current_status }}&{% endif %}{% if selected_year %}year={{ selected_year }}&{% endif %}{% if selected_sort %}sort={{ selected_sort }}&{% endif %}{% if selected_per_page %}per_page={{ selected_per_page }}&{% endif %}page={{ paginator.num_pages }}"
-                           title="Last page">
+                           title="Last Page" aria-label="Last">
                             <i class="bi bi-chevron-double-right"></i>
                         </a>
+                        {% else %}
+                        <span class="page-link" aria-disabled="true"><i class="bi bi-chevron-double-right"></i></span>
+                        {% endif %}
                     </li>
-                    {% endif %}
                 </ul>
             </nav>
             {% endif %}

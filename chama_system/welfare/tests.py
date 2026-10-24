@@ -1,10 +1,14 @@
+import datetime
+from decimal import Decimal
 from django.test import TestCase, Client
 from django.utils import timezone
 from django.contrib.auth.models import User
-from decimal import Decimal
 
 from members.models import Member
-from welfare.models import WelfareContribution, WelfareContributionRate, WelfareEvent
+from welfare.models import (
+    WelfareContribution, WelfareContributionRate, WelfareEvent,
+    WelfareDisbursement, WelfareSupportContribution, WelfareExternalSupport,
+)
 from recycle_bin.models import DeletedRecord
 
 
@@ -347,6 +351,85 @@ class WelfareEventListViewPaginationAndFilterTests(TestCase):
         self.assertEqual(res.status_code, 200)
         for ev in res.context['events']:
             self.assertEqual(ev.beneficiary.name, 'Alpha Member')
+
+
+class WelfareEventDetailViewPaginationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_superuser(username="admin_event_detail_test", password="adminpassword123")
+        self.client.force_login(self.user)
+        self.beneficiary = Member.objects.create(name="Grace Hopper", phone="+254711888999")
+        self.event = WelfareEvent.objects.create(
+            beneficiary=self.beneficiary,
+            description="Medical assistance event for family emergency",
+            date_opened=datetime.date(2026, 3, 1),
+            status="open",
+        )
+        # Fund disbursement
+        WelfareDisbursement.objects.create(
+            event=self.event,
+            amount=Decimal('10000.00'),
+            date=datetime.date(2026, 3, 2),
+            notes="Initial hospital deposit from reserve",
+        )
+        # 15 member support contributions (page size 10)
+        self.contributors = []
+        for i in range(1, 16):
+            m = Member.objects.create(name=f"Member Supporter {i:02d}", phone=f"+2547220000{i:02d}")
+            self.contributors.append(m)
+            WelfareSupportContribution.objects.create(
+                event=self.event,
+                contributor=m,
+                amount=Decimal('1000.00'),
+                date=datetime.date(2026, 3, 3),
+            )
+        # 12 external supporters (page size 10)
+        for i in range(1, 13):
+            WelfareExternalSupport.objects.create(
+                event=self.event,
+                supporter_name=f"External Supporter {i:02d}",
+                supporter_phone=f"+2547330000{i:02d}",
+                amount=Decimal('500.00'),
+                date=datetime.date(2026, 3, 4),
+            )
+
+    def test_event_detail_renders_and_paginates_support_contributions(self):
+        # Page 1 (default)
+        res = self.client.get(f'/welfare/events/{self.event.pk}/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context['support_paginator'].count, 15)
+        self.assertEqual(res.context['support_paginator'].num_pages, 2)
+        self.assertEqual(len(res.context['support_contributions']), 10)
+        self.assertEqual(res.context['support_page_obj'].number, 1)
+
+        # Page 2
+        res2 = self.client.get(f'/welfare/events/{self.event.pk}/?support_page=2')
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(len(res2.context['support_contributions']), 5)
+        self.assertEqual(res2.context['support_page_obj'].number, 2)
+
+    def test_event_detail_paginates_external_support(self):
+        # Page 1
+        res = self.client.get(f'/welfare/events/{self.event.pk}/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context['ext_paginator'].count, 12)
+        self.assertEqual(res.context['ext_paginator'].num_pages, 2)
+        self.assertEqual(len(res.context['external_support']), 10)
+
+        # Page 2
+        res2 = self.client.get(f'/welfare/events/{self.event.pk}/?ext_page=2')
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(len(res2.context['external_support']), 2)
+        self.assertEqual(res2.context['ext_page_obj'].number, 2)
+
+    def test_event_detail_percentage_and_totals(self):
+        res = self.client.get(f'/welfare/events/{self.event.pk}/')
+        self.assertEqual(res.status_code, 200)
+        # Fund: 10,000, Members: 15,000, External: 6,000 => Total = 31,000
+        self.assertEqual(res.context['event_total'], Decimal('31000.00'))
+        self.assertAlmostEqual(res.context['pct_disbursed'], 32.3, delta=0.5)
+        self.assertAlmostEqual(res.context['pct_support'], 48.4, delta=0.5)
+        self.assertAlmostEqual(res.context['pct_external'], 19.4, delta=0.5)
+
 
 
 
