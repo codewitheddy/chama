@@ -9,6 +9,11 @@
         background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
         border-bottom: 1px solid #e2e8f0;
     }
+    .beneficiary-cell {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
     .event-avatar {
         width: 42px;
         height: 42px;
@@ -165,16 +170,16 @@
     </div>
     <div class="d-flex gap-2 align-items-center flex-wrap">
         {% if user.profile.role != 'readonly' %}
-        <a href="{% url 'welfare:event_add' %}" class="btn btn-primary btn-sm fw-semibold shadow-sm d-flex align-items-center gap-1.5 px-3 py-2" style="border-radius:8px;">
+        <a href="{% url 'welfare:event_add' %}" class="btn btn-primary btn-sm fw-semibold shadow-sm d-flex align-items-center gap-2 px-3 py-2" style="border-radius:8px;">
             <i class="bi bi-plus-circle-fill"></i>
             <span>New Welfare Event</span>
         </a>
-        <a href="{% url 'welfare:rate' %}" class="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-1.5 px-3 py-2" style="border-radius:8px;">
+        <a href="{% url 'welfare:rate' %}" class="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-2 px-3 py-2" style="border-radius:8px;">
             <i class="bi bi-sliders"></i>
             <span>Monthly Rate</span>
         </a>
         {% endif %}
-        <a href="{% url 'welfare:dashboard' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1.5 px-3 py-2" style="border-radius:8px;">
+        <a href="{% url 'welfare:dashboard' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 px-3 py-2" style="border-radius:8px;">
             <i class="bi bi-heart-pulse"></i>
             <span>Welfare Dashboard</span>
         </a>
@@ -399,7 +404,7 @@
 
                         <!-- Beneficiary -->
                         <td>
-                            <div class="d-flex align-items-center gap-2.5">
+                            <div class="beneficiary-cell">
                                 <div class="event-avatar {% cycle '' 'alt-1' 'alt-2' 'alt-3' 'alt-4' %}">
                                     {{ event.beneficiary.name|slice:":1"|upper }}
                                 </div>
@@ -431,7 +436,7 @@
 
                         <!-- Date Opened -->
                         <td>
-                            <div class="d-flex align-items-center gap-1.5 text-secondary small fw-medium">
+                            <div class="d-flex align-items-center gap-2 text-secondary small fw-medium">
                                 <i class="bi bi-calendar3 text-muted"></i>
                                 <span>{{ event.date_opened|date:"d M Y" }}</span>
                             </div>
@@ -440,12 +445,12 @@
                         <!-- Status -->
                         <td>
                             {% if event.status == 'open' %}
-                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1.5 fw-semibold" style="font-size:0.75rem;">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-2 fw-semibold" style="font-size:0.75rem;">
                                 <span class="pulse-dot"></span>
                                 <span>Open Case</span>
                             </span>
                             {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1.5 fw-semibold" style="font-size:0.75rem;">
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-2 fw-semibold" style="font-size:0.75rem;">
                                 <i class="bi bi-check2-circle text-muted"></i>
                                 <span>Closed &amp; Resolved</span>
                             </span>

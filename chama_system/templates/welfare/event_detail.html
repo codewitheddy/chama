@@ -171,12 +171,12 @@
                     <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
                         <h4 class="mb-0 fw-bold text-dark">{{ event.beneficiary.name }}</h4>
                         {% if event.status == 'open' %}
-                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill d-inline-flex align-items-center gap-1.5 fw-semibold" style="font-size:0.75rem;">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill d-inline-flex align-items-center gap-2 fw-semibold" style="font-size:0.75rem;">
                             <span class="pulse-dot"></span>
                             <span>Open &amp; Active</span>
                         </span>
                         {% else %}
-                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2.5 py-1 rounded-pill d-inline-flex align-items-center gap-1.5 fw-semibold" style="font-size:0.75rem;">
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2.5 py-1 rounded-pill d-inline-flex align-items-center gap-2 fw-semibold" style="font-size:0.75rem;">
                             <i class="bi bi-check2-circle"></i>
                             <span>Closed &amp; Resolved</span>
                         </span>
@@ -315,15 +315,15 @@
                 <i class="bi bi-pie-chart me-1 text-primary"></i>Mobilization Breakdown &amp; Ratio
             </span>
             <div class="d-flex align-items-center gap-3 flex-wrap small">
-                <span class="d-inline-flex align-items-center gap-1.5">
+                <span class="d-inline-flex align-items-center gap-2">
                     <span style="width:10px;height:10px;border-radius:3px;background:#0284c7;display:inline-block;"></span>
                     <span class="text-secondary">Welfare Fund ({{ pct_disbursed }}%)</span>
                 </span>
-                <span class="d-inline-flex align-items-center gap-1.5">
+                <span class="d-inline-flex align-items-center gap-2">
                     <span style="width:10px;height:10px;border-radius:3px;background:#16a34a;display:inline-block;"></span>
                     <span class="text-secondary">Group Members ({{ pct_support }}%)</span>
                 </span>
-                <span class="d-inline-flex align-items-center gap-1.5">
+                <span class="d-inline-flex align-items-center gap-2">
                     <span style="width:10px;height:10px;border-radius:3px;background:#9333ea;display:inline-block;"></span>
                     <span class="text-secondary">External Donors ({{ pct_external }}%)</span>
                 </span>
